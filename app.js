@@ -1,3 +1,10 @@
+const ESCAPE_MAP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;'
+};
+const ESCAPE_REGEX = /[&<>]/g;
+
 class NoteApp {
     constructor() {
         this.notes = this.loadNotes();
@@ -98,9 +105,7 @@ class NoteApp {
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return String(text).replace(ESCAPE_REGEX, m => ESCAPE_MAP[m]);
     }
 }
 
