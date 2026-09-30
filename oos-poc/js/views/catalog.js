@@ -26,18 +26,19 @@
     var withComp = new Set(S.db.workerCompetences.map(function (x) { return x.workerId; })).size;
     var tab = OOS.tab('competences', 'all');
     var selected = ctx.id ? e.get('competences', ctx.id) : null;
-    if (!selected && tab === 'all') selected = rows.slice().sort(function (a, b) { return U.byName(a.c, b.c); })[0].c;
-    var risky = rows.filter(function (r) { return r.holders > 0 && r.advanced <= 1; }).length;
+    if (!selected && tab === 'all' && rows.length) selected = rows.slice().sort(function (a, b) { return U.byName(a.c, b.c); })[0].c;
+    /* Samma definition som signalen på översikten: exakt en person på nivå 3–4. */
+    var risky = rows.filter(function (r) { return r.advanced === 1; }).length;
 
     var h = UI.pageHead({
       title: 'Kompetenser',
       sub: 'Kompetenser beskriver vad arbetarna kan och på vilken nivå. De används för att räkna kapacitet per kompetens och för att hitta kunskap som bara finns hos en person.',
-      actions: UI.btn('Lägg till kompetens', 'comp-add', { cls: 'btn-primary', icon: 'plus' })
+      actions: UI.btn('Lägg till kompetens', 'comp-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('badge', 'Totalt antal kompetenser', rows.length, C.categories().length + ' kategorier') +
-      UI.kpi('users', 'Arbetare med kompetens', withComp) +
-      UI.kpi('alert', 'Sårbara kompetenser', risky, 'Högst en person på avancerad nivå') +
+      UI.kpi('Totalt antal kompetenser', rows.length, C.categories().length + ' kategorier') +
+      UI.kpi('Arbetare med kompetens', withComp) +
+      UI.kpi('Bärs av en person', risky, 'Bara en person på nivå 3–4') +
       '</div>';
 
     h += '<div class="split"><section class="card">';
@@ -56,7 +57,7 @@
           { key: 'holders', label: 'Arbetare', cls: 'num', sort: function (r) { return r.holders; }, render: function (r) { return r.holders; } },
           {
             key: 'adv', label: 'Nivå 3–4', cls: 'num', sort: function (r) { return r.advanced; },
-            render: function (r) { return r.holders && r.advanced <= 1 ? UI.badge(String(r.advanced), 'warn', 'alert') : r.advanced; }
+            render: function (r) { return r.advanced === 1 ? UI.badge('1', 'warn') : r.advanced; }
           },
           { key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (r) { return r.cap; }, render: function (r) { return r.cap ? U.fmtH(r.cap) : '<span class="muted">–</span>'; } }
         ]
@@ -93,16 +94,18 @@
     var tab = OOS.tab('comp-panel', 'overview');
     var h = '<section class="card"><div class="panel-head">' + UI.avatar(c.name, c.category, { size: 'lg' }) +
       '<div class="grow"><h2 style="font-size:18px">' + esc(c.name) + '</h2><span class="muted">' + esc(c.category) + ' · ' + (c.type === 'business' ? 'Verksamhet' : 'IT') + '</span></div>' +
-      UI.btn('Redigera', 'comp-edit', { cls: 'btn-sm', icon: 'edit', data: { id: c.id } }) + '</div>';
+      UI.btn('Redigera', 'comp-edit', { cls: 'btn-sm', data: { id: c.id } }) + '</div>';
     h += UI.tabs('comp-panel', [{ key: 'overview', label: 'Översikt' }, { key: 'levels', label: 'Nivåer' }, { key: 'workers', label: 'Arbetare (' + holders.length + ')' }], tab);
     h += '<div class="card-body stack">';
     if (tab === 'overview') {
-      if (holders.length && adv.length <= 1) {
-        h += '<div class="note warn"><span>' + (adv.length ? esc(adv[0].worker.name) + ' är ensam om avancerad nivå.' : 'Ingen har avancerad nivå.') + ' Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</span></div>';
+      if (adv.length === 1) {
+        h += '<div class="note warn">' + esc(adv[0].worker.name) + ' är ensam om nivå 3–4. Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</div>';
+      } else if (holders.length && !adv.length) {
+        h += '<div class="note">Ingen har kompetensen på nivå 3–4 ännu.</div>';
       }
       h += '<dl class="kv"><dt>Namn</dt><dd>' + esc(c.name) + '</dd><dt>Kategori</dt><dd>' + esc(c.category) + '</dd><dt>Kort beskrivning</dt><dd>' + esc(c.description || '–') + '</dd>' +
         '<dt>Detaljerad beskrivning</dt><dd>' + esc(c.details || '–') + '</dd><dt>Antal arbetare</dt><dd>' + holders.length + '</dd><dt>Nivå 3–4</dt><dd>' + adv.length + '</dd>' +
-        '<dt>Kapacitet ' + esc(ctx.period.label.toLowerCase()) + '</dt><dd>' + U.fmtH(cap) + ' <span class="muted small">(primär kompetens)</span></dd></dl>';
+        '<dt>Kapacitet ' + esc(ctx.period.inText) + '</dt><dd>' + U.fmtH(cap) + ' <span class="muted small">(primär kompetens)</span></dd></dl>';
     } else if (tab === 'levels') {
       h += '<table class="tbl"><thead><tr><th>Nivå</th><th>Namn</th><th>Beskrivning</th><th class="num">Antal</th></tr></thead><tbody>';
       var desc = ['', 'Har grundläggande kunskap och kan utföra enklare uppgifter med stöd.', 'Kan arbeta självständigt med vanliga uppgifter.', 'Har djup kunskap och kan hantera komplexa uppgifter.', 'Mycket hög kompetens och kan leda och coacha andra.'];
@@ -120,7 +123,7 @@
       if (!holders.length) h += '<div class="empty">Ingen har kompetensen ännu.</div>';
       h += '</div>';
     }
-    h += '</div><div class="card-body" style="border-top:1px solid var(--line)">' + UI.btn('Ta bort kompetens', 'comp-delete', { cls: 'btn-sm btn-danger', icon: 'trash', data: { id: c.id } }) + '</div></section>';
+    h += '</div><div class="card-body" style="border-top:1px solid var(--line)">' + UI.btn('Ta bort kompetens', 'comp-delete', { cls: 'btn-sm btn-danger', data: { id: c.id } }) + '</div></section>';
     return h;
   }
 
@@ -134,14 +137,14 @@
     var h = UI.pageHead({
       title: 'System',
       sub: 'System och tjänster kopplas till team och IT-domäner. Varje system ska ha ett ansvarigt team.',
-      actions: UI.btn('Lägg till system', 'system-add', { cls: 'btn-primary', icon: 'plus' })
+      actions: UI.btn('Lägg till system', 'system-add', { cls: 'btn-primary' })
     });
     var orphan = rows.filter(function (r) { return !r.owner; }).length;
     h += '<div class="kpis">' +
-      UI.kpi('monitor', 'Totalt antal system', rows.length) +
-      UI.kpi('server', 'System i drift', rows.filter(function (r) { return r.s.status === 'production'; }).length) +
-      UI.kpi('clock', 'Under utveckling', rows.filter(function (r) { return r.s.status === 'development'; }).length) +
-      UI.kpi('alert', 'Utan ansvarigt team', orphan, orphan ? 'Behöver en ägare' : 'Alla har ett ansvarigt team') +
+      UI.kpi('Totalt antal system', rows.length) +
+      UI.kpi('System i drift', rows.filter(function (r) { return r.s.status === 'production'; }).length) +
+      UI.kpi('Under utveckling', rows.filter(function (r) { return r.s.status === 'development'; }).length) +
+      UI.kpi('Utan ansvarigt team', orphan, orphan ? 'Behöver en ägare' : 'Alla har ett ansvarigt team') +
       '</div>';
     var selected = ctx.id ? e.get('systems', ctx.id) : null;
     h += '<section class="card">' + UI.table({
@@ -171,7 +174,7 @@
     var teams = e.systemTeams(s.id);
     var doms = e.systemItDomains(s.id);
     var h = '<section class="card" id="detail"><div class="card-head"><div class="card-title">' + UI.avatar(s.name, s.id) + 'Detaljer: ' + esc(s.name) + ' ' + UI.statusBadge(s.status) + '</div><div class="row">' +
-      UI.btn('Redigera', 'system-edit', { icon: 'edit', data: { id: s.id } }) + UI.btn('Ta bort', 'system-delete', { cls: 'btn-danger', icon: 'trash', data: { id: s.id } }) + '</div></div>';
+      UI.btn('Redigera', 'system-edit', { data: { id: s.id } }) + UI.btn('Ta bort', 'system-delete', { cls: 'btn-danger', data: { id: s.id } }) + '</div></div>';
     h += '<div class="card-body grid-3">';
     h += '<dl class="kv"><dt>Beskrivning</dt><dd>' + esc(s.description || '–') + '</dd><dt>Typ</dt><dd>' + esc(s.kind || '–') + '</dd><dt>Kategori</dt><dd>' + ({ system: 'System', service: 'Tjänst', interface: 'Gränssnitt', function: 'Funktion' }[s.category] || '–') + '</dd></dl>';
     h += '<div class="stack"><div class="row-between"><span class="label">Team</span>' + UI.iconBtn('plus', 'system-team-add', { id: s.id }, 'Koppla team') + '</div><div class="list">';

@@ -1,4 +1,4 @@
-/* Tester för kapacitetsmotorn. Kör med: node --test tests/ */
+/* Tester för kapacitetsmotorn och lagringen. Kör med: npm test */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Seed = require('../js/seed.js');
@@ -105,4 +105,46 @@ test('teamets leveransdomän härleds från primär verksamhetsdomän', () => {
   db.teamDomains = db.teamDomains.filter((x) => !(x.teamId === 't_api' && x.domainId === 'd_rapport'));
   const e2 = E.create(db);
   assert.equal(e2.teamDeliveryDomain('t_api').id, 'dd_uf');
+});
+
+test('överallokerade arbetare bidrar aldrig med mer än sin tillgängliga tid', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const facts = e.allFacts(SEP);
+  for (const w of db.workers) {
+    const given = facts.filter((f) => f.workerId === w.id).reduce((s, f) => s + f.capacity, 0);
+    const available = e.workerCapacity(w.id, SEP).available;
+    assert.ok(given <= available + 0.01, `${w.name} bidrar med ${given} h av ${available} h`);
+  }
+  const emma = e.workerCapacity('w_emma', SEP);
+  assert.ok(emma.scale < 1);
+  const kp = e.teamCapacity('t_kundportal', SEP).members.find((m) => m.worker.id === 'w_emma');
+  assert.equal(kp.scaled, true);
+});
+
+test('en teamledare som tas bort ur teamet slutar vara teamledare', () => {
+  const Store = require('../js/store.js');
+  Store.load();
+  const tw = Store.db.teamWorkers.find((x) => x.teamId === 't_kundportal' && x.workerId === 'w_martin');
+  assert.equal(Store.db.teams.find((t) => t.id === 't_kundportal').leadId, 'w_martin');
+  Store.remove('teamWorkers', tw.id);
+  assert.equal(Store.db.teams.find((t) => t.id === 't_kundportal').leadId, null);
+});
+
+test('borttagning av team tar bort dess kopplingar men inte arbetarna', () => {
+  const Store = require('../js/store.js');
+  Store.reset();
+  const workersBefore = Store.db.workers.length;
+  Store.remove('teams', 't_sapcrm');
+  assert.equal(Store.db.teamWorkers.filter((x) => x.teamId === 't_sapcrm').length, 0);
+  assert.equal(Store.db.teamSystems.filter((x) => x.teamId === 't_sapcrm').length, 0);
+  assert.equal(Store.db.teamDomains.filter((x) => x.teamId === 't_sapcrm').length, 0);
+  assert.equal(Store.db.workers.length, workersBefore);
+  assert.ok(Store.db.changeLog.length >= 1);
+});
+
+test('kvartal visas med versaler även mitt i en mening', () => {
+  const q = E.periodOf('2026-08-10', 'quarter');
+  assert.equal(q.inText, '2026-Q3');
+  assert.equal(SEP.inText, 'september 2026');
 });

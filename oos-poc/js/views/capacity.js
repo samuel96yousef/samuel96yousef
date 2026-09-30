@@ -16,7 +16,7 @@
     });
 
     h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">Standardarbetstid</div>' + UI.btn('Redigera', 'std-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Standardarbetstid</div>' + UI.btn('Redigera', 'std-edit', { cls: 'btn-sm' }) + '</div><div class="card-body stack">' +
       '<p class="muted small">Standardarbetstid per arbetare och vecka, före avdrag. Grundavdragen skalas mot den.</p>' +
       '<div><span class="kpi-value">' + U.fmtNum(st.standardWeekHours) + ' h</span> <span class="muted">/ vecka</span></div></div></section>';
 
@@ -26,11 +26,11 @@
       '<div class="row-between"><span class="muted">Aktuell period</span><span class="row">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') + '<strong>' + U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</span></div>' +
       '<div class="row-between"><span class="muted">Nästa period</span><span>' + U.fmtDate(ctx.next.start) + ' – ' + U.fmtDate(ctx.next.end) + '</span></div>' +
       '<div class="row-between"><span class="muted">Arbetsdagar</span><span>' + ctx.period.workdays + ' / ' + ctx.next.workdays + '</span></div>' +
-      (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm', icon: 'refresh' }) : '') +
+      (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm' }) : '') +
       '</div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm', icon: 'plus' }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"></th></tr></thead><tbody>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     S.db.overheadReductions.forEach(function (r) {
       h += '<tr><td>' + esc(r.name) + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
     });
@@ -40,7 +40,7 @@
 
     var reds = S.db.teamReductions.slice().sort(function (a, b) { return a.from.localeCompare(b.from); });
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Avdrag som gäller ett team under en viss period, till exempel planerad frånvaro eller utbildning. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
-      UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-primary', icon: 'plus' }) + '</div>';
+      UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-primary' }) + '</div>';
     h += UI.table({
       id: 'tbl-reductions',
       rows: reds,
@@ -68,7 +68,7 @@
       '<div class="step"><span>Grundkapacitet (heltid)</span><span>' + U.fmtH(st.standardWeekHours) + ' / vecka</span></div>' +
       '<div class="step"><span>− Grundavdrag</span><span>' + U.fmtH(ohTotal) + ' / vecka</span></div>' +
       '<div class="step"><span>= Tillgänglig kapacitet</span><span>' + U.fmtNum(perWeek) + ' h / vecka</span></div>' +
-      '<div class="step"><span>× ' + ctx.period.workdays + ' arbetsdagar i ' + esc(ctx.period.label.toLowerCase()) + ' / 5</span><span>' + U.fmtH((perWeek / 5) * ctx.period.workdays) + '</span></div>' +
+      '<div class="step"><span>× ' + ctx.period.workdays + ' arbetsdagar i ' + esc(ctx.period.inText) + ' / 5</span><span>' + U.fmtH((perWeek / 5) * ctx.period.workdays) + '</span></div>' +
       '<div class="step"><span>× Allokering i teamet × (1 − teamets avdrag)</span><span>Teamets kapacitet</span></div>' +
       '</div>' +
       '<div class="stack small">' +

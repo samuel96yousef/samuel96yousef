@@ -3,46 +3,17 @@ var OOSUI = (function () {
   var U = OOSUtil;
   var esc = U.esc;
 
+  /* Ikoner används bara där ikonen är själva knappen. */
   var ICONS = {
-    home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
-    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.2 3.2 0 010 6.4"/><path d="M18 14.5c1.9.7 3.1 2.6 3.5 5.5"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
-    chart: '<path d="M4 20V11M10 20V5M16 20v-7M21 20H3"/>',
-    gauge: '<path d="M4 18a8 8 0 1116 0"/><path d="M12 18l4-6"/><path d="M4 18h16"/>',
-    layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
-    grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
-    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
-    badge: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3z"/>',
-    server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
-    settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M2.5 12h3M18.5 12h3M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
-    alert: '<path d="M12 3.5l9.5 16.5h-19L12 3.5z"/><path d="M12 10v4.5M12 17.2h.01"/>',
-    alertCircle: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
-    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
-    check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
     arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
-    chevronRight: '<path d="M9 6l6 6-6 6"/>',
-    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>',
-    download: '<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>',
-    upload: '<path d="M12 20V9M7 14l5-5 5 5M4 4h16"/>',
-    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/>',
-    box: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
-    share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>',
-    cloud: '<path d="M7 18h10a4 4 0 00.6-7.95A6 6 0 006.2 9.1 4.5 4.5 0 007 18z"/>',
-    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/>',
-    map: '<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z"/><path d="M9 3v15M15 6v15"/>',
-    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
-    refresh: '<path d="M20 11a8 8 0 00-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0014.3 4.9L20 16"/><path d="M20 20v-4h-4"/>',
-    minus: '<path d="M5 12h14"/>'
+    chevronRight: '<path d="M9 6l6 6-6 6"/>'
   };
 
   function icon(name, cls) {
@@ -108,17 +79,18 @@ var OOSUI = (function () {
     );
   }
 
-  function kpi(iconName, label, value, note, opts) {
+  function kpi(label, value, note, opts) {
     opts = opts || {};
     return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value' + (opts.crit ? ' crit' : '') + '">' + value + '</div>' + (note ? '<div class="kpi-note">' + note + '</div>' : '') + '</div>';
   }
 
   function pageHead(opts) {
     return (
+      '<div class="page-top">' +
       (opts.crumbs ? '<nav class="crumbs" aria-label="Brödsmulor">' + opts.crumbs + '</nav>' : '') +
       '<header class="page-head"><div class="page-head-text"><h1 class="page-title">' + opts.title + '</h1>' +
       (opts.sub ? '<p class="page-sub">' + opts.sub + '</p>' : '') +
-      '</div>' + (opts.actions ? '<div class="page-actions">' + opts.actions + '</div>' : '') + '</header>'
+      '</div>' + (opts.actions ? '<div class="page-actions">' + opts.actions + '</div>' : '') + '</header></div>'
     );
   }
 
@@ -144,7 +116,8 @@ var OOSUI = (function () {
       '<div class="tabs" role="tablist">' +
       items
         .map(function (t) {
-          return '<button type="button" role="tab" class="tab' + (t.key === current ? ' on' : '') + '" aria-selected="' + (t.key === current) + '" data-action="tab" data-tabs="' + esc(id) + '" data-key="' + esc(t.key) + '">' + esc(t.label) + '</button>';
+          var on = t.key === current;
+          return '<button type="button" role="tab" class="tab' + (on ? ' on' : '') + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '" id="tab-' + esc(id) + '-' + esc(t.key) + '" data-action="tab" data-tabs="' + esc(id) + '" data-key="' + esc(t.key) + '">' + esc(t.label) + '</button>';
         })
         .join('') +
       '</div>'
@@ -156,7 +129,7 @@ var OOSUI = (function () {
       '<div class="seg" role="group">' +
       items
         .map(function (t) {
-          return '<button type="button" class="' + (t.key === current ? 'on' : '') + '" aria-pressed="' + (t.key === current) + '" data-action="seg" data-seg="' + esc(id) + '" data-key="' + esc(t.key) + '">' + esc(t.label) + '</button>';
+          return '<button type="button" class="' + (t.key === current ? 'on' : '') + '" aria-pressed="' + (t.key === current) + '" id="seg-' + esc(id) + '-' + esc(t.key) + '" data-action="seg" data-seg="' + esc(id) + '" data-key="' + esc(t.key) + '">' + esc(t.label) + '</button>';
         })
         .join('') +
       '</div>'
@@ -210,7 +183,7 @@ var OOSUI = (function () {
     cfg.columns.forEach(function (c) {
       var cls = (c.cls || '') + (c.sort ? ' sortable' : '');
       var arrow = st.sortKey === c.key ? (st.dir > 0 ? '↑' : '↓') : '';
-      h += '<th class="' + cls + '"' + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + esc(c.label) + (c.sort ? '<span class="sort">' + arrow + '</span>' : '') + '</th>';
+      h += '<th class="' + cls + '"' + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0" id="sort-' + esc(cfg.id) + '-' + esc(c.key) + '"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + (c.label ? esc(c.label) : '<span class="sr-only">Åtgärder</span>') + (c.sort ? '<span class="sort">' + arrow + '</span>' : '') + '</th>';
     });
     h += '</tr></thead><tbody>';
     if (!shown.length) {
@@ -219,7 +192,7 @@ var OOSUI = (function () {
     shown.forEach(function (r) {
       var click = cfg.rowGo ? cfg.rowGo(r) : null;
       var sel = cfg.selectedId && r.id === cfg.selectedId;
-      h += '<tr class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + '"' + (click ? ' data-go="' + esc(click) + '"' : '') + '>';
+      h += '<tr class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + '"' + (click ? ' data-go="' + esc(click) + '" tabindex="0"' : '') + (sel ? ' aria-current="true"' : '') + '>';
       cfg.columns.forEach(function (c) {
         h += '<td class="' + (c.cls || '') + '">' + c.render(r) + '</td>';
       });
@@ -229,11 +202,11 @@ var OOSUI = (function () {
     if (cfg.pageSize !== 0) {
       h += '<div class="pager"><span>Visar ' + (rows.length ? from + 1 : 0) + '–' + Math.min(from + size, rows.length) + ' av ' + rows.length + ' ' + esc(cfg.noun || '') + '</span>';
       if (pages > 1) {
-        h += '<div class="pager-pages"><button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page - 1) + '"' + (st.page === 1 ? ' disabled' : '') + ' aria-label="Föregående sida">←</button>';
+        h += '<div class="pager-pages"><button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page - 1) + '" id="pg-' + esc(cfg.id) + '-prev"' + (st.page === 1 ? ' disabled' : '') + ' aria-label="Föregående sida">←</button>';
         for (var p = 1; p <= pages; p++) {
-          h += '<button type="button" class="' + (p === st.page ? 'on' : '') + '" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + p + '">' + p + '</button>';
+          h += '<button type="button" class="' + (p === st.page ? 'on' : '') + '" id="pg-' + esc(cfg.id) + '-' + p + '" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + p + '"' + (p === st.page ? ' aria-current="page"' : '') + '>' + p + '</button>';
         }
-        h += '<button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page + 1) + '"' + (st.page === pages ? ' disabled' : '') + ' aria-label="Nästa sida">→</button></div>';
+        h += '<button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page + 1) + '" id="pg-' + esc(cfg.id) + '-next"' + (st.page === pages ? ' disabled' : '') + ' aria-label="Nästa sida">→</button></div>';
       }
       h += '</div>';
     }
@@ -244,6 +217,8 @@ var OOSUI = (function () {
 
   var modalRoot = null;
   var activeForm = null;
+  var pendingConfirm = null;
+  var returnFocus = null;
 
   function root() {
     if (!modalRoot) modalRoot = document.getElementById('modal-root');
@@ -302,6 +277,7 @@ var OOSUI = (function () {
       (cfg.onDelete ? '<button type="button" class="btn btn-danger" data-action="modal-delete" style="margin-right:auto">Ta bort</button>' : '') +
       '<button type="button" class="btn" data-action="modal-close">Avbryt</button>' +
       '<button type="submit" class="btn btn-primary">' + esc(cfg.submitLabel || 'Spara') + '</button></div></form></div>';
+    rememberFocus();
     root().innerHTML = h;
     activeForm = cfg;
     var form = root().querySelector('form');
@@ -367,9 +343,40 @@ var OOSUI = (function () {
     cfg.onSubmit(vals);
   }
 
+  function rememberFocus() {
+    if (!modalOpen()) returnFocus = document.activeElement;
+  }
+
+  /* Stänger dialogen, svarar nej på en öppen fråga och återställer fokus. */
   function closeModal() {
     if (root()) root().innerHTML = '';
     activeForm = null;
+    if (pendingConfirm) {
+      var resolve = pendingConfirm;
+      pendingConfirm = null;
+      resolve(false);
+    }
+    if (returnFocus && document.contains(returnFocus)) returnFocus.focus();
+    returnFocus = null;
+  }
+
+  /* Håller tabbfokus inne i dialogen. */
+  function trapFocus(ev) {
+    if (ev.key !== 'Tab' || !modalOpen()) return;
+    var items = Array.prototype.filter.call(
+      root().querySelectorAll('button, input, select, textarea, [tabindex="0"]'),
+      function (el) { return !el.disabled && el.offsetParent !== null; }
+    );
+    if (!items.length) return;
+    var first = items[0];
+    var last = items[items.length - 1];
+    if (ev.shiftKey && document.activeElement === first) {
+      ev.preventDefault();
+      last.focus();
+    } else if (!ev.shiftKey && document.activeElement === last) {
+      ev.preventDefault();
+      first.focus();
+    }
   }
 
   function confirmDialog(cfg) {
@@ -380,15 +387,18 @@ var OOSUI = (function () {
         '<div class="modal-body single"><p>' + cfg.message + '</p></div>' +
         '<div class="modal-foot"><button type="button" class="btn" data-confirm="no">Avbryt</button>' +
         '<button type="button" class="btn ' + (cfg.danger ? 'btn-danger-solid' : 'btn-primary') + '" data-confirm="yes">' + esc(cfg.confirmLabel || 'Bekräfta') + '</button></div></div></div>';
+      rememberFocus();
       root().innerHTML = h;
       activeForm = null;
-      var yes = root().querySelector('[data-confirm="yes"]');
-      yes.focus();
+      pendingConfirm = resolve;
+      root().querySelector('[data-confirm="no"]').focus();
       root().querySelectorAll('[data-confirm]').forEach(function (b) {
         b.addEventListener('click', function (ev) {
           ev.stopPropagation();
+          var yes = b.getAttribute('data-confirm') === 'yes';
+          pendingConfirm = null;
           closeModal();
-          resolve(b.getAttribute('data-confirm') === 'yes');
+          resolve(yes);
         });
       });
     });
@@ -464,6 +474,7 @@ var OOSUI = (function () {
     closeModal: closeModal,
     modalDelete: modalDelete,
     modalOpen: modalOpen,
+    trapFocus: trapFocus,
     confirm: confirmDialog,
     toast: toast,
     showTip: showTip,

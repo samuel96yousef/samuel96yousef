@@ -39,13 +39,13 @@
     var h = UI.pageHead({
       title: 'Arbetare',
       sub: 'Arbetare är de personer eller AI-resurser som bidrar med kompetens och kapacitet i ett eller flera team och domäner.',
-      actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary', icon: 'plus' })
+      actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('users', 'Totalt antal arbetare', rows.length, ai + ' AI, ' + rows.filter(function (r) { return r.w.consultant; }).length + ' konsulter') +
-      UI.kpi('user', 'Arbetare i team', inTeams) +
-      UI.kpi('cloud', 'Arbetare med domänroll', inClouds, 'Domänmoln och nyckelroller') +
-      UI.kpi('alert', 'Överallokerade', over, over ? 'Mer än 100 % av tillgänglig tid' : 'Ingen över 100 %') +
+      UI.kpi('Totalt antal arbetare', rows.length, ai + ' AI, ' + rows.filter(function (r) { return r.w.consultant; }).length + ' konsulter') +
+      UI.kpi('Arbetare i team', inTeams) +
+      UI.kpi('Arbetare med domänroll', inClouds, 'Domänmoln och nyckelroller') +
+      UI.kpi('Överallokerade', over, over ? 'Mer än 100 % av tillgänglig tid' : 'Ingen över 100 %') +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-workers',
@@ -84,7 +84,7 @@
       crumbs: C.link('workers', 'Arbetare') + '<span>›</span><span>' + esc(w.name) + '</span>',
       title: esc(w.name) + ' ' + UI.statusFlag(w.status),
       sub: esc(w.description || ''),
-      actions: UI.btn('Tillbaka', 'back', { icon: 'arrowLeft', data: { to: 'workers' } }) + UI.btn('Redigera', 'worker-edit', { cls: 'btn-primary', icon: 'edit', data: { id: w.id } }) + UI.btn('Ta bort', 'worker-delete', { cls: 'btn-danger', icon: 'trash', data: { id: w.id } })
+      actions: UI.btn('Redigera', 'worker-edit', { data: { id: w.id } }) + UI.btn('Ta bort', 'worker-delete', { cls: 'btn-danger', data: { id: w.id } })
     });
 
     if (wc.allocationPct > 100.5) {
@@ -111,8 +111,8 @@
     });
     h += '</div></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th>Vikt</th><th class="actions"></th></tr></thead><tbody>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th>Vikt</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     comps.forEach(function (x) {
       h += '<tr><td>' + C.compRef(x.competence) + '</td><td>' + UI.level(x.wc.level) + '<br><span class="small muted">' + UI.LEVELS[x.wc.level] + '</span></td><td>' + (x.wc.weight === 'primary' ? UI.badge('Primär', 'accent') : '<span class="muted small">Sekundär</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'wc-edit', { id: x.wc.id }, 'Ändra') + '</td></tr>';
     });
@@ -121,7 +121,7 @@
     h += '</div>';
 
     h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">Kapacitet <span class="card-sub">(' + esc(ctx.period.label.toLowerCase()) + ', ' + ctx.period.workdays + ' arbetsdagar)</span></div></div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Kapacitet <span class="card-sub">(' + esc(ctx.period.inText) + ', ' + ctx.period.workdays + ' arbetsdagar)</span></div></div><div class="card-body stack">' +
       '<div class="formula">' +
       '<div class="step"><span>Grundkapacitet</span><span>' + U.fmtH(wc.baseWeek) + ' / vecka</span></div>' +
       '<div class="step"><span>Grundavdrag' + (w.type === 'ai' ? ' (gäller ej AI)' : '') + '</span><span>− ' + U.fmtNum(U.round(wc.overheadWeek, 1)) + ' h / vecka</span></div>' +
@@ -133,7 +133,7 @@
       '<div class="note"><span>Tillgänglig kapacitet är grundkapacitet minus grundavdrag (semester, kompetensutveckling, interna möten och administration).</span></div>' +
       '</div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Team</div>' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Team</div>' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
     h += '<div class="card-body"><div class="list">';
     wc.teams.forEach(function (t) {
       h += '<div class="list-item"><div class="grow">' + C.teamRef(t.team) + '<div class="muted small">' + esc(t.tw.role) + ' · ' + U.fmtH(t.hours) + ' i perioden</div></div>' +

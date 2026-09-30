@@ -54,7 +54,9 @@ var OOSEngine = (function () {
       label = U.MONTHS_LONG[m] + ' ' + y;
       label = label.charAt(0).toUpperCase() + label.slice(1);
     }
-    return { type: type || 'month', start: start, end: end, label: label, workdays: workdays(start, end) };
+    /* inText används mitt i meningar: "i september 2026", "i 2026-Q3". */
+    var inText = type === 'quarter' ? label : label.toLowerCase();
+    return { type: type || 'month', start: start, end: end, label: label, inText: inText, workdays: workdays(start, end) };
   }
 
   function nextPeriod(p) {
@@ -406,7 +408,15 @@ var OOSEngine = (function () {
       return { share: Math.min(1, weighted / period.workdays), active: active };
     }
 
+    var workerCache = new Map();
+
+    /*
+     * Arbetarens kapacitet i perioden. Är arbetaren överallokerad skalas alla åtaganden ned
+     * med "scale" så att summan aldrig blir mer än de timmar personen faktiskt har.
+     */
     function workerCapacity(workerId, period) {
+      var key = workerId + '|' + period.start + '|' + period.end;
+      if (workerCache.has(key)) return workerCache.get(key);
       var w = get('workers', workerId);
       if (!w) return null;
       var baseWeek = w.baseHoursPerWeek || 0;
@@ -426,7 +436,7 @@ var OOSEngine = (function () {
       var domainHours = U.sum(roles, function (r) { return r.hours; });
       var committed = teamHours + domainHours;
       var loaded = U.sum(teams, function (t) { return t.loaded; }) + domainHours;
-      return {
+      var result = {
         worker: w,
         baseWeek: baseWeek,
         overheadWeek: ohWeek,
@@ -440,10 +450,13 @@ var OOSEngine = (function () {
         domainHours: domainHours,
         committed: committed,
         allocationPct: available ? (committed / available) * 100 : 0,
+        scale: committed > available ? available / committed : 1,
         unallocated: Math.max(0, available - committed),
         loaded: loaded,
         loadPct: available ? (loaded / available) * 100 : 0
       };
+      workerCache.set(key, result);
+      return result;
     }
 
     function summarize(items) {
@@ -471,7 +484,7 @@ var OOSEngine = (function () {
       var facts = [];
       teamMembers(teamId).forEach(function (m) {
         var wc = workerCapacity(m.worker.id, period);
-        var gross = (wc.available * m.tw.allocation) / 100;
+        var gross = ((wc.available * m.tw.allocation) / 100) * wc.scale;
         var cap = gross * (1 - red.share);
         var loaded = (cap * (m.tw.plannedLoad || 0)) / 100;
         var comps = attributionCompetences(m.worker.id);
@@ -500,7 +513,7 @@ var OOSEngine = (function () {
         var w = get('workers', x.workerId);
         var d = get('domains', x.domainId);
         if (!w || !d) return;
-        var hours = monthlyHoursInPeriod(x.hoursPerMonth || 0, x.from, x.to, period);
+        var hours = monthlyHoursInPeriod(x.hoursPerMonth || 0, x.from, x.to, period) * workerCapacity(w.id, period).scale;
         if (!hours) return;
         var dd = deliveryDomainOfDomain(d.id);
         var comps = attributionCompetences(w.id);
@@ -524,7 +537,7 @@ var OOSEngine = (function () {
         var w = get('workers', x.workerId);
         var dd = get('deliveryDomains', x.deliveryDomainId);
         if (!w || !dd) return;
-        var hours = monthlyHoursInPeriod(x.hoursPerMonth || 0, x.from, x.to, period);
+        var hours = monthlyHoursInPeriod(x.hoursPerMonth || 0, x.from, x.to, period) * workerCapacity(w.id, period).scale;
         if (!hours) return;
         var comps = attributionCompetences(w.id);
         comps.forEach(function (c) {
@@ -570,7 +583,7 @@ var OOSEngine = (function () {
       var red = teamReductionShare(teamId, period);
       var members = teamMembers(teamId).map(function (m) {
         var wc = workerCapacity(m.worker.id, period);
-        var gross = (wc.available * m.tw.allocation) / 100;
+        var gross = ((wc.available * m.tw.allocation) / 100) * wc.scale;
         var cap = gross * (1 - red.share);
         var loaded = (cap * (m.tw.plannedLoad || 0)) / 100;
         return {
@@ -578,6 +591,7 @@ var OOSEngine = (function () {
           worker: m.worker,
           workerCap: wc,
           gross: gross,
+          scaled: wc.scale < 1,
           capacity: cap,
           loaded: loaded,
           free: cap - loaded,
@@ -693,7 +707,8 @@ var OOSEngine = (function () {
       var coll = level === 'delivery' ? 'deliveryDomains' : 'domains';
       var id = f[LEVEL_KEYS[level]];
       var x = id ? get(coll, id) : null;
-      return x ? x.name : 'Ej kopplad';
+      if (x) return x.name;
+      return { business: 'Utan verksamhetsdomän', it: 'Utan IT-domän', delivery: 'Utan leveransdomän' }[level];
     }
 
     function groupKey(level, f) {
@@ -767,9 +782,10 @@ var OOSEngine = (function () {
         groups = Array.from(gmap.values()).map(function (g) {
           var rows = rowsFor(g.cur, g.nxt, compKey, compName).sort(function (a, b) { return b.capacity - a.capacity; });
           var total = rowsFor(g.cur, g.nxt, function () { return 'total'; }, function () { return 'Totalt'; })[0];
-          return { key: g.key, name: g.name, rows: rows, total: total, isCloud: String(g.key).indexOf('_cloud_') === 0 };
+          return { key: g.key, name: g.name, rows: rows, total: total, isCloud: String(g.key).indexOf('_cloud_') === 0, isOther: g.key === '_none' };
         });
         groups.sort(function (a, b) {
+          if (a.isOther !== b.isOther) return a.isOther ? 1 : -1;
           if (a.isCloud !== b.isCloud) return a.isCloud ? 1 : -1;
           return a.name.localeCompare(b.name, 'sv');
         });
@@ -834,7 +850,7 @@ var OOSEngine = (function () {
           out.push({
             kind: 'keyperson',
             severity: 'warning',
-            title: c.name + ': bara en person på avancerad nivå eller högre',
+            title: c.name + ': bara en person på nivå 3–4',
             detail: holders[0].worker.name + ' bär kunskapen. ' + (any.length - 1 ? (any.length - 1) + ' till har kompetensen på lägre nivå.' : 'Ingen annan har kompetensen.'),
             ref: { page: 'competences', id: c.id }
           });

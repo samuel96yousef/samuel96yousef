@@ -33,6 +33,18 @@ Bara personer har initialer. Domäner, team och system visas med sina namn. Det 
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 
+## Tillgänglighet
+
+Lugn får inte betyda svårläst. Kraven är:
+
+- All text klarar WCAG 2.1 AA, det vill säga minst 4,5:1 i kontrast, i både ljust och mörkt läge. Det gäller även den gråa hjälptexten.
+- Allt går att nå med tangentbordet. Tabellrader, flikar och sorterbara kolumner tar emot fokus. Piltangenterna flyttar mellan flikar.
+- Dialoger håller kvar fokus medan de är öppna och lämnar tillbaka det när de stängs. Esc stänger dem.
+- Vid sidbyte flyttas fokus till sidans rubrik och webbläsarens bakåtknapp fungerar.
+- Färg är aldrig enda bäraren av information. Avvikelser har också text, till exempel "118 %" eller "minskad".
+
+Kontrollera med axe eller webbläsarens tillgänglighetsverktyg innan något nytt läggs till.
+
 ## Så använder du principerna
 
 Ställ tre frågor innan något nytt läggs till:

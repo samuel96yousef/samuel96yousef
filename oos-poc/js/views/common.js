@@ -63,12 +63,29 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return o === 'owner' ? 'Ansvarar' : '<span class="quiet">Bidrar</span>';
   };
 
-  C.workerTypeLabel = function (w) {
-    return w.type === 'ai' ? 'AI' : 'Människa';
-  };
-
   C.byName = function (a, b) {
     return U.byName(a, b);
+  };
+
+  /* Kopierar text till urklipp. Om urklipp är blockerat visas texten så att den kan markeras. */
+  C.copyText = function (text, what) {
+    function fallback() {
+      UI.openForm({
+        title: 'Kopiera ' + what,
+        intro: 'Urklipp är blockerat här. Markera texten och kopiera den med Ctrl+C eller ⌘C.',
+        values: { text: text },
+        fields: [{ key: 'text', label: what.charAt(0).toUpperCase() + what.slice(1), type: 'textarea', full: true }],
+        submitLabel: 'Klar',
+        onSubmit: function () {}
+      });
+      var ta = document.getElementById('f-text');
+      if (ta) ta.select();
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { UI.toast(what.charAt(0).toUpperCase() + what.slice(1) + ' kopierades.'); }, fallback);
+    } catch (e) {
+      fallback();
+    }
   };
 
   /* ---------- Urvalslistor ---------- */

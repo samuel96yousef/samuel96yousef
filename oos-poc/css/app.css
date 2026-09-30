@@ -15,8 +15,8 @@
   --bg: #ffffff;
   --side: #f5f5f6;
   --fg: #111316;
-  --fg-2: #555b64;
-  --fg-3: #8a9099;
+  --fg-2: #454a52;
+  --fg-3: #646a73;
   --line: #eaebee;
   --line-strong: #d7d9de;
   --hover: #f4f4f6;
@@ -47,8 +47,8 @@
     --bg: #0f1012;
     --side: #151619;
     --fg: #eceef1;
-    --fg-2: #a4aab3;
-    --fg-3: #737983;
+    --fg-2: #b3b9c2;
+    --fg-3: #8b919b;
     --line: #232529;
     --line-strong: #33363c;
     --hover: #1a1c1f;
@@ -75,8 +75,8 @@
   --bg: #0f1012;
   --side: #151619;
   --fg: #eceef1;
-  --fg-2: #a4aab3;
-  --fg-3: #737983;
+  --fg-2: #b3b9c2;
+  --fg-3: #8b919b;
   --line: #232529;
   --line-strong: #33363c;
   --hover: #1a1c1f;
@@ -155,6 +155,11 @@ th.num {
   outline: 2px solid var(--fg);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Rubriker får fokus programmatiskt vid sidbyte; de ska inte se ut som knappar. */
+[tabindex='-1']:focus {
+  outline: none;
 }
 
 /* ---------- Skal ---------- */
@@ -242,6 +247,10 @@ th.num {
   font-weight: 400;
 }
 
+.nav-item.active .nav-count {
+  color: var(--fg-2);
+}
+
 .nav-foot {
   margin-top: auto;
   padding: 0 10px;
@@ -298,6 +307,12 @@ th.num {
 
 /* ---------- Sidhuvud ---------- */
 
+.page-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .crumbs {
   display: flex;
   align-items: center;
@@ -305,7 +320,6 @@ th.num {
   font-size: 13px;
   color: var(--fg-3);
   flex-wrap: wrap;
-  margin-bottom: -36px;
 }
 
 .crumbs .link {
@@ -664,8 +678,14 @@ table.tbl {
   cursor: pointer;
 }
 
-.tbl tbody tr.clickable:hover td {
+.tbl tbody tr.clickable:hover td,
+.tbl tbody tr.clickable:focus-visible td {
   background: var(--hover);
+}
+
+.tbl tbody tr.clickable:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
 }
 
 .tbl tbody tr.selected td {
@@ -898,13 +918,16 @@ table.tbl {
   border-radius: 7px;
   padding: 3px 4px 3px 10px;
   font-size: 13px;
-  cursor: pointer;
   color: var(--fg);
 }
 
 .chip:hover {
   border-color: var(--line-strong);
   background: var(--hover);
+}
+
+.chip .link {
+  font-weight: 450;
 }
 
 .chip .owner {
@@ -1398,7 +1421,8 @@ table.tbl {
   cursor: pointer;
 }
 
-.hbar[data-go]:hover .hbar-name {
+.hbar[data-go]:hover .hbar-name,
+.hbar[data-go]:focus-visible .hbar-name {
   text-decoration: underline;
   text-decoration-color: var(--line-strong);
   text-underline-offset: 3px;
@@ -1739,9 +1763,6 @@ table.tbl {
   }
   .main-inner {
     gap: 40px;
-  }
-  .crumbs {
-    margin-bottom: -28px;
   }
   .grid-2,
   .grid-3 {

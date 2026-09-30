@@ -167,6 +167,12 @@ var OOSStore = (function () {
     if (!rec) return;
     var name = nameOf(coll, rec);
     db[coll] = db[coll].filter(function (x) { return x.id !== id; });
+    /* En teamledare som lämnar teamet är inte längre teamledare. */
+    if (coll === 'teamWorkers') {
+      db.teams.forEach(function (t) {
+        if (t.id === rec.teamId && t.leadId === rec.workerId) t.leadId = null;
+      });
+    }
     var rules = CASCADE[coll];
     if (rules) {
       (rules.remove || []).forEach(function (r) {

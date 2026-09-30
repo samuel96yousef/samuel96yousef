@@ -86,6 +86,8 @@
     }
     main.innerHTML = html;
     renderNav();
+    markScrollableTables();
+    document.title = (PAGES[st.page] ? PAGES[st.page].label + ' · ' : '') + 'Fabriken';
     if (focusId) {
       var el = document.getElementById(focusId);
       if (el) {
@@ -97,29 +99,82 @@
     }
   }
 
+  /* Tabeller som scrollar i sidled måste gå att nå och scrolla med tangentbordet. */
+  function markScrollableTables() {
+    document.querySelectorAll('#main-inner .table-wrap').forEach(function (w, i) {
+      if (w.scrollWidth > w.clientWidth + 1) {
+        var section = w.closest('.card');
+        var title = section && section.querySelector('.card-title');
+        w.setAttribute('tabindex', '0');
+        w.setAttribute('role', 'region');
+        w.setAttribute('aria-label', (title ? title.textContent : 'Tabell ' + (i + 1)) + ', tabell');
+      } else {
+        w.removeAttribute('tabindex');
+        w.removeAttribute('role');
+        w.removeAttribute('aria-label');
+      }
+    });
+  }
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(markScrollableTables, 150);
+  });
+
   OOS.refresh = render;
 
   var LIST_DETAIL = { deliveryDomains: 1, businessDomains: 1, itDomains: 1, systems: 1, competences: 1 };
 
-  OOS.go = function (target) {
+  function currentTarget() {
+    return st.page + (st.id ? ':' + st.id : '');
+  }
+
+  /* Webbläsarens bakåtknapp ska fungera. Inramade vyer kan blockera historiken, därav try. */
+  function remember(target, replace) {
+    try {
+      var url = '#' + target.split(':')[0];
+      if (replace) history.replaceState({ target: target }, '', url);
+      else history.pushState({ target: target }, '', url);
+    } catch (e) { /* historiken är inte tillgänglig här */ }
+  }
+
+  OOS.go = function (target, opts) {
+    opts = opts || {};
     var parts = String(target).split(':');
     var page = PAGES[parts[0]] ? parts[0] : 'overview';
     var samePage = page === st.page;
+    var changed = currentTarget() !== page + (parts[1] ? ':' + parts[1] : '');
     st.page = page;
     st.id = parts[1] || null;
     st.navOpen = false;
     UI.hideTip();
     render();
-    try {
-      if (window.history && history.replaceState) history.replaceState(null, '', '#' + page);
-    } catch (e) { /* inramade vyer kan blockera historiken */ }
+    if (changed && !opts.fromHistory) remember(currentTarget());
     if (samePage && LIST_DETAIL[page] && st.id) {
       var d = document.getElementById('detail');
       if (d && d.getBoundingClientRect().top > window.innerHeight - 120) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
+    } else if (changed) {
       window.scrollTo(0, 0);
+      /* Flytta fokus till sidans rubrik så att skärmläsare och tangentbord följer med. */
+      var h1 = document.querySelector('#main-inner h1');
+      if (h1) {
+        h1.setAttribute('tabindex', '-1');
+        h1.focus({ preventScroll: true });
+      }
     }
   };
+
+  window.addEventListener('popstate', function (ev) {
+    var target = ev.state && ev.state.target;
+    if (!target) {
+      var hash = '';
+      try { hash = (location.hash || '').replace('#', ''); } catch (e) { hash = ''; }
+      target = PAGES[hash] ? hash : 'overview';
+    }
+    UI.closeModal();
+    OOS.go(target, { fromHistory: true });
+  });
 
   function handleAction(el, ev) {
     var name = el.getAttribute('data-action');
@@ -149,14 +204,12 @@
       case 'go':
         OOS.go(ds.to);
         return;
-      case 'back':
-        OOS.go(ds.to);
-        return;
       case 'modal-close':
         UI.closeModal();
         return;
       case 'modal-backdrop':
-        if (ev.target === el) UI.closeModal();
+        /* Stäng bara om både tryck och släpp skedde utanför dialogen, inte vid markering av text. */
+        if (ev.target === el && pressedOn === el) UI.closeModal();
         return;
       case 'modal-delete':
         UI.modalDelete();
@@ -170,6 +223,11 @@
         else console.warn('Okänd åtgärd', name);
     }
   }
+
+  var pressedOn = null;
+  document.addEventListener('mousedown', function (ev) {
+    pressedOn = ev.target;
+  });
 
   document.addEventListener('click', function (ev) {
     var actEl = ev.target.closest('[data-action]');
@@ -189,6 +247,18 @@
     if (ev.key === 'Escape') {
       if (UI.modalOpen()) UI.closeModal();
       else if (st.navOpen) { st.navOpen = false; renderNav(); }
+      return;
+    }
+    UI.trapFocus(ev);
+    /* Piltangenter mellan flikar, enligt WAI-ARIA-mönstret för flikar. */
+    if ((ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') && ev.target.getAttribute('role') === 'tab') {
+      var tabs = Array.prototype.slice.call(ev.target.parentNode.querySelectorAll('[role="tab"]'));
+      var i = tabs.indexOf(ev.target) + (ev.key === 'ArrowRight' ? 1 : -1);
+      var next = tabs[(i + tabs.length) % tabs.length];
+      ev.preventDefault();
+      handleAction(next, ev);
+      var again = document.getElementById(next.id);
+      if (again) again.focus();
       return;
     }
     if (ev.key !== 'Enter' && ev.key !== ' ') return;
@@ -236,6 +306,7 @@
     try { hash = (location.hash || '').replace('#', ''); } catch (e) { hash = ''; }
     if (PAGES[hash]) st.page = hash;
     render();
+    remember(currentTarget(), true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

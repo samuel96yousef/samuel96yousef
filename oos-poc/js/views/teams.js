@@ -24,13 +24,13 @@
     var h = UI.pageHead({
       title: 'Team',
       sub: 'Team är tvärfunktionella grupper av arbetare som tillsammans levererar värde inom en eller flera domäner. Producerande team arbetar mot en primär verksamhetsdomän, stödjande team mot flera.',
-      actions: UI.btn('Lägg till team', 'team-add', { cls: 'btn-primary', icon: 'plus' })
+      actions: UI.btn('Lägg till team', 'team-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('users', 'Totalt antal team', rows.length, rows.filter(function (r) { return r.team.category === 'producing'; }).length + ' producerande, ' + rows.filter(function (r) { return r.team.category === 'supporting'; }).length + ' stödjande') +
-      UI.kpi('user', 'Arbetare i team', people) +
-      UI.kpi('gauge', 'Teamkapacitet ' + ctx.period.label.toLowerCase(), U.fmtH(totalCap), U.fmtH(totalCap - totalLoaded) + ' ledigt') +
-      UI.kpi('chart', 'Genomsnittlig beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0)) +
+      UI.kpi('Totalt antal team', rows.length, rows.filter(function (r) { return r.team.category === 'producing'; }).length + ' producerande, ' + rows.filter(function (r) { return r.team.category === 'supporting'; }).length + ' stödjande') +
+      UI.kpi('Arbetare i team', people) +
+      UI.kpi('Teamkapacitet ' + ctx.period.inText, U.fmtH(totalCap), U.fmtH(totalCap - totalLoaded) + ' ledigt') +
+      UI.kpi('Genomsnittlig beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0)) +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-teams',
@@ -66,7 +66,7 @@
       crumbs: C.link('teams', 'Team') + '<span>›</span><span>' + esc(t.name) + '</span>',
       title: esc(t.name) + ' ' + UI.statusFlag(t.status),
       sub: esc(t.description || ''),
-      actions: UI.btn('Redigera', 'team-edit', { icon: 'edit', data: { id: t.id } }) + UI.btn('Ta bort', 'team-delete', { cls: 'btn-danger', icon: 'trash', data: { id: t.id } })
+      actions: UI.btn('Redigera', 'team-edit', { data: { id: t.id } }) + UI.btn('Ta bort', 'team-delete', { cls: 'btn-danger', data: { id: t.id } })
     });
 
     h += '<div class="grid-4 facts">';
@@ -92,19 +92,20 @@
     var sys = e.teamSystems(t.id);
     h += '<section class="card"><div class="card-head"><div class="card-title">System och tjänster</div><div class="chips">';
     sys.forEach(function (x) {
-      h += '<span class="chip" data-go="systems:' + esc(x.system.id) + '" title="' + (x.link.objective === 'owner' ? 'Teamet ansvarar' : 'Teamet bidrar') + '">' +
-        esc(x.system.name) + (x.link.objective === 'owner' ? ' <span class="owner">ansvar</span>' : '') +
+      /* Namnet och borttagningen är två separata knappar, så att de inte hamnar i varandra. */
+      h += '<span class="chip">' + C.link('systems:' + x.system.id, x.system.name) + (x.link.objective === 'owner' ? ' <span class="owner">ansvar</span>' : '') +
         '<button type="button" class="btn-icon x" style="width:20px;height:20px" data-action="link-remove" data-coll="teamSystems" data-id="' + esc(x.link.id) + '" data-msg="' + esc(x.system.name + ' kopplas bort från ' + t.name + '.') + '" aria-label="Koppla bort ' + esc(x.system.name) + '">' + UI.icon('x') + '</button></span>';
     });
-    h += UI.btn('Lägg till system', 'team-system-add', { cls: 'btn-sm', icon: 'plus', data: { id: t.id } }) + '</div></div></section>';
+    h += UI.btn('Lägg till system', 'team-system-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Teammedlemmar (' + tc.headcount + ')</div>' +
-      UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', icon: 'plus', data: { id: t.id } }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Teammedlemmar (' + tc.headcount + ')</div>' +
+      '<div class="card-sub">Allokering är andel av arbetarens tid. Belastning är hur mycket av den tiden som är planerad.</div></div>' +
+      UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn</th><th>Roll i teamet</th><th>Primära kompetenser</th><th class="num">Allokering i teamet</th>' +
-      '<th class="num">Tillgänglig kapacitet<br><span class="muted small">(denna period)</span></th><th>Belastning<br><span class="muted small">(denna period)</span></th><th>Total allokering<br><span class="muted small">(alla team och roller)</span></th><th class="actions"></th></tr></thead><tbody>';
+      '<th class="num">Tillgänglig kapacitet<br><span class="muted small">(denna period)</span></th><th>Belastning<br><span class="muted small">(denna period)</span></th><th>Total allokering<br><span class="muted small">(alla team och roller)</span></th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     tc.members.sort(function (a, b) { return b.tw.allocation - a.tw.allocation || U.byName(a.worker, b.worker); }).forEach(function (m) {
       h += '<tr><td>' + C.workerRef(m.worker, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : '') + '</td><td>' + esc(m.tw.role) + '</td>' +
-        '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td><td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num">' + U.fmtH(m.capacity) + '</td>' +
+        '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td><td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
         '<td>' + UI.bar(m.loadPct) + '</td><td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
         '<td class="actions">' + UI.iconBtn('edit', 'member-edit', { id: m.tw.id }, 'Ändra') + '</td></tr>';
     });
@@ -130,12 +131,13 @@
     h += '<dl class="kv"><dt>Antal teammedlemmar</dt><dd>' + tc.headcount + '</dd><dt>Genomsnittlig allokering</dt><dd>' + U.fmtPct(tc.avgAllocation) + '</dd>' +
       '<dt>' + esc(ctx.next.label) + '</dt><dd>' + U.fmtH(nx.capacity) + ' <span class="muted">(' + U.fmtSigned(nx.capacity - tc.capacity, ' h') + ')</span></dd></dl>';
     var reds = S.db.teamReductions.filter(function (r) { return r.teamId === t.id; });
-    h += '<div class="stack" style="gap:6px"><div class="row-between"><span class="label">Särskilda avdrag</span>' + UI.btn('Lägg till', 'reduction-add', { cls: 'btn-sm', icon: 'plus', data: { team: t.id } }) + '</div>';
+    h += '<div class="stack" style="gap:6px"><div class="row-between"><span class="label">Särskilda avdrag</span>' + UI.btn('Lägg till', 'reduction-add', { cls: 'btn-sm', data: { team: t.id } }) + '</div>';
     if (!reds.length) h += '<span class="muted small">Inga avdrag registrerade.</span>';
     reds.forEach(function (r) {
       var active = tc.reduction.active.some(function (a) { return a.reduction.id === r.id; });
-      h += '<div class="list-item"><div class="grow"><strong>' + esc(r.type) + ' ' + U.fmtPct(r.percent) + '</strong> <span class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + '</span><div class="muted small">' + esc(r.comment || '') + '</div></div>' +
-        (active ? UI.badge('Påverkar perioden', 'warn') : '') + UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra') + '</div>';
+      h += '<div class="list-item"><div class="grow"><strong>' + esc(r.type) + ' ' + U.fmtPct(r.percent) + '</strong>' + (active ? ' <span class="muted small">· gäller i perioden</span>' : '') +
+        '<div class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + (r.comment ? ' · ' + esc(r.comment) : '') + '</div></div>' +
+        UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra') + '</div>';
     });
     h += '</div></div></section></div>';
     return h;

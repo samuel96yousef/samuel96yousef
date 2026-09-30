@@ -12,7 +12,7 @@ Utseendet följer designfilosofin *Lugn yta, sann bild*. Se [DESIGN.md](DESIGN.m
 
 ```bash
 npm start          # valfritt: lokal webbserver på http://localhost:5173
-npm test           # tester för kapacitetsmotorn (Node 18+)
+npm test           # tester för kapacitetsmotorn och lagringen (Node 18+)
 npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller Teams
 ```
 
@@ -72,6 +72,7 @@ Följer ER-skissen för Prototyp 1. Tabellerna finns i `js/seed.js` och relation
 5. **Leveransdomän** för ett team härleds: primär verksamhetsdomän → dess primära leveransdomän. Saknas verksamhetsdomän används primär IT-domän.
 6. **Domänkapacitet** = team med domänen som *primär* + domänmolnets timmar. Stödjande kopplingar visas men räknas inte, för att undvika dubbelräkning.
 7. **Belastning** anges manuellt per teammedlem. Domänmolnets timmar räknas som belastade.
+8. **Överallokering** räknas ned. Om en arbetares team och domänroller kräver mer än den tillgängliga tiden, skalas alla åtaganden ned i samma proportion. Kapaciteten blir alltså aldrig större än de timmar som finns. Överallokeringen visas som en kritisk signal.
 
 ## Avvikelser och öppna frågor
 
@@ -101,6 +102,6 @@ js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
 js/views/*.js         vyerna
 js/app.js             navigation och händelser
-tests/engine.test.js  tester för beräkningarna
+tests/core.test.js    tester för beräkningar och lagring
 tools/bundle.js       bygger en fristående HTML-fil
 ```

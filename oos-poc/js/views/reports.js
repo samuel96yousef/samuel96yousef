@@ -56,7 +56,7 @@
     var h = UI.pageHead({
       title: 'Rapporter',
       sub: 'Analysera kapacitet och belastning aggregerat över leveransdomäner, verksamhetsdomäner, IT-domäner och team. Allt räknas fram ur samma datamodell.',
-      actions: UI.btn('Kopiera som CSV', 'report-csv', { icon: 'copy' })
+      actions: UI.btn('Kopiera som CSV', 'report-csv', {})
     });
 
     h += '<section class="card"><div class="filters">';
@@ -71,20 +71,20 @@
     h += select('comp', 'Kompetens', C.opts.competences(), r.comp, 'Alla kompetenser');
     h += '<label class="fld check"><input type="checkbox" id="rf-clouds" data-change="report-clouds"' + (r.clouds ? ' checked' : '') + '><span>Ta med domänmoln och nyckelroller</span></label>';
     h += '<div class="fld"><span>Visa som</span>' + UI.seg('report-view', [{ key: 'table', label: 'Tabell' }, { key: 'chart', label: 'Diagram' }], r.view) + '</div>';
-    h += '<div class="fld"><span>&nbsp;</span>' + UI.btn('Rensa filter', 'report-clear', { icon: 'refresh' }) + '</div>';
+    h += '<div class="fld"><span>&nbsp;</span>' + UI.btn('Rensa filter', 'report-clear', {}) + '</div>';
     h += '</div></section>';
 
     var levelLabel = LEVELS.filter(function (l) { return l.value === r.level; })[0].label.toLowerCase();
     var t = rep.total;
     h += '<div class="kpis">' +
-      UI.kpi('gauge', 'Kapacitet ' + ctx.period.label.toLowerCase(), U.fmtH(t.capacity), t.peopleCount + ' arbetare i urvalet') +
-      UI.kpi('chart', 'Belastat', U.fmtH(t.loaded), U.fmtPct(t.loadPct) + ' beläggning') +
-      UI.kpi('check', 'Ledigt', U.fmtH(t.free)) +
-      UI.kpi('calendar', ctx.next.label + ' (grundkapacitet)', U.fmtH(t.nextCapacity), U.fmtSigned(t.change, ' h') + ' (' + U.fmtSigned(t.changePct, ' %') + ')') +
+      UI.kpi('Kapacitet ' + ctx.period.inText, U.fmtH(t.capacity), t.peopleCount + ' arbetare i urvalet') +
+      UI.kpi('Belastat', U.fmtH(t.loaded), U.fmtPct(t.loadPct) + ' beläggning') +
+      UI.kpi('Ledigt', U.fmtH(t.free)) +
+      UI.kpi(ctx.next.label + ' (grundkapacitet)', U.fmtH(t.nextCapacity), U.fmtSigned(t.change, ' h') + ' (' + U.fmtSigned(t.changePct, ' %') + ')') +
       '</div>';
 
     h += '<section class="card"><div class="card-head"><div><div class="card-title">' + (r.mode === 'groups' ? 'Kapacitet och belastning per kompetens – per ' + esc(levelLabel) : 'Kapacitet och belastning per kompetens – över alla grupper') + '</div>' +
-      '<div class="card-sub">' + esc(ctx.period.label) + ' (' + U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end) + ') jämfört med ' + esc(ctx.next.label.toLowerCase()) + '</div></div>' +
+      '<div class="card-sub">' + esc(ctx.period.label) + ' (' + U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end) + ') jämfört med ' + esc(ctx.next.inText) + '</div></div>' +
       UI.seg('report-mode', [{ key: 'groups', label: 'Per ' + levelLabel }, { key: 'competence', label: 'Per kompetens' }], r.mode) + '</div>';
     h += r.view === 'chart' ? chart(rep, r) : tableView(rep, r, levelLabel);
     h += '</section>';
@@ -179,24 +179,8 @@
     OOS.refresh();
   };
   A['report-csv'] = function () {
-    var text = csv(OOS.ctx());
-    var done = function () { UI.toast('Rapporten kopierades. Klistra in i Excel.'); };
-    try {
-      navigator.clipboard.writeText(text).then(done, function () { fallback(text); });
-    } catch (e) {
-      fallback(text);
-    }
+    C.copyText(csv(OOS.ctx()), 'rapporten');
   };
-  function fallback(text) {
-    UI.openForm({
-      title: 'Kopiera rapporten',
-      intro: 'Urklipp är blockerat här. Markera texten och kopiera den.',
-      values: { csv: text },
-      fields: [{ key: 'csv', label: 'CSV (semikolonseparerad)', type: 'textarea', full: true }],
-      submitLabel: 'Stäng',
-      onSubmit: function () {}
-    });
-  }
   OOS.inputs['report-filter'] = function (el) {
     var r = rs();
     r[el.dataset.key] = el.value;

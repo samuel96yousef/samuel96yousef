@@ -12,7 +12,6 @@
       title: 'Leveransdomäner',
       singular: 'leveransdomän',
       addLabel: 'Lägg till leveransdomän',
-      icon: 'layers',
       sub: 'En leveransdomän är den högsta nivån. Den delar upp verksamheten i större avgränsade delar och agerar beställare av utveckling.'
     },
     businessDomains: {
@@ -21,7 +20,6 @@
       title: 'Verksamhetsdomäner',
       singular: 'verksamhetsdomän',
       addLabel: 'Lägg till verksamhetsdomän',
-      icon: 'grid',
       sub: 'En verksamhetsdomän är en sammanhängande del av verksamhetens processer och förmågor. Den bistår teamen med verksamhetskompetens för analys och kravställning.'
     },
     itDomains: {
@@ -30,7 +28,6 @@
       title: 'IT-domäner',
       singular: 'IT-domän',
       addLabel: 'Lägg till IT-domän',
-      icon: 'monitor',
       sub: 'En IT-domän grupperar system och tekniska tjänster med gemensamt syfte. Den bistår teamen med IT-kompetens för teknisk analys, utveckling och test.'
     }
   };
@@ -105,12 +102,12 @@
     var h = UI.pageHead({
       title: esc(k.title),
       sub: esc(k.sub),
-      actions: UI.btn(k.addLabel, 'domain-add', { cls: 'btn-primary', icon: 'plus', data: { kind: kind } })
+      actions: UI.btn(k.addLabel, 'domain-add', { cls: 'btn-primary', data: { kind: kind } })
     });
     h += '<div class="kpis">' +
       UI.kpi(k.icon, k.title, rows.length) +
-      UI.kpi('users', isDd(kind) ? 'Totalt antal team' : 'Team med primär koppling', totalTeams) +
-      UI.kpi('gauge', 'Kapacitet ' + ctx.period.label.toLowerCase(), U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
+      UI.kpi(isDd(kind) ? 'Totalt antal team' : 'Team med primär koppling', totalTeams) +
+      UI.kpi('Kapacitet ' + ctx.period.inText, U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-' + kind,
@@ -142,7 +139,7 @@
     ];
     var h = '<section class="card" id="detail">';
     h += '<div class="card-head"><div class="card-title">' + UI.avatar(d.name, d.id, isDd(kind) ? { text: d.name[0] } : {}) + 'Detaljer: ' + esc(d.name) + '</div><div class="row">' +
-      UI.btn('Redigera', 'domain-edit', { icon: 'edit', data: { kind: kind, id: d.id } }) + UI.btn('Ta bort', 'domain-delete', { cls: 'btn-danger', icon: 'trash', data: { kind: kind, id: d.id } }) + '</div></div>';
+      UI.btn('Redigera', 'domain-edit', { data: { kind: kind, id: d.id } }) + UI.btn('Ta bort', 'domain-delete', { cls: 'btn-danger', data: { kind: kind, id: d.id } }) + '</div></div>';
     h += UI.tabs(kind + '-detail', tabsList, tab);
     h += '<div class="card-body">';
     if (tab === 'overview') h += overview(kind, d, ctx);
@@ -175,7 +172,7 @@
     }
     h += '<div class="field-block"><span class="label">' + ownerLabel + '</span>' + (owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')) + '</div>' +
       '<div class="field-block"><span class="label">Status</span><span>' + UI.statusBadge(d.status) + '</span></div></div>';
-    h += '<div class="stack"><div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.label.toLowerCase()) + '</span><span class="big">' + U.fmtH(cap.capacity) + '</span>' +
+    h += '<div class="stack"><div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.inText) + '</span><span class="big">' + U.fmtH(cap.capacity) + '</span>' +
       '<span class="muted small">' + U.fmtH(cap.loaded) + ' belastat, ' + U.fmtH(cap.free) + ' ledigt</span></div>' +
       '<div class="field-block"><span class="label">Beläggningsgrad</span>' + UI.bar(cap.loadPct) + '</div>' +
       '<div class="field-block"><span class="label">Senast uppdaterad</span><span>' + esc(d.updated || '–') + '</span></div></div>';
@@ -189,8 +186,8 @@
     if (isDd(kind)) {
       var list = e.domainsOfDeliveryDomain(d.id);
       h += '<div class="row-between" style="margin-bottom:12px"><p class="muted small">Domänklustret: de verksamhets- och IT-domäner som ingår i leveransdomänen.</p>' +
-        UI.btn('Koppla domän', 'cluster-add-dd', { cls: 'btn-sm', icon: 'plus', data: { id: d.id } }) + '</div>';
-      h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Domän</th><th>Typ</th><th>Relation</th><th class="num">Team (primär)</th><th class="actions"></th></tr></thead><tbody>';
+        UI.btn('Koppla domän', 'cluster-add-dd', { cls: 'btn-sm', data: { id: d.id } }) + '</div>';
+      h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Domän</th><th>Typ</th><th>Relation</th><th class="num">Team (primär)</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
       list.sort(function (a, b) { return a.domain.type === b.domain.type ? U.byName(a.domain, b.domain) : a.domain.type === 'business' ? -1 : 1; }).forEach(function (x) {
         var n = e.teamsOfDomain(x.domain.id).filter(function (t) { return t.relationship === 'primary'; }).length;
         h += '<tr><td>' + C.domainRef(x.domain) + '</td><td>' + (x.domain.type === 'it' ? 'IT-domän' : 'Verksamhetsdomän') + '</td><td>' + C.relLabel(x.relationship) + '</td><td class="num">' + n + '</td><td class="actions">' +
@@ -201,7 +198,7 @@
       return h;
     }
     var clusters = e.clustersOfDomain(d.id);
-    h += '<div class="grid-2"><div class="stack"><div class="row-between"><h3 class="card-title">Leveransdomäner</h3>' + UI.btn('Koppla', 'cluster-add-domain', { cls: 'btn-sm', icon: 'plus', data: { id: d.id } }) + '</div>';
+    h += '<div class="grid-2"><div class="stack"><div class="row-between"><h3 class="card-title">Leveransdomäner</h3>' + UI.btn('Koppla', 'cluster-add-domain', { cls: 'btn-sm', data: { id: d.id } }) + '</div>';
     h += '<div class="list">';
     clusters.forEach(function (c) {
       h += '<div class="list-item"><div class="grow">' + C.ddRef(c.deliveryDomain) + '</div>' + C.relLabel(c.relationship) +
@@ -236,9 +233,9 @@
     var list = teamsOf(kind, d.id);
     var h = '<div class="row-between" style="margin-bottom:12px"><p class="muted small">' +
       (isDd(kind) ? 'Team vars primära verksamhetsdomän tillhör leveransdomänen.' : 'Team med primär eller stödjande koppling. Kapaciteten räknas bara på primära team.') + '</p>' +
-      (isDd(kind) ? '' : UI.btn('Koppla team', 'domain-team-add', { cls: 'btn-sm', icon: 'plus', data: { id: d.id } })) + '</div>';
+      (isDd(kind) ? '' : UI.btn('Koppla team', 'domain-team-add', { cls: 'btn-sm', data: { id: d.id } })) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Team</th>' + (isDd(kind) ? '<th>Primär verksamhetsdomän</th>' : '<th>Relation</th>') +
-      '<th>Kategori</th><th class="num">Medlemmar</th><th class="num">Kapacitet</th><th>Beläggning</th><th class="actions"></th></tr></thead><tbody>';
+      '<th>Kategori</th><th class="num">Medlemmar</th><th class="num">Kapacitet</th><th>Beläggning</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     list.sort(function (a, b) {
       if (a.relationship !== b.relationship) return a.relationship === 'primary' ? -1 : 1;
       return U.byName(a.team, b.team);
@@ -257,7 +254,7 @@
     var e = ctx.e;
     var list = isDd(kind) ? e.systemsOfDeliveryDomain(d.id) : e.systemsOfDomain(d.id);
     var h = '<div class="row-between" style="margin-bottom:12px"><p class="muted small">System som ' + esc(d.name) + ' ansvarar för via sina team' + (kind === 'itDomains' ? ' eller direkt som IT-domän.' : '.') + '</p>' +
-      (kind === 'itDomains' ? UI.btn('Koppla system', 'itsys-add-domain', { cls: 'btn-sm', icon: 'plus', data: { id: d.id } }) : '') + '</div>';
+      (kind === 'itDomains' ? UI.btn('Koppla system', 'itsys-add-domain', { cls: 'btn-sm', data: { id: d.id } }) : '') + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>System</th><th>Typ</th><th>Ansvarigt team</th><th>Primär IT-domän</th><th>Status</th></tr></thead><tbody>';
     list.sort(function (a, b) { return U.byName(a.system, b.system); }).forEach(function (x) {
       h += '<tr><td>' + C.systemRef(x.system) + '</td><td>' + esc(x.system.kind) + '</td><td>' + C.teamRef(e.systemResponsibleTeam(x.system.id)) + '</td><td>' + C.domainRef(e.systemPrimaryItDomain(x.system.id)) + '</td><td>' + UI.statusBadge(x.system.status) + '</td></tr>';
@@ -274,8 +271,8 @@
       (isDd(kind)
         ? 'Nyckelroller som arbetar för hela leveransdomänen, till exempel projektledare, arkitekter och ägare.'
         : 'Domänmolnet är kompetens som bistår teamen utan att vara teammedlem, till exempel system- och processexperter. Tiden räknas till domänens kapacitet.') + '</p>' +
-      UI.btn(isDd(kind) ? 'Lägg till nyckelroll' : 'Lägg till i domänmolnet', 'expert-add', { cls: 'btn-sm', icon: 'plus', data: { kind: isDd(kind) ? 'delivery' : 'domain', id: d.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Arbetare</th><th>Roll</th><th>Primär kompetens</th><th class="num">h/mån</th><th class="num">I perioden</th><th>Gäller</th><th class="actions"></th></tr></thead><tbody>';
+      UI.btn(isDd(kind) ? 'Lägg till nyckelroll' : 'Lägg till i domänmolnet', 'expert-add', { cls: 'btn-sm', data: { kind: isDd(kind) ? 'delivery' : 'domain', id: d.id } }) + '</div>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Arbetare</th><th>Roll</th><th>Primär kompetens</th><th class="num">h/mån</th><th class="num">I perioden</th><th>Gäller</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     list.forEach(function (x) {
       var comps = e.attributionCompetences(x.worker.id);
       var hrs = OOSEngine.monthlyHoursInPeriod(x.ext.hoursPerMonth, x.ext.from, x.ext.to, ctx.period);
@@ -292,7 +289,7 @@
     var cur = capOf(kind, d.id, ctx.period);
     var nxt = capOf(kind, d.id, ctx.next);
     var h = '<div class="grid-4" style="margin-bottom:16px">' +
-      '<div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.label.toLowerCase()) + '</span><span class="big">' + U.fmtH(cur.capacity) + '</span></div>' +
+      '<div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.inText) + '</span><span class="big">' + U.fmtH(cur.capacity) + '</span></div>' +
       '<div class="field-block"><span class="label">Belastat</span><span class="big">' + U.fmtH(cur.loaded) + '</span></div>' +
       '<div class="field-block"><span class="label">Ledigt</span><span class="big">' + U.fmtH(cur.free) + '</span></div>' +
       '<div class="field-block"><span class="label">' + esc(ctx.next.label) + '</span><span class="big">' + U.fmtH(nxt.capacity) + '</span><span class="muted small">' + U.fmtSigned(nxt.capacity - cur.capacity, ' h') + ' mot denna period</span></div></div>';
@@ -314,7 +311,6 @@
   Object.keys(KINDS).forEach(function (kind) {
     OOS.views[kind] = function (ctx) { return render(kind, ctx); };
   });
-  OOS.KINDS = KINDS;
 
   var A = OOS.actions;
   A['domain-add'] = function (el) {

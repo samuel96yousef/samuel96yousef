@@ -22,7 +22,7 @@
     var ai = S.db.workers.filter(function (w) { return w.type === 'ai'; }).length;
     var bdCount = S.db.domains.filter(function (d) { return d.type === 'business'; }).length;
     var itCount = S.db.domains.length - bdCount;
-    var month = ctx.period.label.toLowerCase();
+    var month = ctx.period.inText;
 
     var h = UI.pageHead({ title: esc(ctx.period.label), actions: UI.btn('Öppna rapporter', 'go', { data: { to: 'reports' } }) });
 
@@ -30,14 +30,14 @@
     var lede = esc(S.db.settings.orgName) + ' har <strong>' + U.fmtH(org.capacity) + '</strong> verklig kapacitet i ' + esc(month) + '. ' +
       '<strong>' + U.fmtPct(org.loadPct) + '</strong> är planerat och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.';
     if (over) lede += ' <strong class="over">' + plural(over, 'person är', 'personer är') + ' överallokerad' + (over === 1 ? '' : 'e') + '.</strong>';
-    if (keyp) lede += ' ' + plural(keyp, 'kompetens', 'kompetenser') + ' bärs av en enda person.';
+    if (keyp) lede += ' ' + plural(keyp, 'kompetens', 'kompetenser') + ' har bara en person på nivå 3–4.';
     h += '<p class="lede">' + lede + '</p>';
 
     h += '<div class="kpis">' +
-      UI.kpi(null, 'Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + itCount + ' IT-domäner') +
-      UI.kpi(null, 'Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
-      UI.kpi(null, 'Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
-      UI.kpi(null, ctx.next.label, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
+      UI.kpi('Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + itCount + ' IT-domäner') +
+      UI.kpi('Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
+      UI.kpi('Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
+      UI.kpi(ctx.next.label, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
       '</div>';
 
     var showAll = OOS.state.allSignals;
@@ -63,7 +63,7 @@
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag</div></div></div><div class="hbars">';
     dds.forEach(function (x) {
       var tip = x.d.name + '\nKapacitet: ' + U.fmtH(x.cap.capacity) + '\nPlanerat: ' + U.fmtH(x.cap.loaded) + ' (' + U.fmtPct(x.cap.loadPct) + ')\nLedigt: ' + U.fmtH(x.cap.free) + '\n' + x.cap.headcount + ' arbetare i ' + x.cap.teamCount + ' team\n' + ctx.next.label + ': ' + U.fmtH(x.next);
-      h += '<div class="hbar" style="grid-template-columns:minmax(0,1fr) auto" data-go="deliveryDomains:' + esc(x.d.id) + '" data-tip="' + esc(tip) + '">' +
+      h += '<div class="hbar" style="grid-template-columns:minmax(0,1fr) auto" role="link" tabindex="0" aria-label="' + esc(x.d.name + ', ' + U.fmtH(x.cap.capacity) + ', ' + U.fmtPct(x.cap.loadPct) + ' planerat') + '" data-go="deliveryDomains:' + esc(x.d.id) + '" data-tip="' + esc(tip) + '">' +
         '<span class="hbar-name">' + esc(x.d.name) + '</span><span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span>' +
         '<div class="hbar-track" style="grid-column:1 / -1"><div class="hbar-loaded" style="width:' + (x.cap.loaded / max) * 100 + '%"></div><div class="hbar-free" style="width:' + (Math.max(0, x.cap.free) / max) * 100 + '%"></div><div class="hbar-next" style="left:calc(' + (x.next / max) * 100 + '% - 1px)"></div></div></div>';
     });
@@ -158,12 +158,12 @@
     var st = S.db.settings;
     var h = UI.pageHead({ title: 'Inställningar', sub: 'Organisation, data och ändringslogg för POC:n.' });
     h += '<div class="grid-2">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">Organisation</div>' + UI.btn('Redigera', 'org-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body"><dl class="kv">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Organisation</div>' + UI.btn('Redigera', 'org-edit', { cls: 'btn-sm' }) + '</div><div class="card-body"><dl class="kv">' +
       '<dt>Organisationsnamn</dt><dd>' + esc(st.orgName) + '</dd><dt>Standardarbetstid</dt><dd>' + st.standardWeekHours + ' h/vecka</dd><dt>Rapporteringsperiod</dt><dd>' + (st.periodType === 'quarter' ? 'Kvartal' : 'Månad') + ' (' + esc(ctx.period.label) + ')</dd>' +
       '<dt>Lagring</dt><dd>' + (S.isPersistent() ? 'Sparas i den här webbläsaren' : UI.badge('Sparas inte', 'warn') + ' <span class="muted small">Webbläsaren blockerar lokal lagring. Ändringar försvinner när sidan laddas om.</span>') + '</dd></dl></div></section>';
     h += '<section class="card"><div class="card-head"><div class="card-title">Data</div></div><div class="card-body stack">' +
       '<p class="small">All data är påhittad demodata för organisationen Nordpension. Ändringar sparas bara i din webbläsare och syns inte för andra.</p>' +
-      '<div class="row">' + UI.btn('Kopiera data som JSON', 'data-export', { icon: 'copy' }) + UI.btn('Importera JSON', 'data-import', { icon: 'upload' }) + UI.btn('Återställ demodata', 'data-reset', { cls: 'btn-danger', icon: 'refresh' }) + '</div>' +
+      '<div class="row">' + UI.btn('Kopiera data som JSON', 'data-export', {}) + UI.btn('Importera JSON', 'data-import', {}) + UI.btn('Återställ demodata', 'data-reset', { cls: 'btn-danger' }) + '</div>' +
       '<input type="file" id="import-file" accept="application/json,.json" hidden data-change="data-import-file">' +
       '<div class="note"><span>Datamodellen följer ER-skissen för Prototyp 1: leveransdomän, domän, domänkluster, team, arbetare, kompetens, system och deras kopplingstabeller. Kapacitetssammanställningen räknas fram och lagras inte.</span></div></div></section>';
     h += '</div>';
@@ -211,12 +211,7 @@
     });
   };
   A['data-export'] = function () {
-    var text = S.exportJSON();
-    try {
-      navigator.clipboard.writeText(text).then(function () { UI.toast('Datan kopierades som JSON.'); }, function () { UI.toast('Urklipp är blockerat i den här vyn.'); });
-    } catch (e) {
-      UI.toast('Urklipp är blockerat i den här vyn.');
-    }
+    C.copyText(S.exportJSON(), 'datan');
   };
   A['data-import'] = function () {
     var input = document.getElementById('import-file');
