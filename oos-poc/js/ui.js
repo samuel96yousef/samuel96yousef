@@ -49,39 +49,41 @@ var OOSUI = (function () {
     return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
   }
 
-  var AVATAR_COLORS = ['#2a6fdb', '#d4552c', '#11875f', '#9c6a00', '#b93d72', '#2f7a33', '#5a48c2', '#c33a39', '#0d7580', '#5b6474'];
-
-  function colorFor(key) {
-    return AVATAR_COLORS[U.hash(String(key)) % AVATAR_COLORS.length];
-  }
-
+  /* Bara personer har initialer. Domäner, team och system visas med namn. */
   function avatar(name, key, opts) {
     opts = opts || {};
-    var cls = 'avatar' + (opts.round ? ' round' : '') + (opts.size ? ' ' + opts.size : '');
+    if (!opts.round) return '';
     var text = opts.text || U.initials(name);
-    return '<span class="' + cls + '" style="background:' + colorFor(key || name) + '" aria-hidden="true">' + esc(text) + '</span>';
+    var cls = 'avatar' + (text === 'AI' ? ' ai' : '') + (opts.size ? ' ' + opts.size : '');
+    return '<span class="' + cls + '" aria-hidden="true">' + esc(text) + '</span>';
   }
 
-  function badge(text, kind, iconName) {
-    return '<span class="badge badge-' + (kind || 'muted') + '">' + (iconName ? icon(iconName) : '') + esc(text) + '</span>';
+  /* Färg används bara för avvikelser: warn och crit. Övriga varianter är neutrala. */
+  function badge(text, kind) {
+    var cls = kind === 'warn' || kind === 'crit' ? ' badge-' + kind : '';
+    return '<span class="badge' + cls + '">' + esc(text) + '</span>';
   }
+
+  var STATUS = { active: 'Aktiv', production: 'I drift', development: 'Under utveckling', inactive: 'Inaktiv' };
 
   function statusBadge(status) {
-    if (status === 'active' || status === 'production') return badge(status === 'production' ? 'I drift' : 'Aktiv', 'good');
-    if (status === 'development') return badge('Under utveckling', 'accent');
-    if (status === 'inactive') return badge('Inaktiv', 'muted');
-    return badge(status || '–', 'muted');
+    if (status === 'active' || status === 'production') return esc(STATUS[status]);
+    return badge(STATUS[status] || status || '–', 'muted');
+  }
+
+  /* Visas bara när något avviker från normalläget. */
+  function statusFlag(status) {
+    return status === 'active' || status === 'production' ? '' : statusBadge(status);
   }
 
   /* Stapel för andel. Varning från 90 %, kritisk över 100 % (t.ex. överallokering). */
   function bar(pct, opts) {
     opts = opts || {};
     var v = isNaN(pct) ? 0 : pct;
-    var cls = v > 100.5 ? ' crit' : v >= (opts.warnAt || 90) ? ' warn' : '';
-    if (opts.plain) cls = '';
+    var cls = v > 100.5 ? ' crit' : v >= (opts.warnAt || 90) ? ' warn' : opts.soft ? ' soft' : '';
     var w = Math.max(0, Math.min(100, v));
     var label = opts.label !== undefined ? opts.label : U.fmtPct(v);
-    return '<div class="bar" title="' + esc(opts.title || label) + '"><div class="bar-track"><div class="bar-fill' + cls + '" style="width:' + w + '%"></div></div><span class="bar-val">' + esc(label) + '</span></div>';
+    return '<div class="bar" title="' + esc(opts.title || label) + '"><div class="bar-track"><div class="bar-fill' + cls + '" style="width:' + w + '%"></div></div><span class="bar-val' + (cls === ' crit' ? ' crit' : '') + '">' + esc(label) + '</span></div>';
   }
 
   var LEVELS = ['', 'Grundläggande', 'Erfaren', 'Avancerad', 'Expert'];
@@ -94,20 +96,21 @@ var OOSUI = (function () {
 
   function donut(pct, opts) {
     opts = opts || {};
-    var r = 52;
+    var r = 54;
     var c = 2 * Math.PI * r;
     var v = Math.max(0, Math.min(100, pct || 0));
     var cls = pct > 100.5 ? ' crit' : pct >= 90 ? ' warn' : '';
     return (
       '<svg class="donut" viewBox="0 0 132 132" role="img" aria-label="' + esc(opts.label || U.fmtPct(pct)) + '">' +
-      '<circle class="track" cx="66" cy="66" r="' + r + '" fill="none" stroke-width="14"/>' +
-      '<circle class="val' + cls + '" cx="66" cy="66" r="' + r + '" fill="none" stroke-width="14" stroke-linecap="butt" stroke-dasharray="' + (c * v) / 100 + ' ' + c + '" transform="rotate(-90 66 66)"/>' +
+      '<circle class="track" cx="66" cy="66" r="' + r + '" fill="none" stroke-width="9"/>' +
+      '<circle class="val' + cls + '" cx="66" cy="66" r="' + r + '" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (c * v) / 100 + ' ' + c + '" transform="rotate(-90 66 66)"/>' +
       '<text x="66" y="73" text-anchor="middle">' + esc(U.fmtPct(pct)) + '</text></svg>'
     );
   }
 
-  function kpi(iconName, label, value, note) {
-    return '<div class="card kpi"><div class="kpi-label">' + icon(iconName) + esc(label) + '</div><div class="kpi-value">' + value + '</div>' + (note ? '<div class="kpi-note">' + note + '</div>' : '') + '</div>';
+  function kpi(iconName, label, value, note, opts) {
+    opts = opts || {};
+    return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value' + (opts.crit ? ' crit' : '') + '">' + value + '</div>' + (note ? '<div class="kpi-note">' + note + '</div>' : '') + '</div>';
   }
 
   function pageHead(opts) {
@@ -125,7 +128,7 @@ var OOSUI = (function () {
     Object.keys(opts.data || {}).forEach(function (k) {
       attrs += ' data-' + k + '="' + esc(opts.data[k]) + '"';
     });
-    return '<button type="button" class="btn ' + (opts.cls || '') + '"' + attrs + '>' + (opts.icon ? icon(opts.icon) : '') + esc(label) + '</button>';
+    return '<button type="button" class="btn ' + (opts.cls || '') + '"' + attrs + '>' + esc(label) + '</button>';
   }
 
   function iconBtn(iconName, action, data, title, cls) {
@@ -296,7 +299,7 @@ var OOSUI = (function () {
       '<div class="modal-head"><h2 class="modal-title" id="modal-title">' + esc(cfg.title) + '</h2>' + iconBtn('x', 'modal-close', {}, 'Stäng') + '</div>' +
       '<div class="modal-body">' + (cfg.intro ? '<p class="full muted small">' + cfg.intro + '</p>' : '') + body + '</div>' +
       '<div class="modal-foot">' +
-      (cfg.onDelete ? '<button type="button" class="btn btn-danger" data-action="modal-delete" style="margin-right:auto">' + icon('trash') + 'Ta bort</button>' : '') +
+      (cfg.onDelete ? '<button type="button" class="btn btn-danger" data-action="modal-delete" style="margin-right:auto">Ta bort</button>' : '') +
       '<button type="button" class="btn" data-action="modal-close">Avbryt</button>' +
       '<button type="submit" class="btn btn-primary">' + esc(cfg.submitLabel || 'Spara') + '</button></div></form></div>';
     root().innerHTML = h;
@@ -441,9 +444,9 @@ var OOSUI = (function () {
   return {
     icon: icon,
     avatar: avatar,
-    colorFor: colorFor,
     badge: badge,
     statusBadge: statusBadge,
+    statusFlag: statusFlag,
     bar: bar,
     level: level,
     LEVELS: LEVELS,

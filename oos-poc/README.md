@@ -4,6 +4,8 @@ Klickbar POC av **Prototyp 1: bottenplattan** i OOS. Den hanterar leveransdomän
 
 All data är påhittad demodata för organisationen "Nordpension".
 
+Utseendet följer designfilosofin *Lugn yta, sann bild*. Se [DESIGN.md](DESIGN.md).
+
 ## Kom igång
 
 Öppna `index.html` i en webbläsare. Ingen installation eller byggsteg behövs.
@@ -91,7 +93,7 @@ Styrcentral (rapporter med AI och statistik), Utvecklingsprocess (utvecklingsmå
 
 ```
 index.html            appskal
-css/app.css           design och layout
+css/app.css           design och layout (se DESIGN.md)
 js/util.js            hjälpfunktioner
 js/seed.js            demodata
 js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Node)

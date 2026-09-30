@@ -173,7 +173,7 @@
     } else {
       h += '<div class="field-block"><span class="label">Primärt uppdrag</span><span>' + (d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans') + '</span></div>';
     }
-    h += '<div class="field-block"><span class="label">' + ownerLabel + '</span>' + (owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn', 'alert')) + '</div>' +
+    h += '<div class="field-block"><span class="label">' + ownerLabel + '</span>' + (owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')) + '</div>' +
       '<div class="field-block"><span class="label">Status</span><span>' + UI.statusBadge(d.status) + '</span></div></div>';
     h += '<div class="stack"><div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.label.toLowerCase()) + '</span><span class="big">' + U.fmtH(cap.capacity) + '</span>' +
       '<span class="muted small">' + U.fmtH(cap.loaded) + ' belastat, ' + U.fmtH(cap.free) + ' ledigt</span></div>' +
@@ -304,7 +304,7 @@
   function capTable(rows, isTeam) {
     var h = '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (isTeam ? 'Team' : 'Kompetens') + '</th><th class="num">Pers.</th><th class="num">Kapacitet</th><th class="num">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
     rows.forEach(function (r) {
-      var name = isTeam ? (r.team ? C.teamRef(r.team) : '<span class="name-cell">' + UI.icon('cloud', 'muted') + '<span>' + esc(r.name) + '</span></span>') : C.compRef(r.competence);
+      var name = isTeam ? (r.team ? C.teamRef(r.team) : '<span class="name-cell"><span>' + esc(r.name) + '</span></span>') : C.compRef(r.competence);
       h += '<tr><td>' + name + '</td><td class="num">' + r.people + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.free) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="5"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';

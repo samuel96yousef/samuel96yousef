@@ -6,26 +6,26 @@
   var S = OOSStore;
 
   var NAV = [
-    { items: [{ page: 'overview', label: 'Översikt', icon: 'home' }, { page: 'reports', label: 'Rapporter', icon: 'chart' }] },
+    { items: [{ page: 'overview', label: 'Översikt' }, { page: 'reports', label: 'Rapporter' }] },
     {
       label: 'Struktur',
       items: [
-        { page: 'deliveryDomains', label: 'Leveransdomäner', icon: 'layers', count: function () { return S.db.deliveryDomains.length; } },
-        { page: 'businessDomains', label: 'Verksamhetsdomäner', icon: 'grid', count: function () { return S.db.domains.filter(function (d) { return d.type === 'business'; }).length; } },
-        { page: 'itDomains', label: 'IT-domäner', icon: 'monitor', count: function () { return S.db.domains.filter(function (d) { return d.type === 'it'; }).length; } },
-        { page: 'teams', label: 'Team', icon: 'users', count: function () { return S.db.teams.length; } },
-        { page: 'systems', label: 'System', icon: 'server', count: function () { return S.db.systems.length; } }
+        { page: 'deliveryDomains', label: 'Leveransdomäner', count: function () { return S.db.deliveryDomains.length; } },
+        { page: 'businessDomains', label: 'Verksamhetsdomäner', count: function () { return S.db.domains.filter(function (d) { return d.type === 'business'; }).length; } },
+        { page: 'itDomains', label: 'IT-domäner', count: function () { return S.db.domains.filter(function (d) { return d.type === 'it'; }).length; } },
+        { page: 'teams', label: 'Team', count: function () { return S.db.teams.length; } },
+        { page: 'systems', label: 'System', count: function () { return S.db.systems.length; } }
       ]
     },
     {
       label: 'Resurser',
       items: [
-        { page: 'workers', label: 'Arbetare', icon: 'user', count: function () { return S.db.workers.length; } },
-        { page: 'competences', label: 'Kompetenser', icon: 'badge', count: function () { return S.db.competences.length; } },
-        { page: 'capacity', label: 'Kapacitet', icon: 'gauge' }
+        { page: 'workers', label: 'Arbetare', count: function () { return S.db.workers.length; } },
+        { page: 'competences', label: 'Kompetenser', count: function () { return S.db.competences.length; } },
+        { page: 'capacity', label: 'Kapacitet' }
       ]
     },
-    { items: [{ page: 'settings', label: 'Inställningar', icon: 'settings' }] }
+    { items: [{ page: 'settings', label: 'Inställningar' }] }
   ];
 
   var PAGES = {};
@@ -51,24 +51,20 @@
     return { e: S.engine(), db: S.db, period: p, next: OOSEngine.nextPeriod(p), id: st.id, page: st.page };
   };
 
-  var BRAND =
-    '<svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="currentColor" opacity="0.12"/>' +
-    '<path d="M7 24V13l5 3.5V13l5 3.5V9h4v15H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M11 20h2M15.5 20h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-
   function renderNav() {
     var nav = document.getElementById('nav');
     var p = OOS.period();
-    var h = '<div class="brand">' + BRAND + '<div><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div></div>';
+    var h = '<div class="brand"><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div>';
     NAV.forEach(function (g) {
       h += '<div class="nav-group">' + (g.label ? '<div class="nav-label">' + esc(g.label) + '</div>' : '');
       g.items.forEach(function (i) {
         var on = st.page === i.page;
-        h += '<button type="button" class="nav-item' + (on ? ' active' : '') + '" data-go="' + i.page + '"' + (on ? ' aria-current="page"' : '') + '>' + UI.icon(i.icon) + '<span>' + esc(i.label) + '</span>' +
+        h += '<button type="button" class="nav-item' + (on ? ' active' : '') + '" data-go="' + i.page + '"' + (on ? ' aria-current="page"' : '') + '><span>' + esc(i.label) + '</span>' +
           (i.count ? '<span class="nav-count">' + i.count() + '</span>' : '') + '</button>';
       });
       h += '</div>';
     });
-    h += '<div class="nav-foot"><div class="nav-period">Period: <strong>' + esc(p.label) + '</strong></div><div>Prototyp 1 · Bottenplatta</div><div>' + esc(S.db.settings.orgName) + ' (demodata)</div></div>';
+    h += '<div class="nav-foot"><div class="nav-period">Period <strong>' + esc(p.label) + '</strong></div><div>Prototyp 1 · ' + esc(S.db.settings.orgName) + ' (demodata)</div></div>';
     nav.innerHTML = h;
     nav.classList.toggle('open', st.navOpen);
     document.getElementById('nav-scrim').hidden = !st.navOpen;

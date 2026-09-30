@@ -98,7 +98,7 @@
     h += '<div class="card-body stack">';
     if (tab === 'overview') {
       if (holders.length && adv.length <= 1) {
-        h += '<div class="note warn">' + UI.icon('alert') + '<span>' + (adv.length ? esc(adv[0].worker.name) + ' är ensam om avancerad nivå.' : 'Ingen har avancerad nivå.') + ' Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</span></div>';
+        h += '<div class="note warn"><span>' + (adv.length ? esc(adv[0].worker.name) + ' är ensam om avancerad nivå.' : 'Ingen har avancerad nivå.') + ' Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</span></div>';
       }
       h += '<dl class="kv"><dt>Namn</dt><dd>' + esc(c.name) + '</dd><dt>Kategori</dt><dd>' + esc(c.category) + '</dd><dt>Kort beskrivning</dt><dd>' + esc(c.description || '–') + '</dd>' +
         '<dt>Detaljerad beskrivning</dt><dd>' + esc(c.details || '–') + '</dd><dt>Antal arbetare</dt><dd>' + holders.length + '</dd><dt>Nivå 3–4</dt><dd>' + adv.length + '</dd>' +
@@ -158,7 +158,7 @@
         { key: 'desc', label: 'Kort beskrivning', cls: 'desc', render: function (r) { return '<span class="muted">' + esc(r.s.description) + '</span>'; } },
         { key: 'kind', label: 'Typ', sort: function (r) { return r.s.kind; }, render: function (r) { return UI.badge(r.s.kind || '–', 'muted'); } },
         { key: 'it', label: 'Primär IT-domän', sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
-        { key: 'owner', label: 'Ansvarigt team', sort: function (r) { return r.owner ? r.owner.name : 'ö'; }, render: function (r) { return r.owner ? esc(r.owner.name) : UI.badge('Saknas', 'warn', 'alert'); } },
+        { key: 'owner', label: 'Ansvarigt team', sort: function (r) { return r.owner ? r.owner.name : 'ö'; }, render: function (r) { return r.owner ? esc(r.owner.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'status', label: 'Status', sort: function (r) { return r.s.status; }, render: function (r) { return UI.statusBadge(r.s.status); } }
       ]
     }) + '</section>';

@@ -27,18 +27,18 @@ var OOSUtil = (function () {
   }
 
   function fmtH(n) {
-    return fmtNum(n) + ' h';
+    return fmtNum(n) + '\u00a0h';
   }
 
   function fmtPct(n) {
     if (n === null || n === undefined || isNaN(n)) return '–';
-    return Math.round(n) + ' %';
+    return Math.round(n) + '\u00a0%';
   }
 
   function fmtSigned(n, suffix) {
     if (n === null || n === undefined || isNaN(n)) return '–';
     var r = Math.round(n);
-    return (r > 0 ? '+' : r < 0 ? '−' : '±') + fmtNum(Math.abs(r)) + (suffix || '');
+    return (r > 0 ? '+' : r < 0 ? '−' : '±') + fmtNum(Math.abs(r)) + (suffix || '').replace(/^ /, '\u00a0');
   }
 
   function initials(name) {

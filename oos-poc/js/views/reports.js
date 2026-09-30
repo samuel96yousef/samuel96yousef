@@ -121,7 +121,7 @@
       var span = collapsed ? 1 : g.rows.length + 1;
       var toggle = '<button type="button" class="btn-icon" data-action="report-toggle" data-key="' + esc(g.key) + '" aria-expanded="' + !collapsed + '" aria-label="' + (collapsed ? 'Visa' : 'Dölj') + ' kompetenser för ' + esc(g.name) + '">' + UI.icon(collapsed ? 'chevronRight' : 'chevronDown') + '</button>';
       var nameCell = '<td rowspan="' + span + '" style="vertical-align:top;border-right:1px solid var(--line)"><div class="row" style="gap:4px;flex-wrap:nowrap">' + toggle +
-        '<div><strong>' + (g.isCloud ? UI.icon('cloud', 'muted') + ' ' : '') + esc(g.name) + '</strong><br><span class="muted small">' + g.total.peopleCount + ' personer</span></div></div></td>';
+        '<div><strong>' + (g.isCloud ? ' ' : '') + esc(g.name) + '</strong><br><span class="muted small">' + g.total.peopleCount + ' personer</span></div></div></td>';
       if (!collapsed) {
         g.rows.forEach(function (x, i) {
           h += '<tr>' + (i === 0 ? nameCell : '') + '<td>' + esc(x.name) + '</td>' + numCells(x) + '</tr>';
@@ -143,7 +143,7 @@
     if (!items.length) return '<div class="empty">Inget i urvalet.</div>';
     var max = Math.max.apply(null, items.map(function (x) { return Math.max(x.capacity, x.nextCapacity); })) || 1;
     var h = '<div class="hbars" role="list">';
-    h += '<div class="row small muted" style="gap:16px"><span class="row" style="gap:6px"><span class="sw loaded"></span>Belastad</span><span class="row" style="gap:6px"><span class="sw free"></span>Ledig</span><span class="row" style="gap:6px"><span style="width:2px;height:12px;background:var(--fg)"></span>Grundkapacitet nästa period</span></div>';
+    h += '<div class="legend-line"><span><span class="sw loaded"></span>Planerat</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw next"></span>Grundkapacitet nästa period</span></div>';
     items.forEach(function (x) {
       var tip = x.name + '\nKapacitet: ' + U.fmtH(x.capacity) + '\nBelastad: ' + U.fmtH(x.loaded) + ' (' + U.fmtPct(x.loadPct) + ')\nLedig: ' + U.fmtH(x.free) + '\nNästa period: ' + U.fmtH(x.nextCapacity) + ' (' + U.fmtSigned(x.change, ' h') + ')';
       h += '<div class="hbar" role="listitem" data-tip="' + esc(tip) + '"><span class="hbar-name" title="' + esc(x.name) + '">' + esc(x.name) + '</span>' +

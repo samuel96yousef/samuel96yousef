@@ -52,7 +52,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   };
 
   C.relLabel = function (r) {
-    return r === 'primary' ? UI.badge('Primär', 'accent') : UI.badge('Stödjande', 'muted');
+    return r === 'primary' ? 'Primär' : '<span class="quiet">Stödjande</span>';
   };
 
   C.categoryLabel = function (c) {
@@ -60,11 +60,11 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   };
 
   C.objectiveLabel = function (o) {
-    return o === 'owner' ? UI.badge('Ansvarar', 'accent') : UI.badge('Bidrar', 'muted');
+    return o === 'owner' ? 'Ansvarar' : '<span class="quiet">Bidrar</span>';
   };
 
   C.workerTypeLabel = function (w) {
-    return w.type === 'ai' ? UI.badge('AI', 'info', 'sparkle') : 'Människa';
+    return w.type === 'ai' ? 'AI' : 'Människa';
   };
 
   C.byName = function (a, b) {

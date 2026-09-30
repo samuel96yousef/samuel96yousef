@@ -6,62 +6,68 @@
   var S = OOSStore;
   var C = OOS.common;
 
-  var SIGNAL_ICON = { critical: 'alertCircle', warning: 'alert', info: 'info' };
-  var SIGNAL_LABEL = { critical: 'Kritisk', warning: 'Varning', info: 'Info' };
+  var SEVERITY = { critical: 'Kritisk', warning: 'Varning', info: 'Info' };
+
+  function plural(n, one, many) {
+    return n + ' ' + (n === 1 ? one : many);
+  }
 
   OOS.views.overview = function (ctx) {
     var e = ctx.e;
     var org = e.orgCapacity(ctx.period);
     var nxt = e.orgCapacity(ctx.next);
     var sigs = e.signals(ctx.period);
+    var over = sigs.filter(function (s) { return s.kind === 'overallocated'; }).length;
+    var keyp = sigs.filter(function (s) { return s.kind === 'keyperson'; }).length;
     var ai = S.db.workers.filter(function (w) { return w.type === 'ai'; }).length;
     var bdCount = S.db.domains.filter(function (d) { return d.type === 'business'; }).length;
     var itCount = S.db.domains.length - bdCount;
+    var month = ctx.period.label.toLowerCase();
 
-    var h = UI.pageHead({
-      title: 'Översikt',
-      sub: 'En gemensam bild av ' + esc(S.db.settings.orgName) + 's utvecklingsfabrik: domäner, team, kompetenser och verklig kapacitet ' + esc(ctx.period.label.toLowerCase()) + '.',
-      actions: UI.btn('Öppna rapporter', 'go', { icon: 'chart', data: { to: 'reports' } })
-    });
+    var h = UI.pageHead({ title: esc(ctx.period.label), actions: UI.btn('Öppna rapporter', 'go', { data: { to: 'reports' } }) });
+
+    /* Läget i en mening: det är den som ska gå att säga högt på ett möte. */
+    var lede = esc(S.db.settings.orgName) + ' har <strong>' + U.fmtH(org.capacity) + '</strong> verklig kapacitet i ' + esc(month) + '. ' +
+      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är planerat och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.';
+    if (over) lede += ' <strong class="over">' + plural(over, 'person är', 'personer är') + ' överallokerad' + (over === 1 ? '' : 'e') + '.</strong>';
+    if (keyp) lede += ' ' + plural(keyp, 'kompetens', 'kompetenser') + ' bärs av en enda person.';
+    h += '<p class="lede">' + lede + '</p>';
+
     h += '<div class="kpis">' +
-      UI.kpi('layers', 'Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + itCount + ' IT-domäner') +
-      UI.kpi('users', 'Team', S.db.teams.length) +
-      UI.kpi('user', 'Arbetare', S.db.workers.length, ai + ' AI-arbetare') +
-      UI.kpi('gauge', 'Kapacitet ' + ctx.period.label.toLowerCase(), U.fmtH(org.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' nästa period') +
-      UI.kpi('chart', 'Beläggningsgrad', U.fmtPct(org.loadPct), U.fmtH(org.free) + ' ledigt') +
+      UI.kpi(null, 'Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + itCount + ' IT-domäner') +
+      UI.kpi(null, 'Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
+      UI.kpi(null, 'Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
+      UI.kpi(null, ctx.next.label, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
       '</div>';
 
     var showAll = OOS.state.allSignals;
-    var shown = showAll ? sigs : sigs.slice(0, 7);
-    var counts = { critical: 0, warning: 0, info: 0 };
-    sigs.forEach(function (s) { counts[s.severity]++; });
-    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">' + UI.icon('alert') + 'Signaler</div><div class="card-sub">Det modellen visar just nu, även när det är obekvämt.</div></div><div class="row">' +
-      (counts.critical ? UI.badge(counts.critical + ' kritiska', 'crit', 'alertCircle') : '') + (counts.warning ? UI.badge(counts.warning + ' varningar', 'warn', 'alert') : '') + (counts.info ? UI.badge(counts.info + ' info', 'info', 'info') : '') + '</div></div>';
+    var shown = showAll ? sigs : sigs.slice(0, 6);
+    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det modellen visar just nu, även när det är obekvämt.</div></div></div>';
     h += '<div class="signals">';
     shown.forEach(function (s) {
-      h += '<div class="signal ' + s.severity + '"><span class="stripe"></span>' + UI.icon(SIGNAL_ICON[s.severity], 'ic') +
-        '<div><div class="signal-title"><span class="sr-only">' + SIGNAL_LABEL[s.severity] + ': </span>' + esc(s.title) + '</div><div class="signal-detail">' + esc(s.detail) + '</div></div>' +
-        '<button type="button" class="btn btn-sm" data-go="' + esc(s.ref.page + ':' + s.ref.id) + '">Öppna</button></div>';
+      h += '<div class="signal"><span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
+        '<div><div class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</div><div class="signal-detail">' + esc(s.detail) + '</div></div>' +
+        '<button type="button" class="btn btn-sm" data-go="' + esc(s.ref.page + ':' + s.ref.id) + '">Visa</button></div>';
     });
-    if (!sigs.length) h += '<div class="empty">Inga signaler. Modellen hänger ihop.</div>';
+    if (!sigs.length) h += '<div class="empty">Inget avviker. Modellen hänger ihop.</div>';
     h += '</div>';
-    if (sigs.length > 7) h += '<div class="pager"><span>' + shown.length + ' av ' + sigs.length + ' signaler</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
+    if (sigs.length > 6) h += '<div class="pager"><span>' + shown.length + ' av ' + sigs.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
     h += '</section>';
 
     var dds = S.db.deliveryDomains.map(function (d) {
       var c = e.deliveryDomainCapacity(d.id, ctx.period);
       var n = e.deliveryDomainCapacity(d.id, ctx.next);
       return { d: d, cap: c, next: n.capacity };
-    });
+    }).sort(function (a, b) { return b.cap.capacity - a.cap.capacity; });
     var max = Math.max.apply(null, dds.map(function (x) { return Math.max(x.cap.capacity, x.next); }).concat([1]));
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">' + UI.icon('layers') + 'Kapacitet per leveransdomän</div><div class="card-sub">' + esc(ctx.period.label) + ', timmar efter avdrag</div></div></div><div class="hbars">';
-    h += '<div class="row small muted" style="gap:14px"><span class="row" style="gap:6px"><span class="sw loaded"></span>Belastad</span><span class="row" style="gap:6px"><span class="sw free"></span>Ledig</span><span class="row" style="gap:6px"><span style="width:2px;height:12px;background:var(--fg)"></span>Nästa period</span></div>';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag</div></div></div><div class="hbars">';
     dds.forEach(function (x) {
-      var tip = x.d.name + '\nKapacitet: ' + U.fmtH(x.cap.capacity) + '\nBelastad: ' + U.fmtH(x.cap.loaded) + ' (' + U.fmtPct(x.cap.loadPct) + ')\nLedig: ' + U.fmtH(x.cap.free) + '\n' + x.cap.headcount + ' arbetare i ' + x.cap.teamCount + ' team\nNästa period: ' + U.fmtH(x.next);
-      h += '<div class="hbar" style="grid-template-columns:minmax(0,150px) minmax(0,1fr) 92px;cursor:pointer" data-go="deliveryDomains:' + esc(x.d.id) + '" data-tip="' + esc(tip) + '">' +
-        '<span class="hbar-name">' + esc(x.d.name) + '</span><div class="hbar-track"><div class="hbar-loaded" style="width:' + (x.cap.loaded / max) * 100 + '%"></div><div class="hbar-free" style="width:' + (Math.max(0, x.cap.free) / max) * 100 + '%"></div><div class="hbar-next" style="left:calc(' + (x.next / max) * 100 + '% - 1px)"></div></div>' +
-        '<span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span></div>';
+      var tip = x.d.name + '\nKapacitet: ' + U.fmtH(x.cap.capacity) + '\nPlanerat: ' + U.fmtH(x.cap.loaded) + ' (' + U.fmtPct(x.cap.loadPct) + ')\nLedigt: ' + U.fmtH(x.cap.free) + '\n' + x.cap.headcount + ' arbetare i ' + x.cap.teamCount + ' team\n' + ctx.next.label + ': ' + U.fmtH(x.next);
+      h += '<div class="hbar" style="grid-template-columns:minmax(0,1fr) auto" data-go="deliveryDomains:' + esc(x.d.id) + '" data-tip="' + esc(tip) + '">' +
+        '<span class="hbar-name">' + esc(x.d.name) + '</span><span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span>' +
+        '<div class="hbar-track" style="grid-column:1 / -1"><div class="hbar-loaded" style="width:' + (x.cap.loaded / max) * 100 + '%"></div><div class="hbar-free" style="width:' + (Math.max(0, x.cap.free) / max) * 100 + '%"></div><div class="hbar-next" style="left:calc(' + (x.next / max) * 100 + '% - 1px)"></div></div></div>';
     });
+    h += '<div class="legend-line"><span><span class="sw loaded"></span>Planerat</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw next"></span>' + esc(ctx.next.label) + '</span></div>';
     h += '</div></section></div>';
 
     h += factoryMap(ctx);
@@ -87,48 +93,42 @@
     var keyRoles = e.deliveryDomainExperts(dd.id);
     var owner = dd.ownerId ? e.get('workers', dd.ownerId) : null;
 
-    var h = '<section class="card"><div class="card-head"><div><div class="card-title">' + UI.icon('map') + 'Fabrikskarta: ' + esc(dd.name) + '</div><div class="card-sub">Hur leveransdomänen är uppbyggd av verksamhetsdomäner, team och IT-domäner. Klicka för att öppna.</div></div>' +
+    var h = '<section class="card"><div class="card-head"><div><div class="card-title">Fabrikskarta</div><div class="card-sub">Hur en leveransdomän är uppbyggd, från verksamhet till teknik.</div></div>' +
       UI.seg('fmap', S.db.deliveryDomains.slice().sort(U.byName).map(function (d) { return { key: d.id, label: d.name }; }), dd.id) + '</div>';
-    h += '<div class="card-body row small" style="gap:18px;border-bottom:1px solid var(--line)">' +
-      '<span><span class="muted">Ägare:</span> ' + (owner ? C.link('workers:' + owner.id, owner.name) : UI.badge('Ej utsedd', 'warn')) + '</span>' +
-      '<span><span class="muted">Nyckelroller:</span> ' + (keyRoles.length ? keyRoles.map(function (k) { return C.link('workers:' + k.worker.id, k.worker.name) + ' <span class="muted">(' + esc(k.ext.role) + ', ' + k.ext.hoursPerMonth + ' h/mån)</span>'; }).join(', ') : '<span class="muted">Inga</span>') + '</span>' +
-      (supportive.length ? '<span><span class="muted">Stödjande domäner:</span> ' + supportive.map(function (s) { return C.link(C.domainPage(s.domain) + ':' + s.domain.id, s.domain.name); }).join(', ') + '</span>' : '') +
-      '</div>';
+    h += '<dl class="kv small" style="grid-template-columns:max-content minmax(0,1fr);margin-bottom:18px">' +
+      '<dt>Ägare</dt><dd>' + (owner ? C.link('workers:' + owner.id, owner.name) : UI.badge('Ej utsedd', 'warn')) + '</dd>' +
+      '<dt>Nyckelroller</dt><dd>' + (keyRoles.length ? keyRoles.map(function (k) { return C.link('workers:' + k.worker.id, k.worker.name) + ' <span class="muted">' + esc(k.ext.role.toLowerCase()) + ', ' + k.ext.hoursPerMonth + ' h/mån</span>'; }).join(' · ') : '<span class="muted">Inga</span>') + '</dd>' +
+      (supportive.length ? '<dt>Stödjande domäner</dt><dd>' + supportive.map(function (s) { return C.link(C.domainPage(s.domain) + ':' + s.domain.id, s.domain.name); }).join(' · ') + '</dd>' : '') +
+      '</dl>';
     if (!cols.length) return h + '<div class="empty">Leveransdomänen har inga verksamhetsdomäner eller team ännu.</div></section>';
 
     h += '<div class="fmap"><div class="fmap-grid" style="--cols:' + cols.length + '">';
-    h += '<div class="fmap-rowlabel">Verksamhets&shy;domän</div>';
     cols.forEach(function (c) {
-      if (!c.bd) { h += '<button type="button" class="cloud dashed">Via IT-domän<span class="cloud-sub">Team utan verksamhetsdomän i leveransdomänen</span></button>'; return; }
-      var ex = e.domainExperts(c.bd.id);
-      h += '<button type="button" class="cloud" data-go="businessDomains:' + esc(c.bd.id) + '">' + esc(c.bd.name) + '<span class="cloud-sub">' + ex.length + ' i domänmolnet</span></button>';
-    });
-    h += '<div class="fmap-rowlabel">Utvecklings&shy;team</div>';
-    cols.forEach(function (c) {
-      h += '<div class="fcol">';
+      h += '<div class="fcol"><div class="fcol-label">Verksamhetsdomän</div>';
+      if (c.bd) {
+        var ex = e.domainExperts(c.bd.id);
+        h += '<button type="button" class="fdomain" data-go="businessDomains:' + esc(c.bd.id) + '">' + esc(c.bd.name) + '</button>' +
+          '<span class="meta">' + (ex.length ? plural(ex.length, 'expert', 'experter') + ' i domänmolnet' : 'Inget domänmoln') + '</span>';
+      } else {
+        h += '<span class="fdomain" style="cursor:default">Övriga</span><span class="meta">Team som når leveransdomänen via IT-domän</span>';
+      }
+      h += '<div class="fcol-label">Team</div>';
       c.teams.forEach(function (t) {
         var tc = e.teamCapacity(t.id, ctx.period);
         var sys = e.teamSystems(t.id).filter(function (x) { return x.link.objective === 'owner'; }).map(function (x) { return x.system.name; });
-        var cats = tc.byCategory.slice(0, 3).map(function (x) { return x.name; });
-        h += '<div class="fteam' + (t.category === 'supporting' ? ' supporting' : '') + '" role="button" tabindex="0" data-go="teams:' + esc(t.id) + '">' +
-          '<span class="row-between"><span class="fteam-name">' + esc(t.name) + '</span>' + UI.badge(C.categoryLabel(t.category), 'muted') + '</span>' +
-          '<span class="muted small">' + tc.headcount + ' pers. · ' + U.fmtH(tc.capacity) + '</span>' + UI.bar(tc.loadPct) +
-          '<span class="small"><span class="muted">Kompetens:</span> ' + esc(cats.join(', ') || '–') + '</span>' +
-          '<span class="small"><span class="muted">System:</span> ' + esc(sys.join(', ') || '–') + '</span></div>';
+        h += '<div class="fteam" role="button" tabindex="0" data-go="teams:' + esc(t.id) + '">' +
+          '<span class="fteam-name">' + esc(t.name) + '</span>' +
+          '<span class="meta">' + tc.headcount + ' pers. · ' + U.fmtH(tc.capacity) + (t.category === 'supporting' ? ' · stödjande' : '') + '</span>' + UI.bar(tc.loadPct) +
+          (sys.length ? '<span class="meta">' + esc(sys.join(', ')) + '</span>' : '') + '</div>';
       });
-      if (!c.teams.length) h += '<div class="muted small empty">Inga team med primär koppling</div>';
-      h += '</div>';
-    });
-    h += '<div class="fmap-rowlabel">IT-domän</div>';
-    cols.forEach(function (c) {
+      if (!c.teams.length) h += '<span class="meta">Inget team har domänen som primär.</span>';
       var its = new Map();
       c.teams.forEach(function (t) { var it = e.teamPrimaryDomain(t.id, 'it'); if (it) its.set(it.id, it); });
-      h += '<div class="fcol">';
+      h += '<div class="fcol-label">IT-domän</div>';
       Array.from(its.values()).forEach(function (it) {
-        var ex = e.domainExperts(it.id);
-        h += '<button type="button" class="cloud it" data-go="itDomains:' + esc(it.id) + '">' + esc(it.name) + '<span class="cloud-sub">' + ex.length + ' i domänmolnet</span></button>';
+        h += '<button type="button" class="fdomain it" data-go="itDomains:' + esc(it.id) + '">' + esc(it.name) + '</button>';
       });
-      if (!its.size) h += '<div class="muted small empty">–</div>';
+      if (!its.size) h += '<span class="meta">–</span>';
       h += '</div>';
     });
     h += '</div></div></section>';
@@ -137,11 +137,11 @@
 
   function recentChanges() {
     var log = (S.db.changeLog || []).slice(0, 6);
-    var h = '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('clock') + 'Senaste ändringar</div>' + UI.btn('Hela loggen', 'go', { cls: 'btn-sm', data: { to: 'settings' } }) + '</div><div class="card-body">';
-    if (!log.length) return h + '<p class="muted">Inga ändringar ännu. Allt du lägger till, ändrar eller tar bort loggas här så att beslut går att följa upp.</p></div></section>';
+    var h = '<section class="card"><div class="card-head"><div class="card-title">Senaste ändringar</div>' + UI.btn('Hela loggen', 'go', { cls: 'btn-sm', data: { to: 'settings' } }) + '</div><div class="card-body">';
+    if (!log.length) return h + '<p class="muted">Inga ändringar ännu. Allt du lägger till, ändrar eller tar bort loggas här, så att beslut går att följa upp.</p></div></section>';
     h += '<div class="list">';
     log.forEach(function (l) {
-      h += '<div class="list-item"><span class="muted small" style="width:120px;flex:none">' + fmtTs(l.ts) + '</span><span class="grow">' + esc(l.action) + ' ' + esc(l.what) + (l.name ? ': <strong>' + esc(l.name) + '</strong>' : '') + '</span></div>';
+      h += '<div class="list-item"><span class="muted small num" style="width:120px;flex:none;text-align:left">' + fmtTs(l.ts) + '</span><span class="grow">' + esc(l.action) + ' ' + esc(l.what) + (l.name ? ' <span class="muted">·</span> ' + esc(l.name) : '') + '</span></div>';
     });
     return h + '</div></div></section>';
   }
@@ -158,18 +158,18 @@
     var st = S.db.settings;
     var h = UI.pageHead({ title: 'Inställningar', sub: 'Organisation, data och ändringslogg för POC:n.' });
     h += '<div class="grid-2">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('settings') + 'Organisation</div>' + UI.btn('Redigera', 'org-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body"><dl class="kv">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Organisation</div>' + UI.btn('Redigera', 'org-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body"><dl class="kv">' +
       '<dt>Organisationsnamn</dt><dd>' + esc(st.orgName) + '</dd><dt>Standardarbetstid</dt><dd>' + st.standardWeekHours + ' h/vecka</dd><dt>Rapporteringsperiod</dt><dd>' + (st.periodType === 'quarter' ? 'Kvartal' : 'Månad') + ' (' + esc(ctx.period.label) + ')</dd>' +
       '<dt>Lagring</dt><dd>' + (S.isPersistent() ? 'Sparas i den här webbläsaren' : UI.badge('Sparas inte', 'warn') + ' <span class="muted small">Webbläsaren blockerar lokal lagring. Ändringar försvinner när sidan laddas om.</span>') + '</dd></dl></div></section>';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('refresh') + 'Data</div></div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Data</div></div><div class="card-body stack">' +
       '<p class="small">All data är påhittad demodata för organisationen Nordpension. Ändringar sparas bara i din webbläsare och syns inte för andra.</p>' +
       '<div class="row">' + UI.btn('Kopiera data som JSON', 'data-export', { icon: 'copy' }) + UI.btn('Importera JSON', 'data-import', { icon: 'upload' }) + UI.btn('Återställ demodata', 'data-reset', { cls: 'btn-danger', icon: 'refresh' }) + '</div>' +
       '<input type="file" id="import-file" accept="application/json,.json" hidden data-change="data-import-file">' +
-      '<div class="note">' + UI.icon('info') + '<span>Datamodellen följer ER-skissen för Prototyp 1: leveransdomän, domän, domänkluster, team, arbetare, kompetens, system och deras kopplingstabeller. Kapacitetssammanställningen räknas fram och lagras inte.</span></div></div></section>';
+      '<div class="note"><span>Datamodellen följer ER-skissen för Prototyp 1: leveransdomän, domän, domänkluster, team, arbetare, kompetens, system och deras kopplingstabeller. Kapacitetssammanställningen räknas fram och lagras inte.</span></div></div></section>';
     h += '</div>';
 
     var log = S.db.changeLog || [];
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">' + UI.icon('clock') + 'Ändringslogg</div><div class="card-sub">Spårbarhet för prioriteringar, ansvar och struktur. Sparar de senaste 300 ändringarna.</div></div></div>';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Ändringslogg</div><div class="card-sub">Spårbarhet för prioriteringar, ansvar och struktur. Sparar de senaste 300 ändringarna.</div></div></div>';
     h += UI.table({
       id: 'tbl-log',
       rows: log.map(function (l, i) { return Object.assign({ id: 'l' + i }, l); }),

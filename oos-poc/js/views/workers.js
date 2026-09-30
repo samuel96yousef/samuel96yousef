@@ -67,7 +67,7 @@
         { key: 'team', label: 'Team', sort: function (r) { return r.pd.team ? r.pd.team.name : 'ö'; }, render: function (r) { return r.pd.team ? esc(r.pd.team.name) + (r.wc.teams.length > 1 ? ' <span class="muted small">+' + (r.wc.teams.length - 1) + '</span>' : '') : r.roles.length ? '<span class="muted">Domänroll</span>' : '<span class="muted">–</span>'; } },
         { key: 'comp', label: 'Huvudkompetens', sort: function (r) { return r.main ? r.main.name : 'ö'; }, render: function (r) { return r.main ? esc(r.main.name) : '<span class="muted">–</span>'; } },
         { key: 'base', label: 'Grundkap./v', cls: 'num', sort: function (r) { return r.w.baseHoursPerWeek; }, render: function (r) { return U.fmtH(r.w.baseHoursPerWeek); } },
-        { key: 'alloc', label: 'Allokering', sort: function (r) { return r.wc.allocationPct; }, render: function (r) { return UI.bar(r.wc.allocationPct, { warnAt: 1000 }); } },
+        { key: 'alloc', label: 'Allokering', sort: function (r) { return r.wc.allocationPct; }, render: function (r) { return UI.bar(r.wc.allocationPct, { warnAt: 1000, soft: true }); } },
         { key: 'load', label: 'Belastning (period)', sort: function (r) { return r.wc.loadPct; }, render: function (r) { return UI.bar(r.wc.loadPct); } }
       ]
     }) + '</section>';
@@ -82,24 +82,24 @@
     var roles = e.workerDomainRoles(w.id);
     var h = UI.pageHead({
       crumbs: C.link('workers', 'Arbetare') + '<span>›</span><span>' + esc(w.name) + '</span>',
-      title: esc(w.name) + ' ' + UI.statusBadge(w.status) + (w.type === 'ai' ? ' ' + UI.badge('AI', 'info', 'sparkle') : ''),
+      title: esc(w.name) + ' ' + UI.statusFlag(w.status),
       sub: esc(w.description || ''),
       actions: UI.btn('Tillbaka', 'back', { icon: 'arrowLeft', data: { to: 'workers' } }) + UI.btn('Redigera', 'worker-edit', { cls: 'btn-primary', icon: 'edit', data: { id: w.id } }) + UI.btn('Ta bort', 'worker-delete', { cls: 'btn-danger', icon: 'trash', data: { id: w.id } })
     });
 
     if (wc.allocationPct > 100.5) {
-      h += '<div class="note warn">' + UI.icon('alert') + '<div><strong>' + esc(w.name) + ' är allokerad till ' + U.fmtPct(wc.allocationPct) + '.</strong> Team och domänroller kräver ' + U.fmtH(wc.committed) + ' men tillgänglig kapacitet är ' + U.fmtH(wc.available) + ' i perioden. Minska allokeringen i något team eller korta en domänroll.</div></div>';
+      h += '<div class="note crit"><div><strong>' + esc(w.name) + ' är allokerad till ' + U.fmtPct(wc.allocationPct) + '.</strong> Team och domänroller kräver ' + U.fmtH(wc.committed) + ' men tillgänglig kapacitet är ' + U.fmtH(wc.available) + ' i perioden. Minska allokeringen i något team eller korta en domänroll.</div></div>';
     }
 
     h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('user') + 'Grundinformation</div></div><div class="card-body"><dl class="kv">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Grundinformation</div></div><div class="card-body"><dl class="kv">' +
       '<dt>Namn</dt><dd>' + esc(w.name) + '</dd>' +
       '<dt>Typ</dt><dd>' + (w.type === 'ai' ? 'AI' : 'Människa') + '</dd>' +
       '<dt>Anställningsform</dt><dd>' + (w.type === 'ai' ? '–' : w.consultant ? 'Konsult' : 'Anställd') + '</dd>' +
       '<dt>Roll</dt><dd>' + esc(w.title || '–') + '</dd>' +
       '<dt>Beskrivning</dt><dd>' + esc(w.description || '–') + '</dd></dl></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('box') + 'Domäner</div>' + UI.iconBtn('plus', 'worker-role-add', { id: w.id }, 'Lägg till domänroll') + '</div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Domäner</div>' + UI.iconBtn('plus', 'worker-role-add', { id: w.id }, 'Lägg till domänroll') + '</div><div class="card-body stack">' +
       '<dl class="kv"><dt>Primär leveransdomän</dt><dd>' + C.ddRef(pd.deliveryDomain) + '</dd><dt>Verksamhetsdomän</dt><dd>' + C.domainRef(pd.business) + '</dd><dt>IT-domän</dt><dd>' + C.domainRef(pd.it) + '</dd></dl>' +
       '<div class="stack" style="gap:4px"><span class="label">Domänroller</span>';
     if (!roles.length) h += '<span class="muted small">Inga roller i domänmoln eller leveransdomän.</span>';
@@ -111,7 +111,7 @@
     });
     h += '</div></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('badge') + 'Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th>Vikt</th><th class="actions"></th></tr></thead><tbody>';
     comps.forEach(function (x) {
       h += '<tr><td>' + C.compRef(x.competence) + '</td><td>' + UI.level(x.wc.level) + '<br><span class="small muted">' + UI.LEVELS[x.wc.level] + '</span></td><td>' + (x.wc.weight === 'primary' ? UI.badge('Primär', 'accent') : '<span class="muted small">Sekundär</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'wc-edit', { id: x.wc.id }, 'Ändra') + '</td></tr>';
@@ -121,19 +121,19 @@
     h += '</div>';
 
     h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('clock') + 'Kapacitet <span class="card-sub">(' + esc(ctx.period.label.toLowerCase()) + ', ' + ctx.period.workdays + ' arbetsdagar)</span></div></div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Kapacitet <span class="card-sub">(' + esc(ctx.period.label.toLowerCase()) + ', ' + ctx.period.workdays + ' arbetsdagar)</span></div></div><div class="card-body stack">' +
       '<div class="formula">' +
       '<div class="step"><span>Grundkapacitet</span><span>' + U.fmtH(wc.baseWeek) + ' / vecka</span></div>' +
       '<div class="step"><span>Grundavdrag' + (w.type === 'ai' ? ' (gäller ej AI)' : '') + '</span><span>− ' + U.fmtNum(U.round(wc.overheadWeek, 1)) + ' h / vecka</span></div>' +
       '<div class="step"><span>Tillgänglig per vecka</span><span>' + U.fmtNum(U.round(wc.availableWeek, 1)) + ' h</span></div>' +
       '<div class="step"><span>Tillgänglig kapacitet i perioden</span><span>' + U.fmtH(wc.available) + '</span></div></div>' +
-      '<div class="field-block"><span class="label">Allokering</span>' + UI.bar(wc.allocationPct, { warnAt: 1000 }) + '<span class="muted small">' + U.fmtH(wc.teamHours) + ' i team, ' + U.fmtH(wc.domainHours) + ' i domänroller, ' + U.fmtH(wc.unallocated) + ' oallokerat</span></div>' +
+      '<div class="field-block"><span class="label">Allokering</span>' + UI.bar(wc.allocationPct, { warnAt: 1000, soft: true }) + '<span class="muted small">' + U.fmtH(wc.teamHours) + ' i team, ' + U.fmtH(wc.domainHours) + ' i domänroller, ' + U.fmtH(wc.unallocated) + ' oallokerat</span></div>' +
       '<div class="field-block"><span class="label">Belastning</span>' + UI.bar(wc.loadPct) + '</div>' +
       '<dl class="kv"><dt>Kostnad per timme</dt><dd>' + U.fmtNum(w.costPerHour) + ' kr</dd></dl>' +
-      '<div class="note">' + UI.icon('info') + '<span>Tillgänglig kapacitet är grundkapacitet minus grundavdrag (semester, kompetensutveckling, interna möten och administration).</span></div>' +
+      '<div class="note"><span>Tillgänglig kapacitet är grundkapacitet minus grundavdrag (semester, kompetensutveckling, interna möten och administration).</span></div>' +
       '</div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('users') + 'Team</div>' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Team</div>' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', icon: 'plus', data: { id: w.id } }) + '</div>';
     h += '<div class="card-body"><div class="list">';
     wc.teams.forEach(function (t) {
       h += '<div class="list-item"><div class="grow">' + C.teamRef(t.team) + '<div class="muted small">' + esc(t.tw.role) + ' · ' + U.fmtH(t.hours) + ' i perioden</div></div>' +
@@ -143,7 +143,7 @@
     h += '</div></div></section>';
 
     var costPeriod = wc.committed * (w.costPerHour || 0);
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('chart') + 'Sammanfattning</div></div><div class="card-body"><dl class="kv">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Sammanfattning</div></div><div class="card-body"><dl class="kv">' +
       '<dt>Antal team</dt><dd>' + wc.teams.length + '</dd>' +
       '<dt>Antal domänroller</dt><dd>' + roles.length + '</dd>' +
       '<dt>Total allokering</dt><dd>' + U.fmtPct(wc.allocationPct) + '</dd>' +

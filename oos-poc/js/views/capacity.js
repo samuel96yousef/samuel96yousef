@@ -16,11 +16,11 @@
     });
 
     h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('clock') + 'Standardarbetstid</div>' + UI.btn('Redigera', 'std-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Standardarbetstid</div>' + UI.btn('Redigera', 'std-edit', { cls: 'btn-sm', icon: 'edit' }) + '</div><div class="card-body stack">' +
       '<p class="muted small">Standardarbetstid per arbetare och vecka, före avdrag. Grundavdragen skalas mot den.</p>' +
       '<div><span class="kpi-value">' + U.fmtNum(st.standardWeekHours) + ' h</span> <span class="muted">/ vecka</span></div></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('calendar') + 'Rapporteringsperiod</div></div><div class="card-body stack">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Rapporteringsperiod</div></div><div class="card-body stack">' +
       '<p class="muted small">Styr vilken period som används för planering och uppföljning i hela OOS.</p>' +
       '<label class="fld"><span>Periodtyp</span><select id="period-type" data-change="period-type"><option value="month"' + (st.periodType === 'month' ? ' selected' : '') + '>Månad</option><option value="quarter"' + (st.periodType === 'quarter' ? ' selected' : '') + '>Kvartal</option></select></label>' +
       '<div class="row-between"><span class="muted">Aktuell period</span><span class="row">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') + '<strong>' + U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</span></div>' +
@@ -29,7 +29,7 @@
       (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm', icon: 'refresh' }) : '') +
       '</div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('settings') + 'Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm', icon: 'plus' }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div class="card-title">Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm', icon: 'plus' }) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"></th></tr></thead><tbody>';
     S.db.overheadReductions.forEach(function (r) {
       h += '<tr><td>' + esc(r.name) + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
@@ -39,7 +39,7 @@
     h += '</div>';
 
     var reds = S.db.teamReductions.slice().sort(function (a, b) { return a.from.localeCompare(b.from); });
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">' + UI.icon('users') + 'Särskilda avdrag per team</div><p class="card-sub">Avdrag som gäller ett team under en viss period, till exempel planerad frånvaro eller utbildning. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Avdrag som gäller ett team under en viss period, till exempel planerad frånvaro eller utbildning. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
       UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-primary', icon: 'plus' }) + '</div>';
     h += UI.table({
       id: 'tbl-reductions',
@@ -63,7 +63,7 @@
 
     /* Förklaring av beräkningen med en standardarbetare som exempel. */
     var perWeek = st.standardWeekHours - ohTotal;
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + UI.icon('info') + 'Så räknas verklig kapacitet</div></div><div class="card-body grid-2">' +
+    h += '<section class="card"><div class="card-head"><div class="card-title">Så räknas verklig kapacitet</div></div><div class="card-body grid-2">' +
       '<div class="formula">' +
       '<div class="step"><span>Grundkapacitet (heltid)</span><span>' + U.fmtH(st.standardWeekHours) + ' / vecka</span></div>' +
       '<div class="step"><span>− Grundavdrag</span><span>' + U.fmtH(ohTotal) + ' / vecka</span></div>' +
