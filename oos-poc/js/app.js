@@ -84,7 +84,9 @@
       console.error(err);
       html = '<div class="card card-body"><h2>Något gick fel i vyn</h2><p class="muted">' + esc(err.message) + '</p><p>' + UI.btn('Till översikten', 'go', { data: { to: 'overview' } }) + '</p></div>';
     }
+    OOSSelect.close();
     main.innerHTML = html;
+    OOSSelect.enhance(main);
     renderNav();
     markScrollableTables();
     document.title = (PAGES[st.page] ? PAGES[st.page].label + ' · ' : '') + 'Fabriken';

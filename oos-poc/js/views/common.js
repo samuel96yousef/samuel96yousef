@@ -94,7 +94,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     workers: function (exclude) {
       var ex = new Set(exclude || []);
       return S.db.workers.filter(function (w) { return !ex.has(w.id); }).sort(U.byName).map(function (w) {
-        return { value: w.id, label: w.name + (w.title ? ' – ' + w.title : '') };
+        return { value: w.id, label: w.name, sub: w.title || '' };
       });
     },
     teams: function (exclude) {
@@ -106,7 +106,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       return S.db.domains
         .filter(function (d) { return (!type || d.type === type) && !ex.has(d.id); })
         .sort(function (a, b) { return a.type === b.type ? U.byName(a, b) : a.type === 'business' ? -1 : 1; })
-        .map(function (d) { return { value: d.id, label: d.name + (type ? '' : d.type === 'it' ? ' (IT-domän)' : ' (verksamhetsdomän)') }; });
+        .map(function (d) { return { value: d.id, label: d.name, group: type ? '' : d.type === 'it' ? 'IT-domäner' : 'Verksamhetsdomäner' }; });
     },
     deliveryDomains: function (exclude) {
       var ex = new Set(exclude || []);
@@ -114,7 +114,9 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     },
     competences: function (exclude) {
       var ex = new Set(exclude || []);
-      return S.db.competences.filter(function (c) { return !ex.has(c.id); }).sort(U.byName).map(function (c) { return { value: c.id, label: c.name + ' (' + c.category + ')' }; });
+      return S.db.competences.filter(function (c) { return !ex.has(c.id); })
+        .sort(function (a, b) { return a.category.localeCompare(b.category, 'sv') || U.byName(a, b); })
+        .map(function (c) { return { value: c.id, label: c.name, group: c.category }; });
     },
     systems: function (exclude) {
       var ex = new Set(exclude || []);

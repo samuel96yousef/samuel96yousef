@@ -19,12 +19,8 @@
   }
 
   function select(key, label, options, value, all) {
-    var h = '<label class="fld"><span>' + esc(label) + '</span><select id="rf-' + key + '" data-change="report-filter" data-key="' + key + '">';
-    if (all) h += '<option value="">' + esc(all) + '</option>';
-    options.forEach(function (o) {
-      h += '<option value="' + esc(o.value) + '"' + (String(o.value) === String(value) ? ' selected' : '') + '>' + esc(o.label) + '</option>';
-    });
-    return h + '</select></label>';
+    return '<label class="fld"><span>' + esc(label) + '</span><select id="rf-' + key + '" data-change="report-filter" data-key="' + key + '">' +
+      OOSSelect.optionsHtml(options, value, all || undefined) + '</select></label>';
   }
 
   function build(ctx) {

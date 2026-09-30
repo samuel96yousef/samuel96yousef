@@ -237,22 +237,14 @@ var OOSUI = (function () {
       if (f.type === 'textarea') {
         h += '<textarea id="' + id + '" name="' + esc(f.key) + '"' + req + '>' + esc(value) + '</textarea>';
       } else if (f.type === 'select') {
-        h += '<select id="' + id + '" name="' + esc(f.key) + '"' + req + '>';
-        if (f.placeholder !== undefined) h += '<option value="">' + esc(f.placeholder) + '</option>';
-        (f.options || []).forEach(function (o) {
-          h += '<option value="' + esc(o.value) + '"' + (String(o.value) === String(value) ? ' selected' : '') + '>' + esc(o.label) + '</option>';
-        });
-        h += '</select>';
+        h += '<select id="' + id + '" name="' + esc(f.key) + '"' + req + '>' + OOSSelect.optionsHtml(f.options, value, f.placeholder) + '</select>';
       } else {
         var extra = '';
         if (f.min !== undefined) extra += ' min="' + f.min + '"';
         if (f.max !== undefined) extra += ' max="' + f.max + '"';
         if (f.step !== undefined) extra += ' step="' + f.step + '"';
-        if (f.datalist) extra += ' list="dl-' + esc(f.key) + '" autocomplete="off"';
+        if (f.datalist) extra += ' data-suggest="' + esc(JSON.stringify(f.datalist)) + '" autocomplete="off"';
         h += '<input type="' + (f.type || 'text') + '" id="' + id + '" name="' + esc(f.key) + '" value="' + esc(value) + '"' + req + extra + '>';
-        if (f.datalist) {
-          h += '<datalist id="dl-' + esc(f.key) + '">' + f.datalist.map(function (o) { return '<option value="' + esc(o) + '"></option>'; }).join('') + '</datalist>';
-        }
       }
       if (f.help) h += '<span class="help">' + esc(f.help) + '</span>';
     }
@@ -270,22 +262,23 @@ var OOSUI = (function () {
       })
       .join('');
     var h =
-      '<div class="modal-back" data-action="modal-backdrop"><form class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" novalidate>' +
+      '<div class="modal-back" data-action="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form class="modal-form" novalidate>' +
       '<div class="modal-head"><h2 class="modal-title" id="modal-title">' + esc(cfg.title) + '</h2>' + iconBtn('x', 'modal-close', {}, 'Stäng') + '</div>' +
       '<div class="modal-body">' + (cfg.intro ? '<p class="full muted small">' + cfg.intro + '</p>' : '') + body + '</div>' +
       '<div class="modal-foot">' +
       (cfg.onDelete ? '<button type="button" class="btn btn-danger" data-action="modal-delete" style="margin-right:auto">Ta bort</button>' : '') +
       '<button type="button" class="btn" data-action="modal-close">Avbryt</button>' +
-      '<button type="submit" class="btn btn-primary">' + esc(cfg.submitLabel || 'Spara') + '</button></div></form></div>';
+      '<button type="submit" class="btn btn-primary">' + esc(cfg.submitLabel || 'Spara') + '</button></div></form></div></div>';
     rememberFocus();
     root().innerHTML = h;
+    OOSSelect.enhance(root());
     activeForm = cfg;
     var form = root().querySelector('form');
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
       submitForm(form);
     });
-    var first = form.querySelector('input:not([type=checkbox]), select, textarea');
+    var first = form.querySelector('input:not([type=checkbox]), .sel-btn, textarea');
     if (first) first.focus();
   }
 
@@ -315,7 +308,7 @@ var OOSUI = (function () {
       var e = l.querySelector('.err');
       e.hidden = false;
       e.textContent = errors[k];
-      if (!firstBad) firstBad = l.querySelector('input,select,textarea');
+      if (!firstBad) firstBad = l.querySelector('.sel-btn') || l.querySelector('input,textarea');
     });
     if (firstBad) firstBad.focus();
   }
@@ -349,6 +342,7 @@ var OOSUI = (function () {
 
   /* Stänger dialogen, svarar nej på en öppen fråga och återställer fokus. */
   function closeModal() {
+    OOSSelect.close();
     if (root()) root().innerHTML = '';
     activeForm = null;
     if (pendingConfirm) {

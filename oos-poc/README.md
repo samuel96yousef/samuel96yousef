@@ -102,6 +102,7 @@ js/seed.js            demodata
 js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Node)
 js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
+js/select.js          rullistor och förslagslistor som ersätter webbläsarens
 js/views/*.js         vyerna (insights.js: KPI:er, mätvärden och kopplingar)
 js/app.js             navigation och händelser
 tests/core.test.js    tester för beräkningar och lagring

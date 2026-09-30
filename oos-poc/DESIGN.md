@@ -32,6 +32,7 @@ Bara personer har initialer. Domäner, team och system visas med sina namn. Det 
 | Tabeller | Hårfina linjer, ingen bakgrund i rubrikraden. Texten linjerar med rubrikerna. |
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
+| Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
 ## Tillgänglighet
 
