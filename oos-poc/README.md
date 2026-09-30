@@ -23,6 +23,7 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 | Vy | Innehåll |
 |---|---|
 | Översikt | Nyckeltal, signaler, kapacitet per leveransdomän, fabrikskarta och senaste ändringar |
+| Insikter | Tre flikar. **KPI:er** visar åtta nyckeltal med målnivåer och status; målen kan ändras. **Mätvärden** visar kapacitet över tid, kompetensmatris, beläggning per team, kapacitetens sammansättning och kompetensdjup. **Kopplingar** är en karta från leveransdomän till system där man kan följa kopplingarna och se luckor. |
 | Rapporter | Kapacitet, belastning och ledig tid per team, domän eller leveransdomän och kompetens. Jämför denna period med nästa. Tabell eller diagram. Kan kopieras som CSV. |
 | Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista och detaljvy med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
 | Team | Lista och detaljvy med syfte, teamledare, domäner, system, medlemmar, kapacitet per kompetensområde och avdrag |
@@ -44,6 +45,7 @@ Allt går att skapa, ändra och ta bort. Alla ändringar loggas.
 | 14: kritisk kunskap i huvuden | Signal när bara en person har en kompetens på nivå 3–4. |
 | 16, 17: gemensam valuta | Allt räknas i timmar. |
 | 20: flera dimensioner | Team kopplas till verksamhetsdomän, IT-domän, system och kompetens samtidigt. |
+| 15, 17, 23: prioritering och styrning | KPI:er med målnivåer som ledningen beslutar om. Kompetensmatrisen visar var timmarna faktiskt finns. |
 | 24: domänmoln | Experter i verksamhets- och IT-domäner bidrar med h/månad utan att vara teammedlemmar och räknas in i domänens kapacitet. |
 | 19: projektledning | Nyckelroller på leveransdomännivå, till exempel projektledare. |
 
@@ -100,7 +102,7 @@ js/seed.js            demodata
 js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Node)
 js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
-js/views/*.js         vyerna
+js/views/*.js         vyerna (insights.js: KPI:er, mätvärden och kopplingar)
 js/app.js             navigation och händelser
 tests/core.test.js    tester för beräkningar och lagring
 tools/bundle.js       bygger en fristående HTML-fil

@@ -148,3 +148,53 @@ test('kvartal visas med versaler även mitt i en mening', () => {
   assert.equal(q.inText, '2026-Q3');
   assert.equal(SEP.inText, 'september 2026');
 });
+
+test('KPI:er har värde, mål och status som stämmer med målen', () => {
+  const e = E.create(Seed.build());
+  const list = e.kpis(SEP);
+  const byKey = Object.fromEntries(list.map((k) => [k.key, k]));
+  assert.equal(byKey.overallocated.value, 1);
+  assert.equal(byKey.overallocated.status, 'above');
+  assert.equal(byKey.overallocated.severity, 'critical');
+  assert.equal(byKey.load.status, 'ok');
+  assert.equal(byKey.aiShare.status, 'none');
+  const org = e.orgCapacity(SEP);
+  near(byKey.load.value, org.loadPct);
+});
+
+test('egna målnivåer i inställningarna styr KPI-status', () => {
+  const db = Seed.build();
+  db.settings.kpiTargets = { load: { min: 90, max: 95 } };
+  const k = E.create(db).kpis(SEP).find((x) => x.key === 'load');
+  assert.equal(k.status, 'below');
+  assert.equal(k.severity, 'warning');
+});
+
+test('kompetensmatrisen summerar till teamens kapacitet', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const m = e.competenceMatrix(SEP, 'team');
+  const teamSum = db.teams.reduce((s, t) => s + e.teamCapacity(t.id, SEP).capacity, 0);
+  near(m.total, teamSum, 0.5);
+  const byDd = e.competenceMatrix(SEP, 'delivery');
+  near(byDd.total, e.orgCapacity(SEP).capacity, 0.5);
+});
+
+test('sammansättningen summerar till 100 procent', () => {
+  const c = E.create(Seed.build()).composition(SEP);
+  near(c.source.reduce((s, p) => s + p.pct, 0), 100, 0.01);
+  near(c.employment.reduce((s, p) => s + p.pct, 0), 100, 0.01);
+});
+
+test('kopplingskartan har alla noder och hittar luckorna', () => {
+  const db = Seed.build();
+  const g = E.create(db).connectionGraph();
+  const count = (key) => g.columns.find((c) => c.key === key).nodes.length;
+  assert.equal(count('dd'), db.deliveryDomains.length);
+  assert.equal(count('team'), db.teams.length);
+  assert.equal(count('system'), db.systems.length);
+  const issues = g.columns.flatMap((c) => c.nodes.filter((n) => n.issues.length).map((n) => n.name));
+  assert.deepEqual(issues.sort(), ['Dokumenthantering', 'Premier och Fakturering']);
+  const ids = new Set(g.columns.flatMap((c) => c.nodes.map((n) => n.id)));
+  assert.ok(g.edges.every((ed) => ids.has(ed.from) && ids.has(ed.to)));
+});

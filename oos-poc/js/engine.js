@@ -13,6 +13,18 @@ var OOSEngine = (function () {
 
   var UNSPECIFIED = { id: '_none', name: 'Ospecificerad kompetens', category: 'Ospecificerad', type: 'it' };
 
+  /* Förslag på målnivåer. De kan ändras under Insikter och sparas i inställningarna. */
+  var DEFAULT_TARGETS = {
+    load: { min: 70, max: 85 },
+    overallocated: { max: 0 },
+    producingShare: { min: 60 },
+    consultantShare: { max: 25 },
+    keypersons: { max: 0 },
+    coverage: { min: 95 },
+    nextChange: { min: -10 },
+    aiShare: {}
+  };
+
   /* ---------- Perioder och arbetsdagar ---------- */
 
   function workdays(start, end) {
@@ -877,6 +889,257 @@ var OOSEngine = (function () {
       return out.sort(function (a, b) { return rank[a.severity] - rank[b.severity]; });
     }
 
+    /* ---------- Insikter: KPI:er, mätvärden och kopplingar ---------- */
+
+    function sumCap(facts, pred) {
+      return U.sum(facts.filter(pred), function (f) { return f.capacity; });
+    }
+
+    function evaluate(value, target) {
+      if (!target || (target.min === undefined && target.max === undefined)) return 'none';
+      if (target.min !== undefined && value < target.min - 1e-9) return 'below';
+      if (target.max !== undefined && value > target.max + 1e-9) return 'above';
+      return 'ok';
+    }
+
+    /* Modellens täckning: hur stor andel av de kopplingar som ska finnas som faktiskt finns. */
+    function coverage() {
+      var checks = [];
+      db.teams.forEach(function (t) {
+        checks.push({ ok: !!teamPrimaryDomain(t.id, 'business'), what: 'Team med primär verksamhetsdomän' });
+        checks.push({ ok: !!teamPrimaryDomain(t.id, 'it'), what: 'Team med primär IT-domän' });
+        checks.push({ ok: !!t.leadId, what: 'Team med teamledare' });
+      });
+      db.domains.forEach(function (d) {
+        checks.push({ ok: !!d.ownerId, what: 'Domäner med ägare' });
+        checks.push({ ok: !!deliveryDomainOfDomain(d.id), what: 'Domäner i en leveransdomän' });
+      });
+      db.deliveryDomains.forEach(function (d) {
+        checks.push({ ok: !!d.ownerId, what: 'Leveransdomäner med ägare' });
+      });
+      db.systems.forEach(function (x) {
+        checks.push({ ok: !!systemResponsibleTeam(x.id), what: 'System med ansvarigt team' });
+        checks.push({ ok: !!systemPrimaryItDomain(x.id), what: 'System med primär IT-domän' });
+      });
+      var passed = checks.filter(function (c) { return c.ok; }).length;
+      var byWhat = U.groupBy(checks, function (c) { return c.what; });
+      return {
+        pct: checks.length ? (passed / checks.length) * 100 : 100,
+        passed: passed,
+        total: checks.length,
+        parts: Array.from(byWhat.entries()).map(function (e) {
+          return { what: e[0], ok: e[1].filter(function (c) { return c.ok; }).length, total: e[1].length };
+        })
+      };
+    }
+
+    function kpis(period) {
+      var next = nextPeriod(period);
+      var facts = allFacts(period);
+      var org = summarize(facts);
+      var nextCap = summarize(allFacts(next)).capacity;
+      var sig = signals(period);
+      var targets = Object.assign({}, DEFAULT_TARGETS, settings.kpiTargets || {});
+      var total = org.capacity || 1;
+      function workerOf(f) { return get('workers', f.workerId) || {}; }
+      var producing = sumCap(facts, function (f) { var t = f.teamId && get('teams', f.teamId); return t && t.category === 'producing'; });
+      var consultant = sumCap(facts, function (f) { var w = workerOf(f); return w.type !== 'ai' && w.consultant; });
+      var ai = sumCap(facts, function (f) { return workerOf(f).type === 'ai'; });
+      var cov = coverage();
+      var list = [
+        { key: 'load', label: 'Beläggningsgrad', value: org.loadPct, unit: '%', scale: [0, 100],
+          definition: 'Planerade timmar delat med kapacitet. För lågt betyder outnyttjad tid, för högt betyder att ingen marginal finns.' },
+        { key: 'overallocated', label: 'Överallokerade arbetare', value: sig.filter(function (x) { return x.kind === 'overallocated'; }).length, unit: 'st', severity: 'critical',
+          definition: 'Arbetare vars team och domänroller kräver mer tid än de har.' },
+        { key: 'producingShare', label: 'Kapacitet i producerande team', value: (producing / total) * 100, unit: '%', scale: [0, 100],
+          definition: 'Andel av kapaciteten som ligger i team med en primär verksamhetsdomän. Resten är stödjande team, domänmoln och nyckelroller.' },
+        { key: 'consultantShare', label: 'Konsultandel', value: (consultant / total) * 100, unit: '%', scale: [0, 100],
+          definition: 'Andel av kapaciteten som kommer från konsulter. Hög andel gör kompetensen mer flyktig.' },
+        { key: 'keypersons', label: 'Nyckelpersonsberoenden', value: sig.filter(function (x) { return x.kind === 'keyperson'; }).length, unit: 'st',
+          definition: 'Kompetenser där bara en person har nivå 3–4.' },
+        { key: 'coverage', label: 'Modellens täckning', value: cov.pct, unit: '%', scale: [0, 100], detail: cov,
+          definition: 'Andel av de kopplingar som ska finnas som faktiskt är registrerade: ägare, teamledare, primära domäner och ansvariga team.' },
+        { key: 'nextChange', label: 'Förändring nästa period', value: org.capacity ? ((nextCap - org.capacity) / org.capacity) * 100 : 0, unit: '%', scale: [-30, 30],
+          definition: 'Hur grundkapaciteten förändras till nästa period, av arbetsdagar, avdrag och domänroller.' },
+        { key: 'aiShare', label: 'AI-andel', value: (ai / total) * 100, unit: '%', scale: [0, 100],
+          definition: 'Andel av kapaciteten som kommer från AI-arbetare. Inget mål satt i Prototyp 1.' }
+      ];
+      list.forEach(function (k) {
+        k.target = targets[k.key] || {};
+        k.status = evaluate(k.value, k.target);
+        if (!k.scale) {
+          var hi = Math.max(5, Math.ceil(k.value * 1.4), (k.target.max || 0) + 5);
+          k.scale = [0, hi];
+        }
+        if (k.status === 'below' || k.status === 'above') k.severity = k.severity || 'warning';
+        else k.severity = null;
+      });
+      return list;
+    }
+
+    function capacityTrend(period, back, forward) {
+      var periods = [period];
+      var p = period;
+      for (var i = 0; i < back; i++) { p = prevPeriod(p); periods.unshift(p); }
+      p = period;
+      for (var j = 0; j < forward; j++) { p = nextPeriod(p); periods.push(p); }
+      return periods.map(function (x) {
+        var s = summarize(allFacts(x));
+        return { period: x, capacity: s.capacity, current: x.start === period.start, future: x.start > period.start };
+      });
+    }
+
+    /* Kompetensmatris: timmar per rad (team eller leveransdomän) och kompetensområde. */
+    function competenceMatrix(period, rowsBy) {
+      var facts = allFacts(period).filter(function (f) { return rowsBy === 'delivery' || f.source === 'team'; });
+      var rowKey = rowsBy === 'delivery' ? 'deliveryDomainId' : 'teamId';
+      var rowColl = rowsBy === 'delivery' ? 'deliveryDomains' : 'teams';
+      var cells = new Map();
+      var rowTotals = new Map();
+      var colTotals = new Map();
+      facts.forEach(function (f) {
+        var r = f[rowKey] || '_none';
+        var c = f.competence.category || 'Ospecificerad';
+        var k = r + '|' + c;
+        cells.set(k, (cells.get(k) || 0) + f.capacity);
+        rowTotals.set(r, (rowTotals.get(r) || 0) + f.capacity);
+        colTotals.set(c, (colTotals.get(c) || 0) + f.capacity);
+      });
+      var cols = Array.from(colTotals.entries()).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) { return { name: e[0], total: e[1] }; });
+      var rows = Array.from(rowTotals.entries()).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) {
+        var rec = get(rowColl, e[0]);
+        return {
+          id: e[0],
+          name: rec ? rec.name : 'Utan leveransdomän',
+          total: e[1],
+          values: cols.map(function (c) { return cells.get(e[0] + '|' + c.name) || 0; })
+        };
+      });
+      var max = 0;
+      rows.forEach(function (r) { r.values.forEach(function (v) { if (v > max) max = v; }); });
+      return { rows: rows, cols: cols, max: max, total: U.sum(rows, function (r) { return r.total; }) };
+    }
+
+    /* Kompetensdjup: antal personer per kompetensområde och högsta nivå inom området. */
+    function competenceDepth() {
+      var best = new Map();
+      db.workerCompetences.forEach(function (wc) {
+        var c = get('competences', wc.competenceId);
+        if (!c || !get('workers', wc.workerId)) return;
+        var k = (c.category || 'Ospecificerad') + '|' + wc.workerId;
+        best.set(k, Math.max(best.get(k) || 0, wc.level));
+      });
+      var cats = new Map();
+      best.forEach(function (level, k) {
+        var cat = k.split('|')[0];
+        if (!cats.has(cat)) cats.set(cat, [0, 0, 0, 0]);
+        cats.get(cat)[level - 1]++;
+      });
+      return Array.from(cats.entries()).map(function (e) {
+        return { category: e[0], levels: e[1], total: U.sum(e[1]), advanced: e[1][2] + e[1][3] };
+      }).sort(function (a, b) { return b.advanced - a.advanced || b.total - a.total; });
+    }
+
+    /* Kapacitetens sammansättning efter källa och anställningsform. */
+    function composition(period) {
+      var facts = allFacts(period);
+      var total = summarize(facts).capacity || 1;
+      function part(label, pred) {
+        var v = sumCap(facts, pred);
+        return { label: label, value: v, pct: (v / total) * 100 };
+      }
+      function teamCat(f) { var t = f.teamId && get('teams', f.teamId); return t ? t.category : null; }
+      function worker(f) { return get('workers', f.workerId) || {}; }
+      return {
+        source: [
+          part('Producerande team', function (f) { return teamCat(f) === 'producing'; }),
+          part('Stödjande team', function (f) { return teamCat(f) === 'supporting'; }),
+          part('Domänmoln', function (f) { return f.source === 'domain'; }),
+          part('Nyckelroller', function (f) { return f.source === 'delivery'; })
+        ],
+        employment: [
+          part('Anställda', function (f) { var w = worker(f); return w.type !== 'ai' && !w.consultant; }),
+          part('Konsulter', function (f) { var w = worker(f); return w.type !== 'ai' && w.consultant; }),
+          part('AI', function (f) { return worker(f).type === 'ai'; })
+        ]
+      };
+    }
+
+    /*
+     * Kopplingsgraf i fem kolumner: leveransdomän → verksamhetsdomän → team → IT-domän → system.
+     * Noderna sorteras så att kopplade noder hamnar nära varandra och linjerna korsar varandra mindre.
+     */
+    function connectionGraph() {
+      var cols = { dd: [], bd: [], team: [], it: [], system: [] };
+      var edges = [];
+      function node(col, rec, kind) {
+        return { id: col + ':' + rec.id, refId: rec.id, col: col, name: rec.name, kind: kind, issues: [] };
+      }
+      var ddNodes = db.deliveryDomains.slice().sort(U.byName).map(function (d) { return node('dd', d, 'deliveryDomains'); });
+      var bdRecs = db.domains.filter(function (d) { return d.type === 'business'; });
+      var itRecs = db.domains.filter(function (d) { return d.type === 'it'; });
+      db.domainClusters.forEach(function (c) {
+        var d = get('domains', c.domainId);
+        if (d && d.type === 'business') edges.push({ from: 'dd:' + c.deliveryDomainId, to: 'bd:' + c.domainId, rel: c.relationship });
+      });
+      db.teamDomains.forEach(function (td) {
+        var d = get('domains', td.domainId);
+        if (!d) return;
+        if (d.type === 'business') edges.push({ from: 'bd:' + d.id, to: 'team:' + td.teamId, rel: td.relationship });
+        else edges.push({ from: 'team:' + td.teamId, to: 'it:' + d.id, rel: td.relationship });
+      });
+      db.itDomainSystems.forEach(function (l) {
+        edges.push({ from: 'it:' + l.domainId, to: 'system:' + l.systemId, rel: l.relationship });
+      });
+
+      function orderBy(recs, col, kind, upstream) {
+        var nodes = recs.map(function (r) { return node(col, r, kind); });
+        var pos = new Map();
+        upstream.forEach(function (n, i) { pos.set(n.id, i); });
+        nodes.forEach(function (n) {
+          var ins = edges.filter(function (e) { return e.to === n.id && pos.has(e.from); });
+          var prim = ins.filter(function (e) { return e.rel === 'primary'; });
+          var use = prim.length ? prim : ins;
+          n.rank = use.length ? U.sum(use, function (e) { return pos.get(e.from); }) / use.length : upstream.length + 1;
+        });
+        return nodes.sort(function (a, b) { return a.rank - b.rank || a.name.localeCompare(b.name, 'sv'); });
+      }
+      cols.dd = ddNodes;
+      cols.bd = orderBy(bdRecs, 'bd', 'businessDomains', cols.dd);
+      cols.team = orderBy(db.teams, 'team', 'teams', cols.bd);
+      cols.it = orderBy(itRecs, 'it', 'itDomains', cols.team);
+      cols.system = orderBy(db.systems, 'system', 'systems', cols.it);
+
+      /* Luckor: noder som saknar en koppling de borde ha. */
+      function has(id, dir, rel) {
+        return edges.some(function (e) { return (dir === 'in' ? e.to : e.from) === id && (!rel || e.rel === rel); });
+      }
+      cols.dd.forEach(function (n) { if (!has(n.id, 'out')) n.issues.push('Inga verksamhetsdomäner'); });
+      cols.bd.forEach(function (n) {
+        if (!has(n.id, 'in')) n.issues.push('Ingen leveransdomän');
+        if (!has(n.id, 'out', 'primary')) n.issues.push('Inget team har domänen som primär');
+      });
+      cols.team.forEach(function (n) {
+        if (!has(n.id, 'in', 'primary')) n.issues.push('Ingen primär verksamhetsdomän');
+        if (!has(n.id, 'out', 'primary')) n.issues.push('Ingen primär IT-domän');
+      });
+      cols.it.forEach(function (n) { if (!has(n.id, 'in')) n.issues.push('Inga team'); });
+      cols.system.forEach(function (n) {
+        if (!has(n.id, 'in')) n.issues.push('Ingen IT-domän');
+        if (!systemResponsibleTeam(n.refId)) n.issues.push('Inget ansvarigt team');
+      });
+      return {
+        columns: [
+          { key: 'dd', label: 'Leveransdomän', nodes: cols.dd },
+          { key: 'bd', label: 'Verksamhetsdomän', nodes: cols.bd },
+          { key: 'team', label: 'Team', nodes: cols.team },
+          { key: 'it', label: 'IT-domän', nodes: cols.it },
+          { key: 'system', label: 'System', nodes: cols.system }
+        ],
+        edges: edges
+      };
+    }
+
     return {
       db: db,
       get: get,
@@ -917,7 +1180,14 @@ var OOSEngine = (function () {
       orgCapacity: orgCapacity,
       allFacts: allFacts,
       report: report,
-      signals: signals
+      signals: signals,
+      kpis: kpis,
+      coverage: coverage,
+      capacityTrend: capacityTrend,
+      competenceMatrix: competenceMatrix,
+      competenceDepth: competenceDepth,
+      composition: composition,
+      connectionGraph: connectionGraph
     };
   }
 
@@ -929,7 +1199,8 @@ var OOSEngine = (function () {
     periodOf: periodOf,
     nextPeriod: nextPeriod,
     prevPeriod: prevPeriod,
-    UNSPECIFIED: UNSPECIFIED
+    UNSPECIFIED: UNSPECIFIED,
+    DEFAULT_TARGETS: DEFAULT_TARGETS
   };
 })();
 

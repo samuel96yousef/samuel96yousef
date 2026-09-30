@@ -6,7 +6,7 @@
   var S = OOSStore;
 
   var NAV = [
-    { items: [{ page: 'overview', label: 'Översikt' }, { page: 'reports', label: 'Rapporter' }] },
+    { items: [{ page: 'overview', label: 'Översikt' }, { page: 'insights', label: 'Insikter' }, { page: 'reports', label: 'Rapporter' }] },
     {
       label: 'Struktur',
       items: [
