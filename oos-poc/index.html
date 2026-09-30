@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fabriken OOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+  <nav class="nav" id="nav" aria-label="Huvudmeny"></nav>
+  <div class="nav-scrim" id="nav-scrim" data-action="nav-toggle" hidden></div>
+  <div class="main-col" style="min-width:0">
+    <div class="topbar">
+      <button type="button" class="btn-icon" data-action="nav-toggle" aria-label="Öppna menyn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <strong>Fabriken</strong><span id="topbar-title" style="opacity:.75"></span>
+    </div>
+    <main class="main" id="main"><div class="main-inner" id="main-inner"></div></main>
+  </div>
+</div>
+<div id="modal-root"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="js/util.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/views/common.js"></script>
+<script src="js/views/domains.js"></script>
+<script src="js/views/teams.js"></script>
+<script src="js/views/workers.js"></script>
+<script src="js/views/catalog.js"></script>
+<script src="js/views/capacity.js"></script>
+<script src="js/views/reports.js"></script>
+<script src="js/views/overview.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

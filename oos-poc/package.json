@@ -1,0 +1,11 @@
+{
+  "name": "fabriken-oos-poc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "POC av Organisationens operativsystem (OOS), Prototyp 1: bottenplattan.",
+  "scripts": {
+    "start": "npx --yes serve -l 5173 .",
+    "test": "node --test tests/engine.test.js",
+    "bundle": "node tools/bundle.js"
+  }
+}
