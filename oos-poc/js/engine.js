@@ -1066,32 +1066,31 @@ var OOSEngine = (function () {
     }
 
     /*
-     * Kopplingsgraf i fem kolumner: leveransdomän → verksamhetsdomän → team → IT-domän → system.
-     * Noderna sorteras så att kopplade noder hamnar nära varandra och linjerna korsar varandra mindre.
+     * Kopplingsgraf i fem kolumner: leveransdomän → verksamhetsdomän → team → system → IT-domän.
+     * Kedjan följer verkliga kopplingar: team kopplas till de system de arbetar med, och system
+     * till sin IT-domän. Noderna sorteras så att kopplade noder hamnar nära varandra.
      */
     function connectionGraph() {
-      var cols = { dd: [], bd: [], team: [], it: [], system: [] };
       var edges = [];
       function node(col, rec, kind) {
         return { id: col + ':' + rec.id, refId: rec.id, col: col, name: rec.name, kind: kind, issues: [] };
       }
-      var ddNodes = db.deliveryDomains.slice().sort(U.byName).map(function (d) { return node('dd', d, 'deliveryDomains'); });
-      var bdRecs = db.domains.filter(function (d) { return d.type === 'business'; });
-      var itRecs = db.domains.filter(function (d) { return d.type === 'it'; });
       db.domainClusters.forEach(function (c) {
         var d = get('domains', c.domainId);
         if (d && d.type === 'business') edges.push({ from: 'dd:' + c.deliveryDomainId, to: 'bd:' + c.domainId, rel: c.relationship });
       });
       db.teamDomains.forEach(function (td) {
         var d = get('domains', td.domainId);
-        if (!d) return;
-        if (d.type === 'business') edges.push({ from: 'bd:' + d.id, to: 'team:' + td.teamId, rel: td.relationship });
-        else edges.push({ from: 'team:' + td.teamId, to: 'it:' + d.id, rel: td.relationship });
+        if (d && d.type === 'business') edges.push({ from: 'bd:' + d.id, to: 'team:' + td.teamId, rel: td.relationship });
+      });
+      db.teamSystems.forEach(function (ts) {
+        edges.push({ from: 'team:' + ts.teamId, to: 'system:' + ts.systemId, rel: ts.objective === 'owner' ? 'primary' : 'supportive', label: ts.objective === 'owner' ? 'Ansvarar' : 'Bidrar' });
       });
       db.itDomainSystems.forEach(function (l) {
-        edges.push({ from: 'it:' + l.domainId, to: 'system:' + l.systemId, rel: l.relationship });
+        edges.push({ from: 'system:' + l.systemId, to: 'it:' + l.domainId, rel: l.relationship });
       });
 
+      /* Barycentrisk ordning: varje nod placeras nära medelpositionen för noderna den kopplas från. */
       function orderBy(recs, col, kind, upstream) {
         var nodes = recs.map(function (r) { return node(col, r, kind); });
         var pos = new Map();
@@ -1104,37 +1103,38 @@ var OOSEngine = (function () {
         });
         return nodes.sort(function (a, b) { return a.rank - b.rank || a.name.localeCompare(b.name, 'sv'); });
       }
-      cols.dd = ddNodes;
-      cols.bd = orderBy(bdRecs, 'bd', 'businessDomains', cols.dd);
-      cols.team = orderBy(db.teams, 'team', 'teams', cols.bd);
-      cols.it = orderBy(itRecs, 'it', 'itDomains', cols.team);
-      cols.system = orderBy(db.systems, 'system', 'systems', cols.it);
+      var dd = db.deliveryDomains.slice().sort(U.byName).map(function (d) { return node('dd', d, 'deliveryDomains'); });
+      var bd = orderBy(db.domains.filter(function (d) { return d.type === 'business'; }), 'bd', 'businessDomains', dd);
+      var team = orderBy(db.teams, 'team', 'teams', bd);
+      var system = orderBy(db.systems, 'system', 'systems', team);
+      var it = orderBy(db.domains.filter(function (d) { return d.type === 'it'; }), 'it', 'itDomains', system);
 
       /* Luckor: noder som saknar en koppling de borde ha. */
       function has(id, dir, rel) {
         return edges.some(function (e) { return (dir === 'in' ? e.to : e.from) === id && (!rel || e.rel === rel); });
       }
-      cols.dd.forEach(function (n) { if (!has(n.id, 'out')) n.issues.push('Inga verksamhetsdomäner'); });
-      cols.bd.forEach(function (n) {
+      dd.forEach(function (n) { if (!has(n.id, 'out')) n.issues.push('Inga verksamhetsdomäner'); });
+      bd.forEach(function (n) {
         if (!has(n.id, 'in')) n.issues.push('Ingen leveransdomän');
         if (!has(n.id, 'out', 'primary')) n.issues.push('Inget team har domänen som primär');
       });
-      cols.team.forEach(function (n) {
+      team.forEach(function (n) {
         if (!has(n.id, 'in', 'primary')) n.issues.push('Ingen primär verksamhetsdomän');
-        if (!has(n.id, 'out', 'primary')) n.issues.push('Ingen primär IT-domän');
+        if (!teamPrimaryDomain(n.refId, 'it')) n.issues.push('Ingen primär IT-domän');
+        if (!has(n.id, 'out')) n.issues.push('Arbetar inte med något system');
       });
-      cols.it.forEach(function (n) { if (!has(n.id, 'in')) n.issues.push('Inga team'); });
-      cols.system.forEach(function (n) {
-        if (!has(n.id, 'in')) n.issues.push('Ingen IT-domän');
-        if (!systemResponsibleTeam(n.refId)) n.issues.push('Inget ansvarigt team');
+      system.forEach(function (n) {
+        if (!has(n.id, 'in', 'primary')) n.issues.push('Inget ansvarigt team');
+        if (!has(n.id, 'out')) n.issues.push('Ingen IT-domän');
       });
+      it.forEach(function (n) { if (!has(n.id, 'in')) n.issues.push('Inga system'); });
       return {
         columns: [
-          { key: 'dd', label: 'Leveransdomän', nodes: cols.dd },
-          { key: 'bd', label: 'Verksamhetsdomän', nodes: cols.bd },
-          { key: 'team', label: 'Team', nodes: cols.team },
-          { key: 'it', label: 'IT-domän', nodes: cols.it },
-          { key: 'system', label: 'System', nodes: cols.system }
+          { key: 'dd', label: 'Leveransdomän', nodes: dd },
+          { key: 'bd', label: 'Verksamhetsdomän', nodes: bd },
+          { key: 'team', label: 'Team', nodes: team },
+          { key: 'system', label: 'System', nodes: system },
+          { key: 'it', label: 'IT-domän', nodes: it }
         ],
         edges: edges
       };
@@ -1191,8 +1191,39 @@ var OOSEngine = (function () {
     };
   }
 
+  /*
+   * Vad hör till ett val i kopplingskartan? Primära kopplingar följs hela vägen uppåt och nedåt.
+   * Stödjande kopplingar visas, men följs inte vidare, så att kartan inte fylls av indirekta samband.
+   */
+  function connectionFocus(graph, start) {
+    var nodes = new Set([start]);
+    var edgeIdx = new Set();
+    function walk(down) {
+      var expanded = new Set([start]);
+      var queue = [start];
+      while (queue.length) {
+        var cur = queue.shift();
+        graph.edges.forEach(function (e, i) {
+          var a = down ? e.from : e.to;
+          var b = down ? e.to : e.from;
+          if (a !== cur) return;
+          edgeIdx.add(i);
+          nodes.add(b);
+          if (e.rel === 'primary' && !expanded.has(b)) {
+            expanded.add(b);
+            queue.push(b);
+          }
+        });
+      }
+    }
+    walk(true);
+    walk(false);
+    return { nodes: nodes, edges: edgeIdx };
+  }
+
   return {
     create: create,
+    connectionFocus: connectionFocus,
     workdays: workdays,
     overlapWorkdays: overlapWorkdays,
     monthlyHoursInPeriod: monthlyHoursInPeriod,

@@ -198,3 +198,22 @@ test('kopplingskartan har alla noder och hittar luckorna', () => {
   const ids = new Set(g.columns.flatMap((c) => c.nodes.map((n) => n.id)));
   assert.ok(g.edges.every((ed) => ids.has(ed.from) && ids.has(ed.to)));
 });
+
+test('val i kopplingskartan följer primära kopplingar och stannar vid stödjande', () => {
+  const e = E.create(Seed.build());
+  const g = e.connectionGraph();
+  assert.deepEqual(g.columns.map((c) => c.key), ['dd', 'bd', 'team', 'system', 'it']);
+  const km = E.connectionFocus(g, 'dd:dd_km');
+  assert.ok(km.nodes.has('team:t_kundportal'));
+  assert.ok(km.nodes.has('system:s_kundportal'));
+  assert.ok(km.nodes.has('it:d_digital'));
+  /* Arbetsgivarportalen ligger i samma IT-domän men hör inte till Kund och Marknad. */
+  assert.ok(!km.nodes.has('system:s_agportal'));
+  /* Test och Kvalitet stödjer Kundservice: teamet visas men följs inte vidare till dess system. */
+  assert.ok(km.nodes.has('team:t_test'));
+  assert.ok(!km.nodes.has('system:s_testplat'));
+  const sys = E.connectionFocus(g, 'system:s_sapcrm');
+  assert.ok(sys.nodes.has('team:t_sapcrm') && sys.nodes.has('dd:dd_ag'));
+  assert.ok(sys.nodes.has('team:t_kundportal'));
+  assert.ok(!sys.nodes.has('dd:dd_km'));
+});

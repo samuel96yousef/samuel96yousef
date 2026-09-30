@@ -23,7 +23,7 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 | Vy | Innehåll |
 |---|---|
 | Översikt | Nyckeltal, signaler, kapacitet per leveransdomän, fabrikskarta och senaste ändringar |
-| Insikter | Tre flikar. **KPI:er** visar åtta nyckeltal med målnivåer och status; målen kan ändras. **Mätvärden** visar kapacitet över tid, kompetensmatris, beläggning per team, kapacitetens sammansättning och kompetensdjup. **Kopplingar** är en karta från leveransdomän till system där man kan följa kopplingarna och se luckor. |
+| Insikter | Tre flikar. **KPI:er** visar åtta nyckeltal med målnivåer och status; målen kan ändras. **Mätvärden** visar kapacitet över tid, kompetensmatris, beläggning per team, kapacitetens sammansättning och kompetensdjup. **Kopplingar** är en karta från leveransdomän via verksamhetsdomän, team och system till IT-domän. När man väljer en ruta samlas det som hör till den överst och resten tonas ned. Primära kopplingar följs hela vägen; stödjande visas men följs inte vidare. Luckor markeras. |
 | Rapporter | Kapacitet, belastning och ledig tid per team, domän eller leveransdomän och kompetens. Jämför denna period med nästa. Tabell eller diagram. Kan kopieras som CSV. |
 | Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista och detaljvy med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
 | Team | Lista och detaljvy med syfte, teamledare, domäner, system, medlemmar, kapacitet per kompetensområde och avdrag |

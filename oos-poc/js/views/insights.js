@@ -204,8 +204,8 @@
 
   /* ---------- Kopplingar ---------- */
 
-  var W = 168;
-  var GAP = 64;
+  var W = 164;
+  var GAP = 60;
   var NH = 26;
   var ROW = 34;
   var TOP = 36;
@@ -214,23 +214,63 @@
     return s.length > n ? s.slice(0, n - 1) + '…' : s;
   }
 
-  /* Följer kopplingarna uppströms och nedströms från vald nod. */
-  function reach(edges, start) {
-    function walk(dirFrom, dirTo) {
-      var seen = new Set([start]);
-      var queue = [start];
-      while (queue.length) {
-        var cur = queue.shift();
-        edges.forEach(function (ed) {
-          if (ed[dirFrom] === cur && !seen.has(ed[dirTo])) {
-            seen.add(ed[dirTo]);
-            queue.push(ed[dirTo]);
-          }
+  /*
+   * Utan val: noderna fördelas jämnt på höjden i sin grundordning.
+   * Med val: det som hör till valet samlas överst, sorterat för så få korsningar som möjligt,
+   * och resten läggs nedanför en skiljelinje.
+   */
+  function layout(g, focus) {
+    var pos = new Map();
+    if (!focus) {
+      var maxN = Math.max.apply(null, g.columns.map(function (c) { return c.nodes.length; }));
+      var H = TOP + maxN * ROW + 8;
+      g.columns.forEach(function (c, ci) {
+        var slot = (H - TOP) / c.nodes.length;
+        c.nodes.forEach(function (n, i) {
+          pos.set(n.id, { x: ci * (W + GAP), y: Math.round(TOP + slot * i + (slot - NH) / 2) });
         });
-      }
-      return seen;
+      });
+      return { pos: pos, height: H, divider: null };
     }
-    return { up: walk('to', 'from'), down: walk('from', 'to') };
+
+    var blocks = g.columns.map(function (c) {
+      return {
+        hi: c.nodes.filter(function (n) { return focus.nodes.has(n.id); }),
+        lo: c.nodes.filter(function (n) { return !focus.nodes.has(n.id); })
+      };
+    });
+    var fEdges = Array.from(focus.edges).map(function (i) { return g.edges[i]; });
+
+    /* Korsningsminimering: sortera varje kolumn efter grannarnas medelposition, fram och tillbaka. */
+    function sweep(ci, ref) {
+      var index = new Map();
+      blocks[ref].hi.forEach(function (n, i) { index.set(n.id, i); });
+      var ranked = blocks[ci].hi.map(function (n, i) {
+        var ps = [];
+        fEdges.forEach(function (e) {
+          if (e.from === n.id && index.has(e.to)) ps.push(index.get(e.to));
+          if (e.to === n.id && index.has(e.from)) ps.push(index.get(e.from));
+        });
+        return { n: n, rank: ps.length ? U.sum(ps) / ps.length : i, i: i };
+      });
+      ranked.sort(function (a, b) { return a.rank - b.rank || a.i - b.i; });
+      blocks[ci].hi = ranked.map(function (x) { return x.n; });
+    }
+    for (var iter = 0; iter < 3; iter++) {
+      for (var a = 1; a < blocks.length; a++) sweep(a, a - 1);
+      for (var b = blocks.length - 2; b >= 0; b--) sweep(b, b + 1);
+    }
+
+    var maxHi = Math.max.apply(null, blocks.map(function (x) { return x.hi.length; }));
+    var maxLo = Math.max.apply(null, blocks.map(function (x) { return x.lo.length; }));
+    var dividerY = TOP + maxHi * ROW + 12;
+    var loTop = dividerY + 34;
+    blocks.forEach(function (blk, ci) {
+      var off = ((maxHi - blk.hi.length) / 2) * ROW;
+      blk.hi.forEach(function (n, i) { pos.set(n.id, { x: ci * (W + GAP), y: Math.round(TOP + off + i * ROW) }); });
+      blk.lo.forEach(function (n, i) { pos.set(n.id, { x: ci * (W + GAP), y: loTop + i * ROW }); });
+    });
+    return { pos: pos, height: maxLo ? loTop + maxLo * ROW + 8 : dividerY, divider: maxLo ? dividerY : null };
   }
 
   function connectionsTab(ctx) {
@@ -240,7 +280,7 @@
     g.columns.forEach(function (c) { nodes = nodes.concat(c.nodes); });
     var byId = new Map(nodes.map(function (n) { return [n.id, n]; }));
     var sel = OOS.state.graphSel && byId.has(OOS.state.graphSel) ? byId.get(OOS.state.graphSel) : null;
-    var r = sel ? reach(g.edges, sel.id) : null;
+    var focus = sel ? OOSEngine.connectionFocus(g, sel.id) : null;
     var gaps = nodes.filter(function (n) { return n.issues.length; });
     var primary = g.edges.filter(function (x) { return x.rel === 'primary'; }).length;
 
@@ -253,50 +293,47 @@
       UI.kpi('Luckor', gaps.length, gaps.length ? 'Saknar en koppling' : 'Allt är kopplat', { crit: gaps.length > 0 }) +
       '</div>';
 
-    /* Layout: fem kolumner, noderna jämnt fördelade på höjden. */
-    var maxN = Math.max.apply(null, g.columns.map(function (c) { return c.nodes.length; }));
-    var H = TOP + maxN * ROW + 8;
+    var lay = layout(g, focus);
     var width = g.columns.length * W + (g.columns.length - 1) * GAP;
-    var pos = new Map();
-    g.columns.forEach(function (c, ci) {
-      var slot = (H - TOP) / c.nodes.length;
-      c.nodes.forEach(function (n, i) {
-        pos.set(n.id, { x: ci * (W + GAP), y: TOP + slot * i + (slot - NH) / 2 });
-      });
-    });
-
-    var svg = '<svg class="graph" viewBox="0 0 ' + width + ' ' + H + '" width="' + width + '" height="' + H + '" aria-labelledby="graph-title">' +
-      '<title id="graph-title">Kopplingskarta från leveransdomän till system</title>';
+    var svg = '<svg class="graph" viewBox="0 0 ' + width + ' ' + lay.height + '" width="' + width + '" height="' + lay.height + '" aria-labelledby="graph-title">' +
+      '<title id="graph-title">Kopplingskarta från leveransdomän till IT-domän</title>';
     g.columns.forEach(function (c, ci) {
       svg += '<text class="graph-head" x="' + (ci * (W + GAP)) + '" y="14">' + esc(c.label) + '</text>';
     });
-    g.edges.forEach(function (ed) {
-      var a = pos.get(ed.from);
-      var b = pos.get(ed.to);
-      if (!a || !b) return;
-      var x1 = a.x + W;
-      var y1 = a.y + NH / 2;
-      var x2 = b.x;
-      var y2 = b.y + NH / 2;
+    if (lay.divider) {
+      svg += '<line class="graph-divider" x1="0" x2="' + width + '" y1="' + lay.divider + '" y2="' + lay.divider + '"/>' +
+        '<text class="graph-head" x="0" y="' + (lay.divider + 22) + '">Inte kopplade till ' + esc(sel.name) + '</text>';
+    }
+    svg += '<g class="edges">';
+    g.edges.forEach(function (ed, i) {
+      if (focus && !focus.edges.has(i)) return;
+      var p1 = lay.pos.get(ed.from);
+      var p2 = lay.pos.get(ed.to);
+      if (!p1 || !p2) return;
+      var x1 = p1.x + W;
+      var y1 = p1.y + NH / 2;
+      var x2 = p2.x;
+      var y2 = p2.y + NH / 2;
       var mx = (x1 + x2) / 2;
-      var on = r && ((r.up.has(ed.from) && r.up.has(ed.to)) || (r.down.has(ed.from) && r.down.has(ed.to)));
-      var cls = 'edge' + (ed.rel === 'primary' ? '' : ' support') + (r ? (on ? ' on' : ' off') : '');
-      svg += '<path class="' + cls + '" d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"/>';
+      svg += '<path class="edge' + (ed.rel === 'primary' ? '' : ' support') + (focus ? ' on' : '') + '" d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"/>';
     });
+    svg += '</g>';
     nodes.forEach(function (n) {
-      var p = pos.get(n.id);
-      var state = !r ? '' : n.id === sel.id ? ' sel' : r.up.has(n.id) || r.down.has(n.id) ? ' on' : ' off';
+      var p = lay.pos.get(n.id);
+      var state = !focus ? '' : n.id === sel.id ? ' sel' : focus.nodes.has(n.id) ? ' on' : ' off';
       var label = n.name + (n.issues.length ? '. Lucka: ' + n.issues.join(', ') : '');
-      svg += '<g class="gnode' + state + (n.issues.length ? ' issue' : '') + '" transform="translate(' + p.x + ' ' + p.y + ')" tabindex="0" role="button" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-action="graph-select" data-id="' + esc(n.id) + '">' +
+      svg += '<g class="gnode' + state + (n.issues.length ? ' issue' : '') + '" style="transform:translate(' + p.x + 'px,' + p.y + 'px)" data-x="' + p.x + '" data-y="' + p.y + '" tabindex="0" role="button" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-action="graph-select" data-id="' + esc(n.id) + '">' +
         '<title>' + esc(label) + '</title><rect width="' + W + '" height="' + NH + '" rx="6"/>' +
-        '<text x="10" y="' + (NH / 2 + 4) + '">' + esc(trunc(n.name, 23)) + '</text>' +
+        '<text x="10" y="' + (NH / 2 + 4) + '">' + esc(trunc(n.name, 22)) + '</text>' +
         (n.issues.length ? '<circle cx="' + (W - 10) + '" cy="' + NH / 2 + '" r="3.5"/>' : '') + '</g>';
     });
     svg += '</svg>';
 
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
-      '<div class="card-sub">Välj en ruta för att följa dess kopplingar uppåt och nedåt. Heldragen linje är primär, streckad är stödjande. En gul punkt betyder en lucka.</div></div>' +
-      (sel ? UI.btn('Rensa val', 'graph-clear', { cls: 'btn-sm' }) : '') + '</div>';
+    h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
+      '<div class="card-sub">' + (sel
+        ? 'Visar det som hör till ' + esc(sel.name) + ': ' + (focus.nodes.size - 1) + ' delar. Primära kopplingar följs hela vägen, streckade stödjande kopplingar visas men följs inte vidare.'
+        : 'Välj en ruta för att samla det som hör till den. Heldragen linje är primär koppling eller ansvar, streckad är stödjande. En gul punkt betyder en lucka.') + '</div></div>' +
+      (sel ? UI.btn('Visa hela kartan', 'graph-clear', { cls: 'btn-sm' }) : '') + '</div>';
     h += '<div class="graph-wrap">' + svg + '</div></section>';
 
     h += '<div class="grid-2">';
@@ -333,7 +370,8 @@
       list.forEach(function (x) {
         var n = byId.get(x[key]);
         if (!n) return;
-        h += '<div class="list-item" style="padding:6px 0">' + '<div class="grow">' + C.link(n.kind + ':' + n.refId, n.name) + '</div>' + C.relLabel(x.rel) + '</div>';
+        var rel = x.label ? (x.rel === 'primary' ? esc(x.label) : '<span class="quiet">' + esc(x.label) + '</span>') : C.relLabel(x.rel);
+        h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link(n.kind + ':' + n.refId, n.name) + '</div>' + rel + '</div>';
       });
       return h + '</div></div>';
     }
@@ -342,29 +380,61 @@
     if (sel.issues.length) h += '<div class="note warn" style="margin-bottom:14px">' + esc(sel.issues.join('. ')) + '.</div>';
     h += group(colIdx > 0 ? g.columns[colIdx - 1].label : '', ins, 'from');
     h += group(colIdx < g.columns.length - 1 ? g.columns[colIdx + 1].label : '', outs, 'to');
-    /* Team har också system och medlemmar som inte syns i kolumnkedjan. */
+    /* Teamets egna IT-domäner syns inte i kedjan, som går via systemen. */
     if (sel.col === 'team') {
-      var sys = e.teamSystems(sel.refId);
-      if (sys.length) {
-        h += '<div class="field-block" style="margin-bottom:14px"><span class="label">System som teamet arbetar med</span><div class="list">';
-        sys.forEach(function (x) {
-          h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link('systems:' + x.system.id, x.system.name) + '</div>' + C.objectiveLabel(x.link.objective) + '</div>';
+      var its = e.teamDomains(sel.refId).filter(function (x) { return x.domain.type === 'it'; });
+      if (its.length) {
+        h += '<div class="field-block" style="margin-bottom:14px"><span class="label">Teamets IT-domäner</span><div class="list">';
+        its.forEach(function (x) {
+          h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link('itDomains:' + x.domain.id, x.domain.name) + '</div>' + C.relLabel(x.relationship) + '</div>';
         });
         h += '</div></div>';
       }
       h += '<p class="muted small">' + e.teamMembers(sel.refId).length + ' medlemmar.</p>';
     }
-    if (sel.col === 'system') {
-      var teams = e.systemTeams(sel.refId);
-      if (teams.length) {
-        h += '<div class="field-block"><span class="label">Team</span><div class="list">';
-        teams.forEach(function (x) {
-          h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link('teams:' + x.team.id, x.team.name) + '</div>' + C.objectiveLabel(x.link.objective) + '</div>';
-        });
-        h += '</div></div>';
-      }
-    }
     return h || '<p class="muted">Inga kopplingar.</p>';
+  }
+
+  /* Rutorna glider från sin gamla plats till den nya när valet ändras. */
+  function capturePositions() {
+    var map = new Map();
+    document.querySelectorAll('.gnode').forEach(function (el) {
+      map.set(el.getAttribute('data-id'), { x: el.getAttribute('data-x'), y: el.getAttribute('data-y') });
+    });
+    return map;
+  }
+
+  function reduceMotion() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
+
+  function animateFrom(old) {
+    var svg = document.querySelector('.graph');
+    if (!svg || !old.size || reduceMotion()) return;
+    var moved = [];
+    svg.querySelectorAll('.gnode').forEach(function (el) {
+      var o = old.get(el.getAttribute('data-id'));
+      if (!o || (o.x === el.getAttribute('data-x') && o.y === el.getAttribute('data-y'))) return;
+      el.style.transition = 'none';
+      el.style.transform = 'translate(' + o.x + 'px,' + o.y + 'px)';
+      moved.push(el);
+    });
+    svg.getBoundingClientRect();
+    moved.forEach(function (el) {
+      el.style.transition = '';
+      el.style.transform = 'translate(' + el.getAttribute('data-x') + 'px,' + el.getAttribute('data-y') + 'px)';
+    });
+    var edges = svg.querySelector('.edges');
+    if (edges && moved.length) edges.classList.add('enter');
+  }
+
+  function focusNode(id, scroll) {
+    var el = document.querySelector('.gnode[data-id="' + id.replace(/"/g, '') + '"]');
+    if (el) el.focus({ preventScroll: true });
+    var section = document.getElementById('graph-section');
+    if (scroll && section && section.getBoundingClientRect().top < 0) {
+      section.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    }
   }
 
   /* ---------- Åtgärder ---------- */
@@ -372,14 +442,20 @@
   var A = OOS.actions;
   A['graph-select'] = function (el) {
     var id = el.getAttribute('data-id');
-    OOS.state.graphSel = OOS.state.graphSel === id && el.tagName !== 'BUTTON' ? null : id;
+    var fromList = el.tagName === 'BUTTON';
+    var old = capturePositions();
+    OOS.state.graphSel = OOS.state.graphSel === id && !fromList ? null : id;
     OOS.refresh();
-    var again = document.querySelector('.gnode[data-id="' + id.replace(/"/g, '') + '"]');
-    if (again) again.focus({ preventScroll: el.tagName !== 'BUTTON' });
+    animateFrom(old);
+    focusNode(id, true);
   };
   A['graph-clear'] = function () {
+    var old = capturePositions();
+    var prev = OOS.state.graphSel;
     OOS.state.graphSel = null;
     OOS.refresh();
+    animateFrom(old);
+    if (prev) focusNode(prev, false);
   };
   A['kpi-targets'] = function () {
     var t = Object.assign({}, OOSEngine.DEFAULT_TARGETS, S.db.settings.kpiTargets || {});
