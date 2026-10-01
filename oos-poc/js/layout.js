@@ -269,6 +269,44 @@ var OOSLayout = (function () {
     });
   }
 
+  /* ---------- Pilar mellan rutor ---------- */
+
+  /*
+   * En svg med data-connect ritar pilar mellan rutor i samma behållare, från rutornas
+   * faktiska läge efter layouten. Varje g[data-a][data-b] får en kurva från högerkanten av
+   * [data-node=a] till vänsterkanten av [data-node=b], och en pilspets. Görs om när bredden ändras.
+   * offsetLeft och offsetTop används, så att en pågående rörelse inte flyttar pilarna.
+   */
+  function offsetIn(el, box) {
+    var x = 0;
+    var y = 0;
+    while (el && el !== box) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; }
+    return { x: x, y: y };
+  }
+
+  function connect(scope) {
+    scope.querySelectorAll('svg[data-connect]').forEach(function (svg) {
+      if (!svg.getClientRects().length) return; /* dold i smal layout */
+      var box = svg.parentNode;
+      svg.setAttribute('viewBox', '0 0 ' + box.clientWidth + ' ' + box.clientHeight);
+      svg.querySelectorAll('g[data-a]').forEach(function (g) {
+        var a = box.querySelector('[data-node="' + g.getAttribute('data-a') + '"]');
+        var b = box.querySelector('[data-node="' + g.getAttribute('data-b') + '"]');
+        if (!a || !b) return;
+        var pa = offsetIn(a, box);
+        var pb = offsetIn(b, box);
+        var x0 = pa.x + a.offsetWidth;
+        var y0 = pa.y + a.offsetHeight / 2;
+        var x1 = pb.x - 7;
+        var y1 = pb.y + b.offsetHeight / 2;
+        var mx = (x0 + x1) / 2;
+        var r = function (v) { return Math.round(v * 10) / 10; };
+        g.querySelector('.cline').setAttribute('d', 'M' + r(x0) + ' ' + r(y0) + ' C' + r(mx) + ' ' + r(y0) + ' ' + r(mx) + ' ' + r(y1) + ' ' + r(x1) + ' ' + r(y1));
+        g.querySelector('.carrow').setAttribute('d', 'M' + r(x1) + ' ' + r(y1 - 4) + ' L' + r(x1 + 7) + ' ' + r(y1) + ' L' + r(x1) + ' ' + r(y1 + 4) + ' Z');
+      });
+    });
+  }
+
   /* ---------- Samlat ---------- */
 
   /* Anpassar allt i scope. reveal = true efter en omritning, så att vald flik rullas fram. */
@@ -281,6 +319,7 @@ var OOSLayout = (function () {
     fitTabs(scope, reveal);
     fitText(scope);
     markScrollable(scope);
+    connect(scope);
   }
 
   /*

@@ -593,6 +593,8 @@ var OOSUI = (function () {
     if (!tipEl) {
       tipEl = document.createElement('div');
       tipEl.className = 'tooltip';
+      /* Rutan visar samma text som elementets aria-label, så skärmläsare behöver den inte två gånger. */
+      tipEl.setAttribute('aria-hidden', 'true');
       tipEl.hidden = true;
       document.body.appendChild(tipEl);
     }

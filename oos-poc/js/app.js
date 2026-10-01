@@ -439,11 +439,26 @@
     if (OOS.inputs[name]) OOS.inputs[name](el, ev);
   });
 
+  /* En rullning flyttar innehållet under pekaren och ger en mousemove utan att pekaren rört sig.
+     Den ska inte stänga rutan som visas för det som har fokus. */
+  var pointer = { x: -1, y: -1 };
   document.addEventListener('mousemove', function (ev) {
+    if (ev.clientX === pointer.x && ev.clientY === pointer.y) return;
+    pointer.x = ev.clientX;
+    pointer.y = ev.clientY;
     var el = ev.target.closest && ev.target.closest('[data-tip]');
     if (el) UI.showTip(el, ev.clientX, ev.clientY);
     else UI.hideTip();
   });
+
+  /* Med tangentbordet visas samma ruta som när man pekar, under det som har fokus. */
+  document.addEventListener('focusin', function (ev) {
+    var el = ev.target;
+    if (!el.hasAttribute || !el.hasAttribute('data-tip') || !el.matches(':focus-visible')) return;
+    var r = el.getBoundingClientRect();
+    UI.showTip(el, r.left, r.bottom);
+  });
+  document.addEventListener('focusout', function () { UI.hideTip(); });
 
   function boot() {
     S.load();

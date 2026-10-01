@@ -99,8 +99,9 @@ var OOSMotion = (function () {
   /* ---------- Ögonblicksbild före omritning ---------- */
 
   function snapshot(scope) {
-    var snap = { bars: new Map(), cols: new Map(), marks: new Map(), rings: new Map(), nums: new Map(), rows: new Map() };
+    var snap = { bars: new Map(), cols: new Map(), marks: new Map(), rings: new Map(), nums: new Map(), rows: new Map(), charts: new Set() };
     if (!enabled() || !scope.firstChild) return snap;
+    scope.querySelectorAll('[data-chart]').forEach(function (el) { snap.charts.add(el.getAttribute('data-chart')); });
     keyed(scope, BARS, function (el, k) { snap.bars.set(k, el.style.width); });
     keyed(scope, '.col-bar', function (el, k) { snap.cols.set(k, el.style.height); });
     keyed(scope, '.bullet-mark', function (el, k) { snap.marks.set(k, el.style.left); });
@@ -146,6 +147,58 @@ var OOSMotion = (function () {
     });
     var graph = scope.querySelector('.graph');
     if (graph) drawEdges(graph, null, 200);
+    scope.querySelectorAll('[data-chart]').forEach(function (el) { drawChart(el, 220); });
+  }
+
+  /*
+   * Bilderna av arbetet byggs upp i den ordning man läser dem: staplarna växer ut från sitt
+   * startdatum, sedan ritas beroendena. I flödet ritas flödena ut kolumn för kolumn,
+   * från initiativ till team och vidare till kompetens.
+   */
+  function drawChart(el, delay) {
+    if (!enabled()) return;
+    var d = delay || 0;
+    if (el.classList.contains('gantt')) {
+      var bars = el.querySelectorAll('.gb');
+      if (bars.length) run(bars, { scaleX: [0, 1], duration: 620, delay: A.stagger(16, { start: d }), ease: 'out(4)' });
+      var today = el.querySelector('.g-today');
+      if (today) run(today, { opacity: [0, 1], translateY: [-6, 0], duration: 420, delay: d + 260, ease: EASE });
+      el.querySelectorAll('.dep').forEach(function (path, i) {
+        var at = d + 520 + i * 70;
+        run(path, { opacity: [0, 1], duration: 160, delay: at, ease: EASE });
+        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 560, delay: at, ease: 'inOut(2)' });
+      });
+    } else if (el.classList.contains('flow')) {
+      var nodes = el.querySelectorAll('.f-bar');
+      if (nodes.length) run(nodes, { scaleY: [0, 1], duration: 460, delay: A.stagger(14, { start: d }), ease: 'out(3)' });
+      el.querySelectorAll('.flink').forEach(function (path, i) {
+        var col = +path.getAttribute('data-c');
+        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 720, delay: d + 160 + col * 380 + (i % 24) * 8, ease: 'inOut(2)' });
+      });
+    } else if (el.classList.contains('chain')) {
+      /* Epiken först, sedan det den väntar på och det som väntar på den, sist pilarna mellan dem. */
+      var mid = el.querySelector('.chain-col.mid .chain-node');
+      if (mid) run(mid, { opacity: [0, 1], scale: [0.96, 1], duration: 380, delay: d, ease: EASE });
+      var sides = el.querySelectorAll('.chain-col.in .chain-node, .chain-col.out .chain-node, .chain-none');
+      if (sides.length) run(sides, { opacity: [0, 1], translateY: [6, 0], duration: 360, delay: A.stagger(60, { start: d + 140 }), ease: EASE });
+      var edgeSvg = el.querySelector('.chain-edges');
+      if (!edgeSvg || !edgeSvg.getClientRects().length) return; /* smal layout: pilarna är stilade linjer */
+      el.querySelectorAll('.cedge').forEach(function (g, i) {
+        var at = d + 320 + i * 80;
+        A.animate(A.svg.createDrawable(g.querySelector('.cline')), { draw: ['0 0', '0 1'], duration: 480, delay: at, ease: 'inOut(2)' });
+        run(g.querySelector('.carrow'), { opacity: [0, 1], duration: 160, delay: at + 400, ease: EASE });
+      });
+    }
+  }
+
+  /* Ett nytt val i flödet: flödena som hör till valet ritas ut på nytt, resten tonas ned. */
+  function focusFlow(svg) {
+    if (!enabled() || !svg) return;
+    svg.querySelectorAll('.flink.on, .flink.far').forEach(function (path) {
+      A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 520, delay: (+path.getAttribute('data-c')) * 200, ease: 'inOut(2)' });
+    });
+    var dim = svg.querySelectorAll('.flink.off, .fnode.off');
+    if (dim.length) run(dim, { opacity: [0.7, svg.classList.contains('focused') ? 0.12 : 1], duration: 360, ease: EASE });
   }
 
   /* ---------- Uppdatering: från gamla värden till nya ---------- */
@@ -187,6 +240,10 @@ var OOSMotion = (function () {
     if (fresh.length && fresh.length <= 15 && snap.rows.size) {
       run(fresh, { opacity: [0, 1], duration: 260, delay: A.stagger(25), ease: EASE });
     }
+    /* En bild med nytt innehåll (annan gruppering, period eller epik) byggs upp igen. */
+    scope.querySelectorAll('[data-chart]').forEach(function (el) {
+      if (!snap.charts.has(el.getAttribute('data-chart'))) drawChart(el, 60);
+    });
   }
 
   /* Det som står efter en fliklista. Är det en enda behållare animeras dess delar var för sig. */
@@ -275,6 +332,8 @@ var OOSMotion = (function () {
   }
 
   return {
+    drawChart: drawChart,
+    focusFlow: focusFlow,
     enabled: enabled,
     snapshot: snapshot,
     play: play,

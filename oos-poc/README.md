@@ -31,7 +31,7 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 | Rapporter | Kapacitet, belastning och ledig tid. Gruppera efter team, domän, leveransdomän eller kompetens och avgränsa urvalet med filter. Tabellen visar grupperna först och kompetenserna när man fäller ut dem. Diagrammet visar en stapel per grupp med talen i egna kolumner. Domänmoln och nyckelroller är en grupp var. Jämför med nästa period. Kan kopieras som CSV. |
 | Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista där ett klick på en rad fäller ut detaljerna direkt under den, med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
 | Initiativ | Satsningar som leveransdomänerna har beslutat. Detaljvyn visar vilka team som bär initiativet, deras beläggning och initiativets epiker. Ramen är summan av epikerna. |
-| Epiker | Teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik med löpande ram per månad. Den rymmer drift, rättningar, utbildning och kompetensspridning. Listan visar var tiden går per arbetstyp. Detaljvyn visar vem som gör jobbet (epikens timmar per kompetensområde, teamets läge i varje område och personerna med kompetensen), beroenden åt båda hållen med risker, och epiken period för period. |
+| Epiker | Teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik med löpande ram per månad. Den rymmer drift, rättningar, utbildning och kompetensspridning. Tre vyer: Lista (var tiden går per arbetstyp), Tidslinje (epikerna över tolv månader per team eller initiativ, med beroenden som bågar och flaskhalsar markerade) och Kopplingar (periodens arbete som flöden från initiativ via team till kompetensområde). Detaljvyn visar vem som gör jobbet (epikens timmar per kompetensområde, teamets läge i varje område och personerna med kompetensen), beroendekedjan åt båda hållen med risker, och epiken period för period som diagram och tabell. |
 | Flaskhalsar | Helhetsbilden: kompetensområden som är fulla i ett team och var samma kompetens finns ledig, luckor där teamet saknar kompetens, alla kompetensområden i organisationen, en matris team × område och beroenden med risk. |
 | Team | Lista och detaljvy med teamets arbete i perioden (epiker mot kapacitet), syfte, teamledare, domäner, system, medlemmar, kapacitet per kompetensområde och avdrag |
 | Arbetare | Lista med filter och detaljvy med kompetenser, team, domänroller och kapacitetsberäkning |
@@ -125,9 +125,10 @@ js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Nod
 js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
 js/select.js          rullistor och förslagslistor som ersätter webbläsarens
-js/motion.js          rörelse vid sidbyte, ändrad data och i kopplingskartan
-js/layout.js          anpassar tabeller, flikar och text efter den yta som finns, markerar sökträffar
+js/motion.js          rörelse vid sidbyte, ändrad data, i kopplingskartan och i bilderna av arbetet
+js/layout.js          anpassar tabeller, flikar och text efter den yta som finns, markerar sökträffar, ritar pilar mellan rutor
 js/views/work.js      initiativ, epiker, flaskhalsar och teamets arbetskort
+js/views/epicviz.js   tidslinje, kopplingar, beroendekedja och period för period för epikerna
 js/views/search.js    global sökning (Ctrl+K) över arbetare, team, domäner, system, initiativ, epiker och kompetenser
 js/vendor/            anime.js 4.5.0 (MIT), animationsbiblioteket som motion.js bygger på
 js/views/*.js         vyerna (insights.js: KPI:er, mätvärden och kopplingar)

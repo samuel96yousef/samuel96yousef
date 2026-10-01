@@ -71,6 +71,23 @@
 
   /* ---------- Epiker ---------- */
 
+  function timelineCard(ctx) {
+    var group = OOS.segVal('gantt-group', 'team');
+    var scope = OOS.segVal('gantt-scope', 'work');
+    return '<section class="card"><div class="card-head"><div><div class="card-title">Tidslinje</div>' +
+      '<div class="card-sub">Epikerna över tid, från två månader bakåt till nio framåt. Förvaltningen löper hela tiden och visas när du väljer Allt arbete.</div></div>' +
+      '<div class="row">' + UI.seg('gantt-group', [{ key: 'team', label: 'Per team' }, { key: 'initiative', label: 'Per initiativ' }], group) +
+      UI.seg('gantt-scope', [{ key: 'work', label: 'Utveckling och utredning' }, { key: 'all', label: 'Allt arbete' }], scope) + '</div></div>' +
+      OOS.epicViz.gantt(ctx, { group: group, scope: scope }) + '</section>';
+  }
+
+  function flowCard(ctx) {
+    return '<section class="card" id="flow-section"><div class="card-head"><div><div class="card-title">Kopplingar i ' + esc(ctx.period.inText) + '</div>' +
+      '<div class="card-sub">Varifrån arbetet kommer, vilket team som gör det och vilken kompetens det kräver. Tjockleken är timmar.</div></div>' +
+      (OOS.state.flowSel ? UI.btn('Visa allt', 'flow-clear', { cls: 'btn-sm' }) : '') + '</div>' +
+      OOS.epicViz.flow(ctx, OOS.state.flowSel) + '</section>';
+  }
+
   function epicList(ctx) {
     var e = ctx.e;
     var p = ctx.period;
@@ -97,6 +114,9 @@
       sub: 'Epiker är teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik för drift, utbildning och kompetensspridning. Ramen är den beslutade tiden, och det är den som belastar teamets kapacitet.',
       actions: UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-primary' })
     });
+    /* Tre sätt att se samma arbete: som lista, över tid med beroenden, och som flöde till kompetens. */
+    var view = OOS.tab('epics-view', 'list');
+    h += UI.tabs('epics-view', [{ key: 'list', label: 'Lista' }, { key: 'timeline', label: 'Tidslinje' }, { key: 'flow', label: 'Kopplingar' }], view);
     h += UI.facts([
       { label: 'Beslutat arbete i ' + p.inText, value: U.fmtH(decided), note: U.fmtPct(org.capacity ? (decided / org.capacity) * 100 : 0) + ' av teamens kapacitet' },
       { label: 'Utveckling', value: U.fmtPct(decided ? ((byType.development || 0) / decided) * 100 : 0), note: U.fmtH(byType.development || 0) + ' av arbetet' },
@@ -108,6 +128,9 @@
         'Utveckling bör gå att spåra till en beslutad satsning, annars syns inte varför tiden används: ' +
         untraced.map(function (r) { return C.epicRef(r.ep); }).join(', ') + '.</div>';
     }
+
+    if (view === 'timeline') return h + timelineCard(ctx);
+    if (view === 'flow') return h + flowCard(ctx);
 
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Var tiden går i ' + esc(p.inText) + '</div>' +
       '<div class="card-sub">Beslutat arbete per typ mot alla teams kapacitet. Domänmoln och nyckelroller ingår inte.</div></div></div>';
@@ -215,18 +238,9 @@
     var waiting = e.epicDependents(ep.id, ctx.period);
     var h = '<section class="card"><div class="card-head"><div><div class="card-title">Beroenden</div>' +
       '<div class="card-sub">Arbete som måste bli klart först, och arbete som väntar på den här epiken.</div></div></div>';
-    function item(x, dir) {
-      var t = e.get('teams', x.epic.teamId);
-      return '<div class="dep-row' + (x.risks.length ? ' has-risk' : '') + '"><div class="grow">' + C.epicRef(x.epic) +
-        '<div class="muted small">' + (t ? esc(t.name) + ' · ' : '') + esc(C.EPIC_STATUS[x.epic.status] || '') + ' · klar ' + U.fmtDate(x.epic.to) + '</div>' +
-        (x.risks.length ? '<ul class="risk-list">' + x.risks.map(function (r) { return '<li>' + esc(r.text) + '</li>'; }).join('') + '</ul>' : '') + '</div>' +
-        (x.risks.length ? UI.badge(dir === 'in' ? 'Risk' : 'Påverkas', 'warn') : '') + '</div>';
-    }
-    h += '<div class="dep-cols"><div><div class="dep-head">Väntar på</div>';
-    h += deps.length ? deps.map(function (x) { return item(x, 'in'); }).join('') : '<p class="muted small">Inget. Epiken kan göras utan att vänta på annat arbete.</p>';
-    h += '</div><div><div class="dep-head">Väntar på den här</div>';
-    h += waiting.length ? waiting.map(function (x) { return item(x, 'out'); }).join('') : '<p class="muted small">Inget annat arbete väntar på epiken.</p>';
-    return h + '</div></div></section>';
+    /* Kedjan bär allt: status, slutdatum och risk står i rutorna, så ingen lista upprepar dem. */
+    if (deps.length || waiting.length) return h + OOS.epicViz.chain(ep, deps, waiting, ctx) + '</section>';
+    return h + '<p class="muted small">Epiken väntar inte på annat arbete, och inget annat arbete väntar på den.</p></section>';
   }
 
   function epicDetail(ep, ctx) {
@@ -294,6 +308,7 @@
       var imp = counts ? null : C.epicImpact(ep, ep);
       var after = {};
       if (imp) imp.rows.forEach(function (r) { after[r.period.start] = r.after; });
+      main += OOS.epicViz.periodChart(ep, team, periods, ctx);
       main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Period</th><th class="num">Epiken</th><th class="num" data-opt="1">Teamets arbete</th><th class="num" data-opt="2">Kapacitet</th><th>Teamets beläggning</th>' +
         (imp ? '<th class="num">Om beslutad</th>' : '') + '</tr></thead><tbody>';
       periods.forEach(function (pp) {
@@ -632,6 +647,13 @@
       defaults.type = 'development';
     }
     C.forms.epic(null, defaults);
+  };
+  A['flow-clear'] = function () {
+    OOS.state.flowSel = null;
+    OOS.motion('quiet');
+    OOS.refresh();
+    var svg = document.querySelector('.flow');
+    if (svg) OOSMotion.focusFlow(svg);
   };
   A['epic-edit'] = function (el) { C.forms.epic(S.engine().get('epics', el.dataset.id)); };
   A['epic-delete'] = function (el) { C.removeEntity('epics', el.dataset.id, 'epics'); };

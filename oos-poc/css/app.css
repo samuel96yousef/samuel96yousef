@@ -4222,25 +4222,6 @@ p,
   min-width: 0;
 }
 
-.dep-cols {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 32px;
-}
-
-@container main (max-width: 720px) {
-  .dep-cols {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.dep-head {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--fg-2);
-  margin-bottom: 4px;
-}
-
 .dep-row {
   display: flex;
   align-items: flex-start;
@@ -4452,5 +4433,688 @@ p,
 @media (max-width: 960px), (pointer: coarse) {
   .nav-search kbd {
     display: none;
+  }
+}
+
+/* ---------- Bilder av arbetet (js/views/epicviz.js) ---------- */
+
+.chart-legend {
+  margin-bottom: 12px;
+}
+
+.chart-wrap {
+  margin-bottom: 4px;
+  /* Skugga i kanten som går att rulla mot, så att man ser att bilden fortsätter. */
+  background:
+    linear-gradient(to right, var(--bg) 40%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 40%, transparent) right / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--fg) 16%, transparent), transparent) left / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--fg) 16%, transparent), transparent) right / 12px 100% no-repeat scroll;
+}
+
+.sw-k.proposal {
+  background: none;
+  border: 1px dashed var(--fg-3);
+}
+
+.sw.other {
+  background: color-mix(in srgb, var(--bar) 35%, var(--bg));
+}
+
+.sw-line {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 1.5px solid var(--fg-3);
+}
+
+.sw-line.late {
+  border-top-color: var(--crit);
+}
+
+.sw-line.risk {
+  border-top-color: var(--warn);
+}
+
+.sw-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg-3);
+}
+
+.sw-dot.crit {
+  background: var(--crit);
+}
+
+.sw-line.today {
+  width: 0;
+  height: 12px;
+  border-top: 0;
+  border-left: 1.5px solid var(--fg);
+}
+
+.sw-line.cap {
+  border-top: 2px solid var(--fg);
+}
+
+.sw-line.thick {
+  border-top-width: 5px;
+  border-top-color: color-mix(in srgb, var(--bar) 30%, var(--bg));
+  border-radius: 2px;
+}
+
+.sw-line.thick.crit {
+  border-top-color: color-mix(in srgb, var(--crit) 55%, var(--bg));
+}
+
+/* Tidslinje */
+.gantt {
+  display: block;
+  font-family: var(--font);
+  max-width: none;
+}
+
+.g-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.g-current {
+  fill: var(--canvas);
+}
+
+.g-month {
+  font-size: 12px;
+  fill: var(--fg-3);
+}
+
+.g-month.cur {
+  fill: var(--fg);
+  font-weight: 600;
+}
+
+.g-rule {
+  stroke: var(--line);
+}
+
+.g-group {
+  cursor: pointer;
+  outline: none;
+}
+
+.g-group-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  fill: var(--fg);
+  letter-spacing: 0.01em;
+}
+
+.g-group:hover .g-group-name,
+.g-group:focus-visible .g-group-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.g-group-meta {
+  font-size: 12px;
+  fill: var(--fg-3);
+}
+
+.g-group-meta.warn {
+  fill: var(--warn);
+}
+
+.g-group-meta.crit {
+  fill: var(--crit);
+}
+
+.gbar {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s;
+}
+
+.g-hit {
+  fill: transparent;
+}
+
+.gbar:hover .g-hit,
+.gbar:focus-visible .g-hit {
+  fill: var(--hover);
+}
+
+.gbar:focus-visible .g-hit {
+  stroke: var(--fg-3);
+  stroke-width: 1;
+}
+
+.g-label {
+  font-size: 12.5px;
+  fill: var(--fg-2);
+}
+
+/* Smal tidslinje: namnet står ovanpå rutnätet, så det får en kant i bakgrundens färg. */
+.gantt.compact .g-label,
+.gantt.compact .g-group-name,
+.gantt.compact .g-group-meta {
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.gbar:hover .g-label,
+.gbar.on .g-label {
+  fill: var(--fg);
+}
+
+.gb {
+  fill: var(--bar);
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+.gbar.maintenance .gb {
+  fill: color-mix(in srgb, var(--bar) 62%, var(--bg));
+}
+
+.gbar.investigation .gb {
+  fill: color-mix(in srgb, var(--bar) 40%, var(--bg));
+}
+
+.gbar.proposed .gb {
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 2;
+}
+
+.gbar.done .gb {
+  opacity: 0.45;
+}
+
+.g-flag,
+.f-flag {
+  fill: var(--crit);
+}
+
+.g-today line {
+  stroke: var(--fg);
+  stroke-width: 1.5;
+}
+
+.g-today text {
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--fg);
+}
+
+.g-deps .dep {
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 1.4;
+  transition: opacity 0.2s, stroke-width 0.2s;
+}
+
+.g-arrow {
+  fill: var(--fg-3);
+}
+
+.g-arrow.risk {
+  fill: var(--warn);
+}
+
+.g-arrow.late {
+  fill: var(--crit);
+}
+
+/* Risk ritas i textens gula ton, inte markeringens, så att linjen syns mot ljus bakgrund. */
+.g-deps .dep.risk {
+  stroke: var(--warn);
+}
+
+.g-deps .dep.late {
+  stroke: var(--crit);
+}
+
+/* Pekar man på en epik lyser dess beroenden upp och resten tonas ned. */
+.gantt.hot .gbar:not(.on) {
+  opacity: 0.38;
+}
+
+.gantt.hot .dep:not(.on) {
+  opacity: 0.12;
+}
+
+.gantt.hot .dep.on {
+  stroke-width: 2.2;
+}
+
+/* Flöde */
+.flow {
+  display: block;
+  font-family: var(--font);
+  max-width: none;
+}
+
+.flink {
+  fill: none;
+  stroke: color-mix(in srgb, var(--bar) 22%, var(--bg));
+  stroke-linecap: butt;
+  transition: opacity 0.25s, stroke 0.15s;
+}
+
+.flink:hover {
+  stroke: color-mix(in srgb, var(--bar) 45%, var(--bg));
+}
+
+.flink.tight {
+  stroke: color-mix(in srgb, var(--crit) 45%, var(--bg));
+}
+
+.flink.tight:hover {
+  stroke: color-mix(in srgb, var(--crit) 70%, var(--bg));
+}
+
+.flink.gap {
+  stroke-dasharray: 6 3;
+}
+
+.flow.focused .flink.off {
+  opacity: 0.12;
+}
+
+.flow.focused .flink.far {
+  opacity: 0.45;
+}
+
+.flow.focused .flink.on:not(.tight) {
+  stroke: color-mix(in srgb, var(--bar) 55%, var(--bg));
+}
+
+.fnode {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.25s;
+}
+
+.f-hit {
+  fill: transparent;
+}
+
+.f-bar {
+  fill: var(--bar);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.f-label {
+  font-size: 12.5px;
+  fill: var(--fg);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.f-val {
+  fill: var(--fg-3);
+}
+
+.fnode:hover .f-label,
+.fnode:focus-visible .f-label {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fnode:focus-visible .f-hit {
+  stroke: var(--fg-3);
+  stroke-width: 1;
+}
+
+.fnode.sel .f-bar {
+  fill: var(--fg);
+}
+
+.fnode.sel .f-label {
+  font-weight: 650;
+}
+
+.flow.focused .fnode.off {
+  opacity: 0.3;
+}
+
+/* Beroendekedja på epiken: tre kolumner med pilar emellan, staplade i en smal ruta. */
+.chain {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) 44px minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.chain-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.chain-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chain-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-3);
+  margin-bottom: 8px;
+}
+
+.chain-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.chain-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg);
+  min-width: 0;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.chain-node[data-go] {
+  cursor: pointer;
+}
+
+.chain-node[data-go]:hover,
+.chain-node[data-go]:focus-visible {
+  border-color: var(--fg);
+  background: var(--hover);
+}
+
+.chain-node[data-go]:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--fg);
+}
+
+.chain-node.risk {
+  border-left: 3px solid var(--warn-mark);
+}
+
+.chain-node.late {
+  border-left: 3px solid var(--crit);
+}
+
+.chain-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--fg);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.chain-sub {
+  font-size: 12px;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+
+.chain-node.sel {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.chain-node.sel .chain-name {
+  color: var(--bg);
+}
+
+.chain-node.sel .chain-sub {
+  color: color-mix(in srgb, var(--bg) 72%, var(--fg));
+}
+
+.chain-risks {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chain-risks li {
+  position: relative;
+  padding-left: 12px;
+  color: var(--warn);
+}
+
+.chain-risks li.late {
+  color: var(--crit);
+}
+
+.chain-risks li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.chain-none {
+  font-size: 13px;
+  color: var(--fg-3);
+  padding: 10px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+}
+
+.cline {
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 1.5;
+}
+
+.carrow {
+  fill: var(--fg-3);
+}
+
+.cedge.risk .cline {
+  stroke: var(--warn);
+}
+
+.cedge.risk .carrow {
+  fill: var(--warn);
+}
+
+.cedge.late .cline {
+  stroke: var(--crit);
+}
+
+.cedge.late .carrow {
+  fill: var(--crit);
+}
+
+.chain-down {
+  visibility: hidden;
+}
+
+@container card (max-width: 560px) {
+  .chain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .chain-edges {
+    display: none;
+  }
+  .chain-down {
+    visibility: visible;
+    position: relative;
+    height: 30px;
+    margin: 4px 0;
+  }
+  .chain-down::before {
+    content: "";
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 6px;
+    border-left: 1.5px solid var(--fg-3);
+  }
+  .chain-down::after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    bottom: 0;
+    border: 4.5px solid transparent;
+    border-top: 7px solid var(--fg-3);
+    border-bottom: 0;
+  }
+  .chain-down.none {
+    height: 12px;
+  }
+  .chain-down.none::before,
+  .chain-down.none::after {
+    display: none;
+  }
+}
+
+/* Teamets arbete period för period */
+.pchart {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: clamp(6px, 1.2vw, 14px);
+  margin-bottom: 18px;
+}
+
+.pcol {
+  display: grid;
+  grid-template-rows: auto 150px auto;
+  gap: 6px;
+  text-align: center;
+  min-width: 0;
+  outline: none;
+  border-radius: 8px;
+  padding: 4px 2px;
+}
+
+.pcol:hover,
+.pcol:focus-visible {
+  background: var(--hover);
+}
+
+.pval {
+  font-size: 12px;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pval.warn {
+  color: var(--warn);
+}
+
+.pval.crit {
+  color: var(--crit);
+  font-weight: 600;
+}
+
+.pcol.current .pval:not(.warn):not(.crit) {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.pplot {
+  position: relative;
+  border-bottom: 1px solid var(--line-strong);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pstack {
+  position: relative;
+  width: min(36px, 70%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform-origin: center bottom;
+}
+
+.pstack > span {
+  display: block;
+  min-height: 0;
+  flex-basis: 0;
+}
+
+/* Det som går över kapaciteten ligger överst i stapeln, randigt rött. */
+.pstack > .pover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: 4px 4px 0 0;
+}
+
+.pmine {
+  background: var(--bar);
+}
+
+.pmine.proposal {
+  background: none;
+  border: 1px dashed var(--fg-3);
+  box-sizing: border-box;
+}
+
+.pother {
+  background: color-mix(in srgb, var(--bar) 35%, var(--bg));
+}
+
+.pstack > span:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.pover {
+  background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
+}
+
+.pcap {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 0;
+  border-top: 2px solid var(--fg);
+}
+
+.plabel {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.pcol.current .plabel {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gbar,
+  .flink,
+  .fnode,
+  .g-deps .dep {
+    transition: none;
   }
 }

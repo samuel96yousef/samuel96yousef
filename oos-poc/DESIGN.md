@@ -41,6 +41,9 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Kapacitetsstaplar | Stapelns längd är kapaciteten. Mörk del är belastat, ljus del ledigt och randig röd del det som är planerat utöver kapaciteten. Talen står i klartext med rubrik bredvid stapeln. Det finns inga markeringar som man måste gissa betydelsen av. |
 | Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. Menyn får plats utan att rulla ned till 680 px skärmhöjd: på låga skärmar blir raderna tätare och undertexten vid logotypen döljs. Är skärmen ännu lägre rullar bara grupperna, med en skugga i kanten, medan sök, inställningar och period står kvar. |
 | Arbetstyper | Utveckling, förvaltning och utredning skiljs åt med tre gråtoner, inte med färg. Förvaltningen står först på teamets arbetskort. Saknas den visas en streckad rad med en knapp för att lägga till den. Färgen är reserverad för det som är över kapaciteten. |
+| Tidslinje | Epikerna som tunna staplar på en tolv månaders axel, grupperade per team eller initiativ. Samma gråtoner som arbetstyperna, förslag streckade. Ett beroende är en båge från slutet av det som måste bli klart först till slutet av epiken som väntar: grå, gul vid risk och röd när beroendet blir klart för sent. En röd prick efter namnet betyder att teamet är fullt i ett område som epiken behöver. I en smal ruta står namnet ovanför stapeln. |
+| Kopplingar | Periodens arbete som flöden: varifrån det kommer, vilket team som gör det och vilken kompetens det kräver. Tjockleken är timmar. Flöden till ett område som är fullt i teamet är röda. Ett klick på en nod tonar ned allt som inte hänger ihop med den. På en telefon rullar bilden i sidled, med en skugga i kanten. |
+| Beroendekedja | Det epiken väntar på, epiken och det som väntar på den, som rutor med pilar emellan. Risken står i klartext i rutan, med gul eller röd kant. Kedjan ersätter listan, så att inget står två gånger. I en smal ruta staplas kolumnerna och pilarna pekar nedåt. |
 | Flaskhalsmatris | Team × kompetensområde med beläggning i procent. Neutral som standard, gul ruta från 90 % och röd över 100 % eller där teamet saknar kompetensen. Matrisen är till för att hitta avvikelser, inte för att läsa varje tal. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
@@ -152,12 +155,15 @@ Rörelsen ska få appen att kännas levande när man gör något, inte när man 
 | Ny post i en lista | Bara detaljvyn tonas fram. Listan står still. | 300 ms |
 | Ändrad data | Staplar, ringar och siffror glider från det gamla värdet till det nya. Tabellrader som byter plats glider dit. | 420–600 ms |
 | Kopplingskartan | Rutorna glider till sina nya platser med en lätt fjäder. Linjerna ritas ut från den valda rutan och utåt. Streckade linjer tonas in. | cirka 500 ms |
+| Tidslinjen | Staplarna växer ut från sitt startdatum, en i taget. Sedan ritas beroendebågarna. Pekar man på en epik lyser hela dess kedja upp, i flera led, och resten tonas ned. | 620 ms, bågar efter 0,5 s |
+| Kopplingarna | Noderna växer fram och flödena ritas kolumn för kolumn, från initiativ till team och vidare till kompetens. Vid ett val ritas de berörda flödena ut på nytt. | cirka 1,5 s totalt |
+| Beroendekedjan | Epiken först, sedan rutorna på var sida, sist pilarna mellan dem. | cirka 900 ms |
 | Dialog och notis | Tonas in och glider upp några pixlar. | 240–260 ms |
 | Sökning och bläddring | Ingen rörelse. Man skriver och läser samtidigt. | – |
 
 Regler:
 
-- Inget längre än 0,8 sekunder. Inga loopar. Ingen studs utöver fjädern i kartan.
+- Inget enskilt längre än 0,8 sekunder. En bild får byggas upp i steg, i den ordning man läser den. Inga loopar. Ingen studs utöver fjädern i kartan.
 - Rörelse visar varifrån något kommer: ett tal räknas från sitt gamla värde, en ruta glider från sin gamla plats.
 - Den som valt minskad rörelse i operativsystemet får inga animationer alls.
 - Animationen städar efter sig. När den är klar finns inga kvarvarande stilar i sidan.
@@ -172,6 +178,7 @@ Lugn får inte betyda svårläst. Kraven är:
 - Dialoger håller kvar fokus medan de är öppna och lämnar tillbaka det när de stängs. Esc stänger dem.
 - Vid sidbyte flyttas fokus till sidans rubrik och webbläsarens bakåtknapp fungerar.
 - Färg är aldrig enda bäraren av information. Avvikelser har också text, till exempel "118 %" eller "minskad".
+- Det som visas i en bild finns också i text: tidslinjens epiker i listan, kedjans risker i rutorna, perioddiagrammets tal i tabellen under. Rutan som visas när man pekar visas också när man ger elementet fokus med tangentbordet.
 - Inställningen för minskad rörelse respekteras helt.
 
 Kontrollera med axe eller webbläsarens tillgänglighetsverktyg innan något nytt läggs till.
