@@ -107,7 +107,7 @@
     var p = OOS.period();
     /* Fokus i menyn ska ligga kvar när menyn ritas om, till exempel efter byte av period. */
     var focusId = document.activeElement && nav.contains(document.activeElement) ? document.activeElement.id : null;
-    var h = '<div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div></div>';
+    var h = '<div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><div class="brand-name">Fabriken</div><div class="brand-sub">' + esc(S.db.settings.orgName) + ' · Prototyp 1</div></div></div>';
     h += '<button type="button" class="nav-search" id="nav-search" data-action="global-search" aria-keyshortcuts="Control+K Meta+K">' + UI.icon('search') + '<span>Sök</span><kbd>' + (IS_MAC ? '⌘K' : 'Ctrl K') + '</kbd></button>';
     h += '<div class="nav-groups">';
     NAV.forEach(function (g, gi) {
@@ -119,12 +119,12 @@
     h += '</div>';
     h += '<div class="nav-foot">';
     NAV.filter(function (g) { return g.foot; }).forEach(function (g) { g.items.forEach(function (i) { h += navItem(i); }); });
-    h += '<div class="nav-period" role="group" aria-label="Period">' +
-      '<div class="nav-period-label">Period</div><div class="nav-period-row">' +
+    /* Perioden styr alla siffror. Den står i foten, alltid synlig, utan egen rubrik för att spara höjd. */
+    h += '<div class="nav-period" role="group" aria-label="Period"><div class="nav-period-row">' +
       '<button type="button" class="btn-icon" id="nav-prev" data-action="period-shift" data-dir="-1" aria-label="Föregående period">' + UI.icon('arrowLeft') + '</button>' +
       '<strong aria-live="polite">' + esc(p.label) + '</strong>' +
       '<button type="button" class="btn-icon" id="nav-next" data-action="period-shift" data-dir="1" aria-label="Nästa period">' + UI.icon('arrowRight') + '</button></div></div>';
-    h += '<div class="nav-org">Prototyp 1 · ' + esc(S.db.settings.orgName) + ' (demodata)</div></div>';
+    h += '</div>';
     nav.innerHTML = h;
     if (focusId) {
       var again = document.getElementById(focusId);

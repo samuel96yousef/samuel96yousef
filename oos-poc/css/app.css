@@ -191,13 +191,13 @@ th.num {
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px 12px 16px;
+  gap: 12px;
+  padding: 16px 12px 12px;
   position: sticky;
   top: env(safe-area-inset-top, 0px);
   height: 100vh;
   height: 100dvh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brand {
@@ -236,17 +236,31 @@ th.num {
 /*
  * Grupperna: en rubrik i versaler som inte går att förväxla med ett menyval,
  * och en linje mellan grupperna så att det syns var en grupp slutar.
+ * Menyn ska få plats utan att rulla. Bara på mycket låga skärmar rullar grupperna,
+ * medan sök, period och inställningar står kvar.
  */
 .nav-groups {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: -12px;
+  padding-inline: 12px;
+  scrollbar-width: thin;
+  /* Skugga i kanten bara när listan rullar, så att det syns att det finns mer. */
+  background:
+    linear-gradient(var(--bg) 30%, transparent) top / 100% 20px no-repeat local,
+    linear-gradient(transparent, var(--bg) 70%) bottom / 100% 20px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--line-strong), transparent) top / 100% 8px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--line-strong), transparent) bottom / 100% 8px no-repeat scroll;
 }
 
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 12px 0;
+  gap: 0;
+  padding: 8px 0;
 }
 
 .nav-group + .nav-group {
@@ -258,19 +272,20 @@ th.num {
 }
 
 .nav-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--fg-3);
-  padding: 4px 10px 6px;
+  padding: 2px 10px 4px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 8px 7px 10px;
+  padding: 6px 8px 6px 10px;
+  line-height: 1.45;
   border-radius: 8px;
   border: 0;
   background: none;
@@ -343,28 +358,20 @@ th.num {
 }
 
 .nav-foot {
-  margin-top: auto;
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   border-top: 1px solid var(--line);
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 /* Perioden styr alla siffror i appen, därför går den att byta direkt här. */
 .nav-period {
-  padding: 8px 6px 8px 10px;
+  padding: 2px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--canvas);
-}
-
-.nav-period-label {
-  font-size: 11.5px;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--fg-3);
 }
 
 .nav-period-row {
@@ -379,12 +386,6 @@ th.num {
   font-weight: 600;
   font-size: 14.5px;
   white-space: nowrap;
-}
-
-.nav-org {
-  padding: 0 10px;
-  font-size: 12px;
-  color: var(--fg-3);
 }
 
 .topbar {
@@ -4398,5 +4399,58 @@ p,
 @media (prefers-reduced-motion: reduce) {
   .row-chev {
     transition: none;
+  }
+}
+
+/* ---------- Menyn på låga skärmar: tätare rader, så att allt får plats utan att rulla ---------- */
+
+@media (max-height: 860px) {
+  .nav {
+    gap: 10px;
+    padding-top: 12px;
+  }
+  .nav .brand-sub {
+    display: none;
+  }
+  .nav-group {
+    padding-block: 6px;
+  }
+  .nav-item {
+    padding-block: 4px;
+  }
+  .nav-search {
+    padding-block: 5px;
+  }
+}
+
+@media (max-height: 720px) {
+  .nav {
+    gap: 8px;
+    padding-block: 10px 8px;
+  }
+  .nav-group {
+    padding-block: 4px;
+  }
+  .nav-label {
+    padding-block: 0 2px;
+  }
+  .nav-item {
+    padding-block: 3px;
+    font-size: 13.5px;
+  }
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .nav-period .btn-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Kortkommandot betyder inget på pekskärm. */
+@media (max-width: 960px), (pointer: coarse) {
+  .nav-search kbd {
+    display: none;
   }
 }
