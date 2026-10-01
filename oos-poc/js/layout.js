@@ -81,7 +81,8 @@ var OOSLayout = (function () {
     };
     if (on === table.hasAttribute('role')) return;
     set(table, 'table');
-    Array.prototype.forEach.call(table.querySelectorAll('thead, tbody'), function (g) { set(g, 'rowgroup'); });
+    /* Bara tabellens egna delar. En tabell kan innehålla en annan, till exempel i en utfälld rad. */
+    [table.tHead].concat(Array.prototype.slice.call(table.tBodies)).filter(Boolean).forEach(function (g) { set(g, 'rowgroup'); });
     Array.prototype.forEach.call(table.rows, function (tr) {
       set(tr, 'row');
       Array.prototype.forEach.call(tr.cells, function (c) { set(c, c.tagName === 'TH' ? 'columnheader' : 'cell'); });

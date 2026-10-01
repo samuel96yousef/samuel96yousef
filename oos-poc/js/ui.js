@@ -239,6 +239,12 @@ var OOSUI = (function () {
       });
     }
     var size = cfg.pageSize || 10;
+    /* En rad som öppnas utifrån (länk eller sökning) ska synas: hoppa till sidan där den står. */
+    if (cfg.expand && cfg.expandedId && st.openId !== cfg.expandedId && cfg.pageSize !== 0) {
+      var at = rows.map(function (r) { return r.id; }).indexOf(cfg.expandedId);
+      if (at >= 0) st.page = Math.floor(at / size) + 1;
+    }
+    st.openId = cfg.expandedId || null;
     var pages = Math.max(1, Math.ceil(rows.length / size));
     if (st.page > pages) st.page = pages;
     var from = (st.page - 1) * size;
@@ -277,14 +283,25 @@ var OOSUI = (function () {
         ? esc('Inga träffar på "' + st.q + '".') + ' <button type="button" class="link-btn" data-action="tbl-clear" data-table="' + esc(cfg.id) + '">Rensa sökningen</button>'
         : esc(cfg.emptyText || 'Inget att visa ännu.')) + '</div></td></tr>';
     }
+    /*
+     * Utfällbara rader (cfg.expand): ett klick på raden visar detaljerna direkt under den, i stället
+     * för längre ned på sidan. Ett klick till fäller ihop. Bara en rad är öppen åt gången.
+     */
     shown.forEach(function (r) {
       var click = cfg.rowGo ? cfg.rowGo(r) : null;
-      var sel = cfg.selectedId && r.id === cfg.selectedId;
-      h += '<tr class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + (cfg.rowClass ? ' ' + cfg.rowClass(r) : '') + '"' + (click ? ' data-go="' + esc(click) + '" tabindex="0"' : '') + (sel ? ' aria-current="true"' : '') + '>';
-      cfg.columns.forEach(function (c) {
-        h += '<td class="' + (c.cls || '') + '">' + c.render(r) + '</td>';
+      var open = !!(cfg.expand && cfg.expandedId === r.id);
+      var sel = open || (cfg.selectedId && r.id === cfg.selectedId);
+      h += '<tr' + (cfg.expand ? ' id="row-' + esc(cfg.id) + '-' + esc(r.id) + '"' : '') + ' class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + (cfg.expand ? ' expandable' : '') + (open ? ' is-open' : '') + (cfg.rowClass ? ' ' + cfg.rowClass(r) : '') + '"' +
+        (click ? ' data-go="' + esc(click) + '" tabindex="0"' : '') + (sel && !cfg.expand ? ' aria-current="true"' : '') + '>';
+      cfg.columns.forEach(function (c, ci) {
+        /* aria-expanded är inte tillåtet på en vanlig tabellrad. Läget läses upp som text i stället. */
+        var chev = cfg.expand && ci === 0 ? '<span class="row-chev" aria-hidden="true">' + icon('chevronRight') + '</span>' + (open ? '<span class="sr-only">Utfälld: </span>' : '') : '';
+        h += '<td class="' + (c.cls || '') + (chev ? ' has-chev' : '') + '">' + chev + c.render(r) + '</td>';
       });
       h += '</tr>';
+      if (open) {
+        h += '<tr class="row-open"><td class="row-open-cell" colspan="' + cfg.columns.length + '"><div class="row-open-body">' + cfg.expand(r) + '</div></td></tr>';
+      }
     });
     h += '</tbody></table></div>';
     if (cfg.pageSize !== 0) {

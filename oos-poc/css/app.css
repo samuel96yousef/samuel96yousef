@@ -669,7 +669,7 @@ th.num {
   padding-right: var(--card-pad);
 }
 
-.card .tbl.stacked tr {
+.card .tbl.stacked > * > tr {
   padding-inline: var(--card-pad);
 }
 
@@ -678,11 +678,11 @@ th.num {
   padding-inline: 0;
 }
 
-.card .tbl.stacked td.actions {
+.card .tbl.stacked > * > tr > td.actions {
   right: calc(var(--card-pad) - 8px);
 }
 
-.card .tbl.stacked td:first-child {
+.card .tbl.stacked > * > tr > td:first-child {
   padding-right: 44px;
 }
 
@@ -953,8 +953,8 @@ table.tbl {
   display: contents;
 }
 
-.tbl.hide-2 .opt-2,
-.tbl.hide-1 .opt-1 {
+.tbl.hide-2 > * > tr > .opt-2,
+.tbl.hide-1 > * > tr > .opt-1 {
   display: none;
 }
 
@@ -984,11 +984,11 @@ table.tbl {
 
 /* Smal yta: varje rad blir ett kort med etikett till vänster och värde till höger. */
 .tbl.stacked,
-.tbl.stacked tbody {
+.tbl.stacked > tbody {
   display: block;
 }
 
-.tbl.stacked thead {
+.tbl.stacked > thead {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -997,11 +997,11 @@ table.tbl {
   white-space: nowrap;
 }
 
-.tbl.stacked tbody {
+.tbl.stacked > tbody {
   border-top: 1px solid var(--line);
 }
 
-.tbl.stacked tr {
+.tbl.stacked > * > tr {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1010,7 +1010,7 @@ table.tbl {
   border-bottom: 1px solid var(--line);
 }
 
-.tbl.stacked td {
+.tbl.stacked > * > tr > td {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1022,7 +1022,7 @@ table.tbl {
   white-space: normal;
 }
 
-.tbl.stacked td[data-label]::before {
+.tbl.stacked > * > tr > td[data-label]::before {
   content: attr(data-label);
   flex: none;
   max-width: 45%;
@@ -1031,55 +1031,55 @@ table.tbl {
   font-weight: 400;
 }
 
-.tbl.stacked td > .cv {
+.tbl.stacked > * > tr > td > .cv {
   display: block;
   min-width: 0;
   text-align: right;
   overflow-wrap: break-word;
 }
 
-.tbl.stacked td > .cv:has(.bar) {
+.tbl.stacked > * > tr > td > .cv:has(.bar) {
   flex: 1 1 auto;
   max-width: 62%;
 }
 
-.tbl.stacked td:first-child {
+.tbl.stacked > * > tr > td:first-child {
   justify-content: flex-start;
   padding-right: 44px;
   font-weight: 500;
 }
 
-.tbl.stacked td:first-child::before,
-.tbl.stacked td.actions::before {
+.tbl.stacked > * > tr > td:first-child::before,
+.tbl.stacked > * > tr > td.actions::before {
   content: none;
 }
 
-.tbl.stacked td:first-child > .cv {
+.tbl.stacked > * > tr > td:first-child > .cv {
   text-align: left;
 }
 
-.tbl.stacked td.actions {
+.tbl.stacked > * > tr > td.actions {
   position: absolute;
   top: 8px;
   right: 4px;
 }
 
-.tbl.stacked td.desc {
+.tbl.stacked > * > tr > td.desc {
   min-width: 0;
 }
 
-.tbl.stacked tbody tr.clickable:hover td,
-.tbl.stacked tbody tr.clickable:focus-visible td,
-.tbl.stacked tbody tr.selected td {
+.tbl.stacked > tbody > tr.clickable:hover > td,
+.tbl.stacked > tbody > tr.clickable:focus-visible > td,
+.tbl.stacked > tbody > tr.selected > td {
   background: none;
 }
 
-.tbl.stacked tbody tr.clickable:hover,
-.tbl.stacked tbody tr.clickable:focus-visible {
+.tbl.stacked > tbody > tr.clickable:hover,
+.tbl.stacked > tbody > tr.clickable:focus-visible {
   background: var(--hover);
 }
 
-.tbl.stacked tbody tr.selected {
+.tbl.stacked > tbody > tr.selected {
   background: var(--selected);
 }
 
@@ -4279,4 +4279,87 @@ p,
   background: var(--crit-soft);
   color: var(--crit);
   font-weight: 600;
+}
+
+/* ---------- Utfällbara rader: detaljerna visas direkt under raden man klickar på ---------- */
+
+.tbl td.has-chev > .cv,
+.tbl td.has-chev {
+  white-space: nowrap;
+}
+
+.row-chev {
+  display: inline-flex;
+  vertical-align: middle;
+  width: 18px;
+  margin: 0 6px 0 -4px;
+  color: var(--fg-3);
+  transition: transform 0.15s ease;
+}
+
+.row-chev .icon,
+.row-chev svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tbl tr.is-open .row-chev {
+  transform: rotate(90deg);
+  color: var(--fg);
+}
+
+.tbl > tbody > tr.is-open > td {
+  border-bottom-color: transparent;
+}
+
+.tbl tr.is-open {
+  scroll-margin-top: 16px;
+}
+
+@media (max-width: 960px) {
+  .tbl tr.is-open {
+    scroll-margin-top: 72px;
+  }
+}
+
+/* Raden med detaljerna: en grå yta med detaljkortet i, som en låda som dragits ut ur listan. */
+.card .tbl > tbody > tr.row-open > td.row-open-cell {
+  padding: 0;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
+}
+
+/* width: 0 + min-width: 100 % gör att innehållet inte kan göra tabellen bredare. */
+.row-open-body {
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 12px clamp(8px, 1.4vw, 16px) 16px;
+  white-space: normal;
+}
+
+.row-open-body > .card {
+  margin: 0;
+}
+
+.tbl.stacked > tbody > tr.row-open,
+.card .tbl.stacked > tbody > tr.row-open {
+  padding: 0;
+  display: block;
+}
+
+.tbl.stacked > tbody > tr.row-open > td.row-open-cell {
+  display: block;
+  padding: 0;
+  font-weight: 400;
+}
+
+.tbl.stacked > tbody > tr.row-open > td.row-open-cell::before {
+  content: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-chev {
+    transition: none;
+  }
 }

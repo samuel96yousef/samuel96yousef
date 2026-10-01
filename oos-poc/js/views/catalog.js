@@ -26,7 +26,6 @@
     var withComp = new Set(S.db.workerCompetences.map(function (x) { return x.workerId; })).size;
     var tab = OOS.tab('competences', 'all');
     var selected = ctx.id ? e.get('competences', ctx.id) : null;
-    if (!selected && tab === 'all' && rows.length) selected = rows.slice().sort(function (a, b) { return U.byName(a.c, b.c); })[0].c;
     /* Samma definition som signalen på översikten: exakt en person på nivå 3–4. */
     var risky = rows.filter(function (r) { return r.advanced === 1; }).length;
 
@@ -41,15 +40,16 @@
       UI.kpi('Bärs av en person', risky, 'Bara en person på nivå 3–4') +
       '</div>';
 
-    h += '<div class="split"><section class="card">';
+    h += '<section class="card">';
     h += UI.tabs('competences', [{ key: 'all', label: 'Alla kompetenser' }, { key: 'categories', label: 'Kompetenskategorier' }], tab);
     if (tab === 'all') {
       h += UI.table({
         id: 'tbl-comp',
         rows: rows,
         search: { placeholder: 'Sök kompetens, kategori …', text: function (r) { return [r.c.category, r.c.description, r.c.details].join(' '); } },
-        rowGo: function (r) { return 'competences:' + r.id; },
-        selectedId: selected ? selected.id : null,
+        rowGo: function (r) { return selected && r.id === selected.id ? 'competences' : 'competences:' + r.id; },
+        expand: function (r) { return panel(r.c, ctx, capBy.get(r.id) || 0); },
+        expandedId: selected ? selected.id : null,
         defaultSort: 'name',
         noun: 'kompetenser',
         columns: [
@@ -83,7 +83,6 @@
       });
     }
     h += '</section>';
-    h += '<aside class="side-panel">' + (selected ? panel(selected, ctx, capBy.get(selected.id) || 0) : '<section class="card card-body muted">Välj en kompetens i listan.</section>') + '</aside></div>';
     return h;
   };
 
@@ -162,8 +161,9 @@
             .join(' ');
         }
       },
-      rowGo: function (r) { return 'systems:' + r.id; },
-      selectedId: selected ? selected.id : null,
+      rowGo: function (r) { return selected && r.id === selected.id ? 'systems' : 'systems:' + r.id; },
+      expand: function (r) { return systemDetail(r.s, ctx); },
+      expandedId: selected ? selected.id : null,
       defaultSort: 'name',
       noun: 'system',
       columns: [
@@ -175,7 +175,6 @@
         { key: 'status', label: 'Status', opt: 1, sort: function (r) { return r.s.status; }, render: function (r) { return UI.statusBadge(r.s.status); } }
       ]
     }) + '</section>';
-    if (selected) h += systemDetail(selected, ctx);
     return h;
   };
 

@@ -85,6 +85,8 @@ Alla detaljsidor har samma ordning, så att man vet var man ska titta:
 4. **Huvudinnehåll** till vänster: det man arbetar med, till exempel var tiden går, medlemmar eller kompetenser.
 5. **Uppgifter** i en smalare spalt till höger: egenskaper, kopplingar och ägare. Under 900 px hamnar spalten under huvudinnehållet.
 
+**Listor med detaljer** (domäner, system och kompetenser) fäller ut detaljerna direkt under raden man klickar på. Raden rullas upp överst, så att detaljerna syns utan att man letar längre ned på sidan. Ett klick till fäller ihop raden, och bara en rad är öppen åt gången. En pil framför namnet visar att raden går att fälla ut. Detaljerna ligger som ett kort på en grå yta, som en låda som dragits ut ur listan. En länk från en annan sida öppnar rätt rad, på rätt sida i listan. Team, arbetare, epiker och initiativ har egna detaljsidor, eftersom de innehåller mer.
+
 Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den tillgängliga tiden" och fälls ut när någon vill veta.
 
 Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan.

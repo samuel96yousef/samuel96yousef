@@ -146,6 +146,8 @@
   var motionHint = 'nav';
   var motionTabs = null;
 
+  var lastOpenRow = null;
+
   function render() {
     var main = document.getElementById('main-inner');
     var hint = motionHint || 'update';
@@ -173,6 +175,14 @@
     OOSLayout.fit(main, true);
     var tablist = tabsId && main.querySelector('[data-tabs="' + tabsId + '"]');
     OOSMotion.play(main, snap, hint, tablist ? tablist.closest('[role="tablist"]') : null);
+    /* En rad som just fällts ut rullas upp överst, så att detaljerna syns utan att man rullar själv. */
+    var openRow = main.querySelector('tr.is-open[id]');
+    var openKey = openRow ? openRow.id : null;
+    if (openRow && openKey !== lastOpenRow) {
+      var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      openRow.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' });
+    }
+    lastOpenRow = openKey;
     document.title = (PAGES[st.page] ? PAGES[st.page].label + ' · ' : '') + 'Fabriken';
     if (focusId) {
       var el = document.getElementById(focusId);
@@ -236,16 +246,16 @@
     else motionHint = 'nav';
     render();
     if (changed && !opts.fromHistory) remember(currentTarget());
-    if (samePage && LIST_DETAIL[page] && st.id) {
-      var d = document.getElementById('detail');
-      if (d && d.getBoundingClientRect().top > window.innerHeight - 120) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else if (changed) {
-      window.scrollTo(0, 0);
-      /* Flytta fokus till sidans rubrik så att skärmläsare och tangentbord följer med. */
+    /* En utfälld rad har render() redan rullat fram. Annars börjar en ny sida överst. */
+    var openRow = document.querySelector('#main-inner tr.is-open[id]');
+    if (changed && !(samePage && LIST_DETAIL[page])) {
+      if (!openRow) window.scrollTo(0, 0);
+      /* Flytta fokus till den utfällda raden eller sidans rubrik, så att skärmläsare och tangentbord följer med. */
       var h1 = document.querySelector('#main-inner h1');
-      if (h1) {
-        h1.setAttribute('tabindex', '-1');
-        h1.focus({ preventScroll: true });
+      var target = openRow || h1;
+      if (target) {
+        if (target === h1) h1.setAttribute('tabindex', '-1');
+        target.focus({ preventScroll: true });
       }
     }
   };

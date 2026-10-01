@@ -29,14 +29,14 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 | Översikt | Nyckeltal, signaler, kapacitet per leveransdomän, fabrikskarta och senaste ändringar |
 | Insikter | Tre flikar. **KPI:er** visar åtta nyckeltal med målnivåer och status; målen kan ändras. **Mätvärden** visar kapacitet över tid, kompetensmatris, beläggning per team, kapacitetens sammansättning och kompetensdjup. **Kopplingar** är en karta från leveransdomän via verksamhetsdomän, team och system till IT-domän. När man väljer en ruta samlas det som hör till den överst och resten tonas ned. Primära kopplingar följs hela vägen; stödjande visas men följs inte vidare. Luckor markeras. |
 | Rapporter | Kapacitet, belastning och ledig tid. Gruppera efter team, domän, leveransdomän eller kompetens och avgränsa urvalet med filter. Tabellen visar grupperna först och kompetenserna när man fäller ut dem. Diagrammet visar en stapel per grupp med talen i egna kolumner. Domänmoln och nyckelroller är en grupp var. Jämför med nästa period. Kan kopieras som CSV. |
-| Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista och detaljvy med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
+| Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista där ett klick på en rad fäller ut detaljerna direkt under den, med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
 | Initiativ | Satsningar som leveransdomänerna har beslutat. Detaljvyn visar vilka team som bär initiativet, deras beläggning och initiativets epiker. Ramen är summan av epikerna. |
 | Epiker | Teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik med löpande ram per månad. Den rymmer drift, rättningar, utbildning och kompetensspridning. Listan visar var tiden går per arbetstyp. Detaljvyn visar vem som gör jobbet (epikens timmar per kompetensområde, teamets läge i varje område och personerna med kompetensen), beroenden åt båda hållen med risker, och epiken period för period. |
 | Flaskhalsar | Helhetsbilden: kompetensområden som är fulla i ett team och var samma kompetens finns ledig, luckor där teamet saknar kompetens, alla kompetensområden i organisationen, en matris team × område och beroenden med risk. |
 | Team | Lista och detaljvy med teamets arbete i perioden (epiker mot kapacitet), syfte, teamledare, domäner, system, medlemmar, kapacitet per kompetensområde och avdrag |
 | Arbetare | Lista med filter och detaljvy med kompetenser, team, domänroller och kapacitetsberäkning |
-| Kompetenser | Lista, kategorier, nivåer och vilka som bär kunskapen |
-| System | Ansvarigt team och IT-domän per system |
+| Kompetenser | Lista, kategorier, nivåer och vilka som bär kunskapen. Ett klick på en kompetens fäller ut detaljerna under raden. |
+| System | Ansvarigt team och IT-domän per system. Ett klick på ett system fäller ut detaljerna under raden. |
 | Kapacitet | Standardarbetstid, rapporteringsperiod, grundavdrag och särskilda avdrag per team |
 | Inställningar | Belastningens källa (epiker eller manuellt), data och ändringslogg |
 

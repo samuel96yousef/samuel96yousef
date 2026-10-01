@@ -74,7 +74,8 @@
         dd: isDd(kind) ? null : e.deliveryDomainOfDomain(r.id)
       };
     });
-    var selectedId = ctx.id || (rows.slice().sort(function (a, b) { return U.byName(a.rec, b.rec); })[0] || {}).id;
+    /* Den rad som är utfälld. Ingen från början: listan ger överblick, ett klick visar detaljerna. */
+    var openId = ctx.id && rows.some(function (r) { return r.id === ctx.id; }) ? ctx.id : null;
     var totalTeams = isDd(kind) ? S.db.teams.length : new Set(rows.reduce(function (acc, r) {
       return acc.concat(e.teamsOfDomain(r.id).filter(function (t) { return t.relationship === 'primary'; }).map(function (t) { return t.team.id; }));
     }, [])).size;
@@ -122,14 +123,12 @@
           return [r.rec.purpose, owner ? owner.name : ''].join(' ');
         }
       },
-      rowGo: function (r) { return kind + ':' + r.id; },
-      selectedId: selectedId,
+      rowGo: function (r) { return r.id === openId ? kind : kind + ':' + r.id; },
+      expand: function (r) { return detail(kind, r.rec, ctx); },
+      expandedId: openId,
       defaultSort: 'name',
       noun: k.title.toLowerCase()
     }) + '</section>';
-
-    var sel = e.get(k.coll, selectedId);
-    if (sel) h += detail(kind, sel, ctx);
     return h;
   }
 
