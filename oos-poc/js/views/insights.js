@@ -130,7 +130,7 @@
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Kompetensmatris</div>' +
       '<div class="card-sub">Timmar per kompetensområde i ' + esc(ctx.period.inText) + '. Mörkare ruta betyder fler timmar.</div></div>' +
       UI.seg('matrix-rows', [{ key: 'team', label: 'Per team' }, { key: 'delivery', label: 'Per leveransdomän' }], rowsBy) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl heat"><thead><tr><th>' + (rowsBy === 'team' ? 'Team' : 'Leveransdomän') + '</th>';
+    h += '<div class="table-wrap"><table class="tbl heat" data-fit="scroll"><thead><tr><th>' + (rowsBy === 'team' ? 'Team' : 'Leveransdomän') + '</th>';
     m.cols.forEach(function (c) { h += '<th class="num heat-col">' + esc(c.name) + '</th>'; });
     h += '<th class="num">Totalt</th></tr></thead><tbody>';
     m.rows.forEach(function (r) {
@@ -204,14 +204,51 @@
 
   /* ---------- Kopplingar ---------- */
 
-  var W = 164;
-  var GAP = 60;
-  var NH = 26;
-  var ROW = 34;
-  var TOP = 36;
+  /* Under den här bredden visas kartan som nivåer uppifrån och ned i stället för som karta. */
+  var MAP_MIN = 640;
+
+  /*
+   * Kartans mått räknas fram ur den bredd som finns, så att den alltid får plats utan att rulla.
+   * Smala rutor får två rader text i stället för att namnen kortas.
+   */
+  function geometry(avail, cols) {
+    var gap = Math.round(Math.max(28, Math.min(64, avail * 0.05)));
+    var w = Math.floor(Math.min(220, (avail - (cols - 1) * gap) / cols));
+    var chars = Math.floor((w - 22) / 6.6);
+    var lines = chars < 22 ? 2 : 1;
+    var nh = lines === 2 ? 40 : 26;
+    return { W: w, GAP: gap, NH: nh, ROW: nh + 8, TOP: 36, chars: chars, lines: lines };
+  }
 
   function trunc(s, n) {
     return s.length > n ? s.slice(0, n - 1) + '…' : s;
+  }
+
+  /*
+   * Delar ett namn på högst max rader om högst chars tecken. Långa sammansatta ord avstavas
+   * när det finns fler rader. Det som ändå inte får plats kortas med …
+   */
+  function labelLines(s, chars, max) {
+    if (s.length <= chars) return [s];
+    var lines = [];
+    var cur = '';
+    s.split(' ').forEach(function (word) {
+      while (max > 1 && word.length > chars) {
+        if (cur) lines.push(cur);
+        cur = '';
+        lines.push(word.slice(0, chars - 1) + '-');
+        word = word.slice(chars - 1);
+      }
+      if (!cur) cur = word;
+      else if ((cur + ' ' + word).length <= chars) cur += ' ' + word;
+      else {
+        lines.push(cur);
+        cur = word;
+      }
+    });
+    if (cur) lines.push(cur);
+    if (lines.length > max) lines = lines.slice(0, max - 1).concat([lines.slice(max - 1).join(' ')]);
+    return lines.map(function (l) { return trunc(l, chars); });
   }
 
   /*
@@ -219,7 +256,12 @@
    * Med val: det som hör till valet samlas överst, sorterat för så få korsningar som möjligt,
    * och resten läggs nedanför en skiljelinje.
    */
-  function layout(g, focus) {
+  function layout(g, focus, geo) {
+    var W = geo.W;
+    var GAP = geo.GAP;
+    var NH = geo.NH;
+    var ROW = geo.ROW;
+    var TOP = geo.TOP;
     var pos = new Map();
     if (!focus) {
       var maxN = Math.max.apply(null, g.columns.map(function (c) { return c.nodes.length; }));
@@ -270,35 +312,20 @@
       blk.hi.forEach(function (n, i) { pos.set(n.id, { x: ci * (W + GAP), y: Math.round(TOP + off + i * ROW) }); });
       blk.lo.forEach(function (n, i) { pos.set(n.id, { x: ci * (W + GAP), y: loTop + i * ROW }); });
     });
-    return { pos: pos, height: maxLo ? loTop + maxLo * ROW + 8 : dividerY, divider: maxLo ? dividerY : null };
+    return { pos: pos, height: maxLo ? loTop + maxLo * ROW + 8 : dividerY, divider: maxLo ? dividerY : null, blocks: blocks };
   }
 
-  function connectionsTab(ctx) {
-    var e = ctx.e;
-    var g = e.connectionGraph();
-    var nodes = [];
-    g.columns.forEach(function (c) { nodes = nodes.concat(c.nodes); });
-    var byId = new Map(nodes.map(function (n) { return [n.id, n]; }));
-    var sel = OOS.state.graphSel && byId.has(OOS.state.graphSel) ? byId.get(OOS.state.graphSel) : null;
-    var focus = sel ? OOSEngine.connectionFocus(g, sel.id) : null;
-    var gaps = nodes.filter(function (n) { return n.issues.length; });
-    var primary = g.edges.filter(function (x) { return x.rel === 'primary'; }).length;
-
-    var h = '<p class="lede"><strong>' + g.edges.length + '</strong> kopplingar mellan <strong>' + nodes.length + '</strong> delar av organisationen.' +
-      (gaps.length ? ' <strong class="over">' + gaps.length + (gaps.length === 1 ? ' lucka' : ' luckor') + '</strong> där en koppling saknas.' : ' Inga luckor.') + '</p>';
-    h += '<div class="kpis">' +
-      UI.kpi('Primära kopplingar', primary, 'Heldragen linje') +
-      UI.kpi('Stödjande kopplingar', g.edges.length - primary, 'Streckad linje') +
-      UI.kpi('Team', S.db.teams.length, 'Mitten av kartan') +
-      UI.kpi('Luckor', gaps.length, gaps.length ? 'Saknar en koppling' : 'Allt är kopplat', { crit: gaps.length > 0 }) +
-      '</div>';
-
-    var lay = layout(g, focus);
+  /* Kartan som SVG: kolumner från vänster till höger med linjer mellan. */
+  function mapSvg(g, nodes, focus, sel, geo) {
+    var W = geo.W;
+    var GAP = geo.GAP;
+    var NH = geo.NH;
+    var lay = layout(g, focus, geo);
     var width = g.columns.length * W + (g.columns.length - 1) * GAP;
     var svg = '<svg class="graph" viewBox="0 0 ' + width + ' ' + lay.height + '" width="' + width + '" height="' + lay.height + '" aria-labelledby="graph-title">' +
       '<title id="graph-title">Kopplingskarta från leveransdomän till IT-domän</title>';
     g.columns.forEach(function (c, ci) {
-      svg += '<text class="graph-head" x="' + (ci * (W + GAP)) + '" y="14">' + esc(c.label) + '</text>';
+      svg += '<text class="graph-head" x="' + (ci * (W + GAP)) + '" y="14">' + esc(trunc(c.label, Math.floor((W + GAP - 8) / 6.6))) + '</text>';
     });
     if (lay.divider) {
       svg += '<line class="graph-divider" x1="0" x2="' + width + '" y1="' + lay.divider + '" y2="' + lay.divider + '"/>' +
@@ -323,19 +350,70 @@
       var p = lay.pos.get(n.id);
       var state = !focus ? '' : n.id === sel.id ? ' sel' : focus.nodes.has(n.id) ? ' on' : ' off';
       var label = n.name + (n.issues.length ? '. Lucka: ' + n.issues.join(', ') : '');
-      svg += '<g class="gnode' + state + (n.issues.length ? ' issue' : '') + '" style="transform:translate(' + p.x + 'px,' + p.y + 'px)" data-x="' + p.x + '" data-y="' + p.y + '" tabindex="0" role="button" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-action="graph-select" data-id="' + esc(n.id) + '">' +
-        '<title>' + esc(label) + '</title><rect width="' + W + '" height="' + NH + '" rx="6"/>' +
-        '<text x="10" y="' + (NH / 2 + 4) + '">' + esc(trunc(n.name, 22)) + '</text>' +
+      var lines = labelLines(n.name, geo.chars - (n.issues.length ? 2 : 0), geo.lines);
+      var text = lines.length === 1
+        ? '<text x="10" y="' + (NH / 2 + 4) + '">' + esc(lines[0]) + '</text>'
+        : '<text x="10" y="' + (NH / 2 - 3) + '">' + esc(lines[0]) + '<tspan x="10" dy="14">' + esc(lines[1]) + '</tspan></text>';
+      svg += '<g class="gnode' + state + (n.issues.length ? ' issue' : '') + '" style="transform:translate(' + p.x + 'px,' + p.y + 'px)" data-x="' + p.x + '" data-y="' + p.y + '" data-c="' + Math.round(p.x / (W + GAP)) + '" tabindex="0" role="button" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-action="graph-select" data-id="' + esc(n.id) + '">' +
+        '<title>' + esc(label) + '</title><rect width="' + W + '" height="' + NH + '" rx="6"/>' + text +
         (n.issues.length ? '<circle cx="' + (W - 10) + '" cy="' + NH / 2 + '" r="3.5"/>' : '') + '</g>';
     });
-    svg += '</svg>';
+    return '<div class="graph-wrap">' + svg + '</svg></div>';
+  }
+
+  /*
+   * Smal yta: samma kolumner som nivåer uppifrån och ned. Med ett val visas bara det som hör
+   * till valet, i samma ordning som i kartan. Kopplingarnas art står i detaljrutan under.
+   */
+  function tiersHtml(g, focus, sel) {
+    var blocks = focus ? layout(g, focus, geometry(1000, g.columns.length)).blocks : null;
+    var h = '<ol class="tiers" aria-label="Kopplingar från leveransdomän till IT-domän">';
+    g.columns.forEach(function (c, ci) {
+      var shown = blocks ? blocks[ci].hi : c.nodes;
+      h += '<li class="tier"><div class="tier-head">' + esc(c.label) + ' <span class="muted">' + (focus ? shown.length + ' av ' + c.nodes.length : c.nodes.length) + '</span></div><div class="tier-nodes">';
+      shown.forEach(function (n) {
+        var state = !focus ? '' : n.id === sel.id ? ' sel' : ' on';
+        h += '<button type="button" class="tnode' + state + (n.issues.length ? ' issue' : '') + '" data-action="graph-select" data-id="' + esc(n.id) + '" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '">' +
+          esc(n.name) + (n.issues.length ? '<span class="tnode-dot" aria-hidden="true"></span><span class="sr-only">. Lucka: ' + esc(n.issues.join(', ')) + '</span>' : '') + '</button>';
+      });
+      if (!shown.length) h += '<span class="muted small">Inget kopplat</span>';
+      h += '</div></li>';
+    });
+    return h + '</ol>';
+  }
+
+  function connectionsTab(ctx) {
+    var e = ctx.e;
+    var g = e.connectionGraph();
+    var nodes = [];
+    g.columns.forEach(function (c) { nodes = nodes.concat(c.nodes); });
+    var byId = new Map(nodes.map(function (n) { return [n.id, n]; }));
+    var sel = OOS.state.graphSel && byId.has(OOS.state.graphSel) ? byId.get(OOS.state.graphSel) : null;
+    var focus = sel ? OOSEngine.connectionFocus(g, sel.id) : null;
+    var gaps = nodes.filter(function (n) { return n.issues.length; });
+    var primary = g.edges.filter(function (x) { return x.rel === 'primary'; }).length;
+
+    var h = '<p class="lede"><strong>' + g.edges.length + '</strong> kopplingar mellan <strong>' + nodes.length + '</strong> delar av organisationen.' +
+      (gaps.length ? ' <strong class="over">' + gaps.length + (gaps.length === 1 ? ' lucka' : ' luckor') + '</strong> där en koppling saknas.' : ' Inga luckor.') + '</p>';
+    h += '<div class="kpis">' +
+      UI.kpi('Primära kopplingar', primary, 'Heldragen linje') +
+      UI.kpi('Stödjande kopplingar', g.edges.length - primary, 'Streckad linje') +
+      UI.kpi('Team', S.db.teams.length, 'Mitten av kartan') +
+      UI.kpi('Luckor', gaps.length, gaps.length ? 'Saknar en koppling' : 'Allt är kopplat', { crit: gaps.length > 0 }) +
+      '</div>';
+
+    var avail = OOS.measure() - 2;
+    var asMap = avail >= MAP_MIN;
+    var drawing = asMap ? mapSvg(g, nodes, focus, sel, geometry(avail, g.columns.length)) : tiersHtml(g, focus, sel);
 
     h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
       '<div class="card-sub">' + (sel
-        ? 'Visar det som hör till ' + esc(sel.name) + ': ' + (focus.nodes.size - 1) + ' delar. Primära kopplingar följs hela vägen, streckade stödjande kopplingar visas men följs inte vidare.'
-        : 'Välj en ruta för att samla det som hör till den. Heldragen linje är primär koppling eller ansvar, streckad är stödjande. En gul punkt betyder en lucka.') + '</div></div>' +
+        ? 'Visar det som hör till ' + esc(sel.name) + ': ' + (focus.nodes.size - 1) + ' delar. Primära kopplingar följs hela vägen, ' + (asMap ? 'streckade stödjande kopplingar visas men följs inte vidare.' : 'stödjande kopplingar visas men följs inte vidare.')
+        : asMap
+          ? 'Välj en ruta för att samla det som hör till den. Heldragen linje är primär koppling eller ansvar, streckad är stödjande. En gul punkt betyder en lucka.'
+          : 'Välj en del för att se det som hör till den. En gul punkt betyder en lucka. Bredda fönstret för att se kartan med linjer.') + '</div></div>' +
       (sel ? UI.btn('Visa hela kartan', 'graph-clear', { cls: 'btn-sm' }) : '') + '</div>';
-    h += '<div class="graph-wrap">' + svg + '</div></section>';
+    h += drawing + '</section>';
 
     h += '<div class="grid-2">';
     h += '<section class="card" id="graph-detail"><div class="card-head"><div class="card-title">' + (sel ? esc(sel.name) : 'Ingen ruta vald') + '</div>' +
@@ -417,16 +495,19 @@
     OOS.motion('quiet');
     OOS.refresh();
     var svg = document.querySelector('.graph');
-    if (!svg) return;
-    var sel = OOS.state.graphSel && svg.querySelector('.gnode.sel');
-    var selCol = sel ? Math.round(+sel.getAttribute('data-x') / (W + GAP)) : null;
-    OOSMotion.moveNodes(svg, old);
-    OOSMotion.drawEdges(svg, selCol, 180);
+    if (svg) {
+      var sel = OOS.state.graphSel && svg.querySelector('.gnode.sel');
+      OOSMotion.moveNodes(svg, old);
+      OOSMotion.drawEdges(svg, sel ? +sel.getAttribute('data-c') : null, 180);
+    } else {
+      OOSMotion.reveal(document.querySelector('.tiers'));
+    }
     OOSMotion.reveal(document.getElementById('graph-detail'));
   }
 
   function focusNode(id, scroll) {
-    var el = document.querySelector('.gnode[data-id="' + id.replace(/"/g, '') + '"]');
+    var safe = id.replace(/"/g, '');
+    var el = document.querySelector('.gnode[data-id="' + safe + '"], .tnode[data-id="' + safe + '"]');
     if (el) el.focus({ preventScroll: true });
     var section = document.getElementById('graph-section');
     if (scroll && section && section.getBoundingClientRect().top < 0) {
@@ -439,7 +520,7 @@
   var A = OOS.actions;
   A['graph-select'] = function (el) {
     var id = el.getAttribute('data-id');
-    var fromList = el.tagName === 'BUTTON';
+    var fromList = !el.classList.contains('gnode') && !el.classList.contains('tnode');
     var old = capturePositions();
     OOS.state.graphSel = OOS.state.graphSel === id && !fromList ? null : id;
     redraw(old);

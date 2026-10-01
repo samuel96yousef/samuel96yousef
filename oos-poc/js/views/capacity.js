@@ -48,7 +48,7 @@
       noun: 'avdrag',
       columns: [
         { key: 'team', label: 'Teamnamn', sort: function (r) { var t = e.get('teams', r.teamId); return t ? t.name : ''; }, render: function (r) { return C.teamRef(e.get('teams', r.teamId)); } },
-        { key: 'type', label: 'Avdragstyp', sort: function (r) { return r.type; }, render: function (r) { return esc(r.type); } },
+        { key: 'type', label: 'Avdragstyp', opt: 1, sort: function (r) { return r.type; }, render: function (r) { return esc(r.type); } },
         { key: 'pct', label: 'Värde', cls: 'num', sort: function (r) { return r.percent; }, render: function (r) { return U.fmtPct(r.percent); } },
         { key: 'from', label: 'Gäller från', sort: function (r) { return r.from; }, render: function (r) { return esc(r.from); } },
         { key: 'to', label: 'Gäller till', sort: function (r) { return r.to; }, render: function (r) { return esc(r.to); } },
@@ -56,7 +56,7 @@
           key: 'eff', label: 'Effekt i perioden', cls: 'num', sort: function (r) { return effect(e, r, ctx.period); },
           render: function (r) { var v = effect(e, r, ctx.period); return v ? '− ' + U.fmtH(v) : '<span class="muted">–</span>'; }
         },
-        { key: 'comment', label: 'Orsak/kommentar', render: function (r) { return '<span class="muted">' + esc(r.comment || '') + '</span>'; } },
+        { key: 'comment', label: 'Orsak/kommentar', opt: 2, render: function (r) { return '<span class="muted">' + esc(r.comment || '') + '</span>'; } },
         { key: 'act', label: '', cls: 'actions', render: function (r) { return UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra'); } }
       ]
     }) + '</section>';

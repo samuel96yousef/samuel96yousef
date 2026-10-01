@@ -42,10 +42,10 @@
       noun: 'team',
       columns: [
         { key: 'name', label: 'Teamnamn', sort: function (r) { return r.team.name; }, render: function (r) { return '<span class="name-cell">' + UI.avatar(r.team.name, r.id) + '<span><span class="name">' + esc(r.team.name) + '</span><br><span class="sub">' + C.categoryLabel(r.team.category) + '</span></span></span>'; } },
-        { key: 'dd', label: 'Leveransdomän', sort: function (r) { return r.dd ? r.dd.name : 'ö'; }, render: function (r) { return r.dd ? esc(r.dd.name) : UI.badge('Saknas', 'warn'); } },
-        { key: 'it', label: 'Primär IT-domän', sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
-        { key: 'bd', label: 'Primär verksamhetsdomän', sort: function (r) { return r.bd ? r.bd.name : 'ö'; }, render: function (r) { return r.bd ? esc(r.bd.name) : UI.badge('Saknas', 'warn'); } },
-        { key: 'n', label: 'Medlemmar', cls: 'num', sort: function (r) { return r.cap.headcount; }, render: function (r) { return r.cap.headcount; } },
+        { key: 'dd', label: 'Leveransdomän', opt: 1, sort: function (r) { return r.dd ? r.dd.name : 'ö'; }, render: function (r) { return r.dd ? esc(r.dd.name) : UI.badge('Saknas', 'warn'); } },
+        { key: 'it', label: 'Primär IT-domän', opt: 2, sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
+        { key: 'bd', label: 'Primär verksamhetsdomän', opt: 2, sort: function (r) { return r.bd ? r.bd.name : 'ö'; }, render: function (r) { return r.bd ? esc(r.bd.name) : UI.badge('Saknas', 'warn'); } },
+        { key: 'n', label: 'Medlemmar', opt: 1, cls: 'num', sort: function (r) { return r.cap.headcount; }, render: function (r) { return r.cap.headcount; } },
         { key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (r) { return r.cap.capacity; }, render: function (r) { return U.fmtH(r.cap.capacity); } },
         { key: 'load', label: 'Beläggning', sort: function (r) { return r.cap.loadPct; }, render: function (r) { return UI.bar(r.cap.loadPct); } }
       ]
@@ -101,8 +101,8 @@
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Teammedlemmar (' + tc.headcount + ')</div>' +
       '<div class="card-sub">Allokering är andel av arbetarens tid. Belastning är hur mycket av den tiden som är planerad.</div></div>' +
       UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn</th><th>Roll i teamet</th><th>Primära kompetenser</th><th class="num">Allokering i teamet</th>' +
-      '<th class="num">Tillgänglig kapacitet<br><span class="muted small">(denna period)</span></th><th>Belastning<br><span class="muted small">(denna period)</span></th><th>Total allokering<br><span class="muted small">(alla team och roller)</span></th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn</th><th data-opt="1">Roll i teamet</th><th data-opt="2">Primära kompetenser</th><th class="num">Allokering i teamet</th>' +
+      '<th class="num">Tillgänglig kapacitet<br><span class="muted small">(denna period)</span></th><th>Belastning<br><span class="muted small">(denna period)</span></th><th data-opt="1">Total allokering<br><span class="muted small">(alla team och roller)</span></th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     tc.members.sort(function (a, b) { return b.tw.allocation - a.tw.allocation || U.byName(a.worker, b.worker); }).forEach(function (m) {
       h += '<tr><td>' + C.workerRef(m.worker, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : '') + '</td><td>' + esc(m.tw.role) + '</td>' +
         '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td><td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
@@ -116,7 +116,7 @@
     var rows = compMode === 'category' ? tc.byCategory : tc.byCompetence;
     h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Kapacitet per ' + (compMode === 'category' ? 'kompetensområde' : 'kompetens') + '</div><div class="card-sub">' + esc(ctx.period.label) + '</div></div>' +
       UI.seg('team-comp', [{ key: 'category', label: 'Område' }, { key: 'competence', label: 'Kompetens' }], compMode) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Tillgänglig kapacitet</th><th class="num">Belastning</th><th>Beläggningsgrad</th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Tillgänglig kapacitet</th><th class="num" data-opt="1">Belastning</th><th>Beläggningsgrad</th></tr></thead><tbody>';
     rows.forEach(function (r) {
       h += '<tr><td>' + (compMode === 'category' ? esc(r.name) : C.compRef(r.competence)) + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.loaded) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
     });

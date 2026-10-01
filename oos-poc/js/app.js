@@ -89,6 +89,7 @@
     motionHint = null;
     motionTabs = null;
     var snap = hint === 'update' || hint === 'detail' ? OOSMotion.snapshot(main) : null;
+    widthSensitive = false;
     var active = document.activeElement;
     var focusId = active && active.id && main.contains(active) ? active.id : null;
     var caret = focusId && typeof active.selectionStart === 'number' ? active.selectionStart : null;
@@ -104,7 +105,8 @@
     main.innerHTML = html;
     OOSSelect.enhance(main);
     renderNav();
-    markScrollableTables();
+    renderedWidth = main.clientWidth;
+    OOSLayout.fit(main, true);
     var tablist = tabsId && main.querySelector('[data-tabs="' + tabsId + '"]');
     OOSMotion.play(main, snap, hint, tablist ? tablist.closest('[role="tablist"]') : null);
     document.title = (PAGES[st.page] ? PAGES[st.page].label + ' · ' : '') + 'Fabriken';
@@ -119,28 +121,24 @@
     }
   }
 
-  /* Tabeller som scrollar i sidled måste gå att nå och scrolla med tangentbordet. */
-  function markScrollableTables() {
-    document.querySelectorAll('#main-inner .table-wrap').forEach(function (w, i) {
-      if (w.scrollWidth > w.clientWidth + 1) {
-        var section = w.closest('.card');
-        var title = section && section.querySelector('.card-title');
-        w.setAttribute('tabindex', '0');
-        w.setAttribute('role', 'region');
-        w.setAttribute('aria-label', (title ? title.textContent : 'Tabell ' + (i + 1)) + ', tabell');
-      } else {
-        w.removeAttribute('tabindex');
-        w.removeAttribute('role');
-        w.removeAttribute('aria-label');
-      }
+  /*
+   * Innehållsytans bredd för vyer som räknar ut sin layout själva, till exempel kopplingskartan.
+   * En vy som frågar ritas om när bredden ändras.
+   */
+  var widthSensitive = false;
+  var renderedWidth = 0;
+  OOS.measure = function () {
+    widthSensitive = true;
+    return document.getElementById('main-inner').clientWidth;
+  };
+
+  function watchWidth() {
+    OOSLayout.watch(document.getElementById('main-inner'), function (w) {
+      if (!widthSensitive || Math.abs(w - renderedWidth) < 4) return;
+      motionHint = 'quiet';
+      render();
     });
   }
-
-  var resizeTimer = null;
-  window.addEventListener('resize', function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(markScrollableTables, 150);
-  });
 
   OOS.refresh = render;
 
@@ -318,6 +316,15 @@
     var el = ev.target.closest('[data-change]');
     if (!el) return;
     var name = el.getAttribute('data-change');
+    if (name === 'tbl-sort-pick') {
+      var parts = el.value.split('|');
+      var t = UI.tstate(el.dataset.table);
+      if (!parts[0]) return;
+      t.sortKey = parts[0];
+      t.dir = Number(parts[1]) || 1;
+      render();
+      return;
+    }
     if (OOS.inputs[name]) OOS.inputs[name](el, ev);
   });
 
@@ -334,6 +341,7 @@
     if (PAGES[hash]) st.page = hash;
     render();
     remember(currentTarget(), true);
+    watchWidth();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

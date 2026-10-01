@@ -63,10 +63,10 @@
             return '<span class="name-cell">' + UI.avatar(r.w.name, r.id, { round: true, text: r.w.type === 'ai' ? 'AI' : null }) + '<span><span class="name">' + esc(r.w.name) + '</span><br><span class="sub">' + esc(sub) + '</span></span></span>';
           }
         },
-        { key: 'dd', label: 'Leveransdomän', sort: function (r) { return r.pd.deliveryDomain ? r.pd.deliveryDomain.name : 'ö'; }, render: function (r) { return r.pd.deliveryDomain ? esc(r.pd.deliveryDomain.name) : '<span class="muted">–</span>'; } },
+        { key: 'dd', label: 'Leveransdomän', opt: 2, sort: function (r) { return r.pd.deliveryDomain ? r.pd.deliveryDomain.name : 'ö'; }, render: function (r) { return r.pd.deliveryDomain ? esc(r.pd.deliveryDomain.name) : '<span class="muted">–</span>'; } },
         { key: 'team', label: 'Team', sort: function (r) { return r.pd.team ? r.pd.team.name : 'ö'; }, render: function (r) { return r.pd.team ? esc(r.pd.team.name) + (r.wc.teams.length > 1 ? ' <span class="muted small">+' + (r.wc.teams.length - 1) + '</span>' : '') : r.roles.length ? '<span class="muted">Domänroll</span>' : '<span class="muted">–</span>'; } },
-        { key: 'comp', label: 'Huvudkompetens', sort: function (r) { return r.main ? r.main.name : 'ö'; }, render: function (r) { return r.main ? esc(r.main.name) : '<span class="muted">–</span>'; } },
-        { key: 'base', label: 'Grundkap./v', cls: 'num', sort: function (r) { return r.w.baseHoursPerWeek; }, render: function (r) { return U.fmtH(r.w.baseHoursPerWeek); } },
+        { key: 'comp', label: 'Huvudkompetens', opt: 1, sort: function (r) { return r.main ? r.main.name : 'ö'; }, render: function (r) { return r.main ? esc(r.main.name) : '<span class="muted">–</span>'; } },
+        { key: 'base', label: 'Grundkap./v', opt: 2, cls: 'num', sort: function (r) { return r.w.baseHoursPerWeek; }, render: function (r) { return U.fmtH(r.w.baseHoursPerWeek); } },
         { key: 'alloc', label: 'Allokering', sort: function (r) { return r.wc.allocationPct; }, render: function (r) { return UI.bar(r.wc.allocationPct, { warnAt: 1000, soft: true }); } },
         { key: 'load', label: 'Belastning (period)', sort: function (r) { return r.wc.loadPct; }, render: function (r) { return UI.bar(r.wc.loadPct); } }
       ]
@@ -112,7 +112,7 @@
     h += '</div></div></section>';
 
     h += '<section class="card"><div class="card-head"><div class="card-title">Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th>Vikt</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th data-opt="1">Vikt</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     comps.forEach(function (x) {
       h += '<tr><td>' + C.compRef(x.competence) + '</td><td>' + UI.level(x.wc.level) + '<br><span class="small muted">' + UI.LEVELS[x.wc.level] + '</span></td><td>' + (x.wc.weight === 'primary' ? UI.badge('Primär', 'accent') : '<span class="muted small">Sekundär</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'wc-edit', { id: x.wc.id }, 'Ändra') + '</td></tr>';
     });

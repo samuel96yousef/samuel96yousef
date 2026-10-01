@@ -85,16 +85,16 @@
         key: 'name', label: 'Namn', sort: function (r) { return r.rec.name; },
         render: function (r) { return '<span class="name-cell">' + UI.avatar(r.rec.name, r.id, isDd(kind) ? { text: r.rec.name[0] } : {}) + '<span class="name">' + esc(r.rec.name) + '</span></span>'; }
       },
-      { key: 'desc', label: 'Beskrivning', cls: 'desc', render: function (r) { return '<span class="muted">' + esc(r.rec.description) + '</span>'; } }
+      { key: 'desc', label: 'Beskrivning', cls: 'desc', opt: 2, render: function (r) { return '<span class="muted">' + esc(r.rec.description) + '</span>'; } }
     ];
     if (!isDd(kind)) {
-      cols.push({ key: 'dd', label: 'Leveransdomän', sort: function (r) { return r.dd ? r.dd.name : 'ö'; }, render: function (r) { return r.dd ? esc(r.dd.name) : '<span class="muted">Saknas</span>'; } });
+      cols.push({ key: 'dd', label: 'Leveransdomän', opt: 1, sort: function (r) { return r.dd ? r.dd.name : 'ö'; }, render: function (r) { return r.dd ? esc(r.dd.name) : '<span class="muted">Saknas</span>'; } });
     } else {
-      cols.push({ key: 'obj', label: 'Primärt uppdrag', render: function (r) { return r.rec.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans'; } });
+      cols.push({ key: 'obj', label: 'Primärt uppdrag', opt: 2, render: function (r) { return r.rec.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans'; } });
     }
     cols.push(
-      { key: 'teams', label: 'Antal team', cls: 'num', sort: function (r) { return r.teams; }, render: function (r) { return r.teams + (r.supportTeams ? '<span class="muted small"> +' + r.supportTeams + '</span>' : ''); } },
-      { key: 'people', label: 'Antal arbetare', cls: 'num', sort: function (r) { return r.people; }, render: function (r) { return r.people; } },
+      { key: 'teams', label: 'Antal team', cls: 'num', opt: 1, sort: function (r) { return r.teams; }, render: function (r) { return r.teams + (r.supportTeams ? '<span class="muted small"> +' + r.supportTeams + '</span>' : ''); } },
+      { key: 'people', label: 'Antal arbetare', cls: 'num', opt: 1, sort: function (r) { return r.people; }, render: function (r) { return r.people; } },
       { key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (r) { return r.cap.capacity; }, render: function (r) { return U.fmtH(r.cap.capacity); } },
       { key: 'load', label: 'Beläggning', sort: function (r) { return r.cap.loadPct; }, render: function (r) { return r.cap.capacity ? UI.bar(r.cap.loadPct) : '<span class="muted">–</span>'; } }
     );
@@ -187,7 +187,7 @@
       var list = e.domainsOfDeliveryDomain(d.id);
       h += '<div class="row-between" style="margin-bottom:12px"><p class="muted small">Domänklustret: de verksamhets- och IT-domäner som ingår i leveransdomänen.</p>' +
         UI.btn('Koppla domän', 'cluster-add-dd', { cls: 'btn-sm', data: { id: d.id } }) + '</div>';
-      h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Domän</th><th>Typ</th><th>Relation</th><th class="num">Team (primär)</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+      h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Domän</th><th data-opt="2">Typ</th><th>Relation</th><th class="num" data-opt="1">Team (primär)</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
       list.sort(function (a, b) { return a.domain.type === b.domain.type ? U.byName(a.domain, b.domain) : a.domain.type === 'business' ? -1 : 1; }).forEach(function (x) {
         var n = e.teamsOfDomain(x.domain.id).filter(function (t) { return t.relationship === 'primary'; }).length;
         h += '<tr><td>' + C.domainRef(x.domain) + '</td><td>' + (x.domain.type === 'it' ? 'IT-domän' : 'Verksamhetsdomän') + '</td><td>' + C.relLabel(x.relationship) + '</td><td class="num">' + n + '</td><td class="actions">' +
@@ -235,7 +235,7 @@
       (isDd(kind) ? 'Team vars primära verksamhetsdomän tillhör leveransdomänen.' : 'Team med primär eller stödjande koppling. Kapaciteten räknas bara på primära team.') + '</p>' +
       (isDd(kind) ? '' : UI.btn('Koppla team', 'domain-team-add', { cls: 'btn-sm', data: { id: d.id } })) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Team</th>' + (isDd(kind) ? '<th>Primär verksamhetsdomän</th>' : '<th>Relation</th>') +
-      '<th>Kategori</th><th class="num">Medlemmar</th><th class="num">Kapacitet</th><th>Beläggning</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+      '<th data-opt="2">Kategori</th><th class="num" data-opt="1">Medlemmar</th><th class="num">Kapacitet</th><th>Beläggning</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     list.sort(function (a, b) {
       if (a.relationship !== b.relationship) return a.relationship === 'primary' ? -1 : 1;
       return U.byName(a.team, b.team);
@@ -255,7 +255,7 @@
     var list = isDd(kind) ? e.systemsOfDeliveryDomain(d.id) : e.systemsOfDomain(d.id);
     var h = '<div class="row-between" style="margin-bottom:12px"><p class="muted small">System som ' + esc(d.name) + ' ansvarar för via sina team' + (kind === 'itDomains' ? ' eller direkt som IT-domän.' : '.') + '</p>' +
       (kind === 'itDomains' ? UI.btn('Koppla system', 'itsys-add-domain', { cls: 'btn-sm', data: { id: d.id } }) : '') + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>System</th><th>Typ</th><th>Ansvarigt team</th><th>Primär IT-domän</th><th>Status</th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>System</th><th data-opt="2">Typ</th><th>Ansvarigt team</th><th data-opt="1">Primär IT-domän</th><th data-opt="1">Status</th></tr></thead><tbody>';
     list.sort(function (a, b) { return U.byName(a.system, b.system); }).forEach(function (x) {
       h += '<tr><td>' + C.systemRef(x.system) + '</td><td>' + esc(x.system.kind) + '</td><td>' + C.teamRef(e.systemResponsibleTeam(x.system.id)) + '</td><td>' + C.domainRef(e.systemPrimaryItDomain(x.system.id)) + '</td><td>' + UI.statusBadge(x.system.status) + '</td></tr>';
     });
@@ -272,7 +272,7 @@
         ? 'Nyckelroller som arbetar för hela leveransdomänen, till exempel projektledare, arkitekter och ägare.'
         : 'Domänmolnet är kompetens som bistår teamen utan att vara teammedlem, till exempel system- och processexperter. Tiden räknas till domänens kapacitet.') + '</p>' +
       UI.btn(isDd(kind) ? 'Lägg till nyckelroll' : 'Lägg till i domänmolnet', 'expert-add', { cls: 'btn-sm', data: { kind: isDd(kind) ? 'delivery' : 'domain', id: d.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Arbetare</th><th>Roll</th><th>Primär kompetens</th><th class="num">h/mån</th><th class="num">I perioden</th><th>Gäller</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Arbetare</th><th data-opt="1">Roll</th><th data-opt="2">Primär kompetens</th><th class="num">h/mån</th><th class="num" data-opt="1">I perioden</th><th data-opt="2">Gäller</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     list.forEach(function (x) {
       var comps = e.attributionCompetences(x.worker.id);
       var hrs = OOSEngine.monthlyHoursInPeriod(x.ext.hoursPerMonth, x.ext.from, x.ext.to, ctx.period);
@@ -299,7 +299,7 @@
   }
 
   function capTable(rows, isTeam) {
-    var h = '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (isTeam ? 'Team' : 'Kompetens') + '</th><th class="num">Pers.</th><th class="num">Kapacitet</th><th class="num">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
+    var h = '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (isTeam ? 'Team' : 'Kompetens') + '</th><th class="num" data-opt="1">Pers.</th><th class="num">Kapacitet</th><th class="num" data-opt="2">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
     rows.forEach(function (r) {
       var name = isTeam ? (r.team ? C.teamRef(r.team) : '<span class="name-cell"><span>' + esc(r.name) + '</span></span>') : C.compRef(r.competence);
       h += '<tr><td>' + name + '</td><td class="num">' + r.people + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.free) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';

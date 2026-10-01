@@ -158,11 +158,11 @@
       noun: 'system',
       columns: [
         { key: 'name', label: 'Namn', sort: function (r) { return r.s.name; }, render: function (r) { return '<span class="name-cell">' + UI.avatar(r.s.name, r.id) + '<span class="name">' + esc(r.s.name) + '</span></span>'; } },
-        { key: 'desc', label: 'Kort beskrivning', cls: 'desc', render: function (r) { return '<span class="muted">' + esc(r.s.description) + '</span>'; } },
-        { key: 'kind', label: 'Typ', sort: function (r) { return r.s.kind; }, render: function (r) { return UI.badge(r.s.kind || '–', 'muted'); } },
-        { key: 'it', label: 'Primär IT-domän', sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
+        { key: 'desc', label: 'Kort beskrivning', cls: 'desc', opt: 2, render: function (r) { return '<span class="muted">' + esc(r.s.description) + '</span>'; } },
+        { key: 'kind', label: 'Typ', opt: 2, sort: function (r) { return r.s.kind; }, render: function (r) { return UI.badge(r.s.kind || '–', 'muted'); } },
+        { key: 'it', label: 'Primär IT-domän', opt: 1, sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'owner', label: 'Ansvarigt team', sort: function (r) { return r.owner ? r.owner.name : 'ö'; }, render: function (r) { return r.owner ? esc(r.owner.name) : UI.badge('Saknas', 'warn'); } },
-        { key: 'status', label: 'Status', sort: function (r) { return r.s.status; }, render: function (r) { return UI.statusBadge(r.s.status); } }
+        { key: 'status', label: 'Status', opt: 1, sort: function (r) { return r.s.status; }, render: function (r) { return UI.statusBadge(r.s.status); } }
       ]
     }) + '</section>';
     if (selected) h += systemDetail(selected, ctx);

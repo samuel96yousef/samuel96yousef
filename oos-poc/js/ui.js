@@ -145,6 +145,16 @@ var OOSUI = (function () {
     return tableState[id];
   }
 
+  /* Sidnummer att visa. Många sidor kortas till första, sista och de närmaste (null = utelämnat). */
+  function pageList(cur, pages) {
+    var out = [];
+    for (var p = 1; p <= pages; p++) {
+      if (pages <= 7 || p === 1 || p === pages || Math.abs(p - cur) <= 1) out.push(p);
+      else if (out[out.length - 1] !== null) out.push(null);
+    }
+    return out;
+  }
+
   function table(cfg) {
     var st = tstate(cfg.id, { sortKey: cfg.defaultSort || null, dir: cfg.defaultDir || 1 });
     var rows = cfg.rows.slice();
@@ -174,6 +184,17 @@ var OOSUI = (function () {
       h += '<div class="table-tools">';
       h += cfg.title ? '<div class="card-title">' + cfg.title + '</div>' : '<span></span>';
       h += '<div class="row">' + (cfg.tools || '');
+      /* Sortering som lista. Visas bara när raderna är kort och kolumnrubrikerna därför dolda. */
+      var sortable = cfg.columns.filter(function (c) { return c.sort && c.label; });
+      if (sortable.length > 1) {
+        var sortOpts = [];
+        sortable.forEach(function (c) {
+          sortOpts.push({ value: c.key + '|1', label: c.label + ' ↑' });
+          sortOpts.push({ value: c.key + '|-1', label: c.label + ' ↓' });
+        });
+        h += '<label class="sort-pick"><span class="sr-only">Sortera efter</span><select id="sortpick-' + esc(cfg.id) + '" data-change="tbl-sort-pick" data-table="' + esc(cfg.id) + '">' +
+          OOSSelect.optionsHtml(sortOpts, st.sortKey ? st.sortKey + '|' + st.dir : '', 'Sortera …') + '</select></label>';
+      }
       if (cfg.search) {
         h += '<label class="search">' + icon('search') + '<input type="search" id="q-' + esc(cfg.id) + '" data-input="tbl-search" data-table="' + esc(cfg.id) + '" placeholder="' + esc(cfg.search.placeholder || 'Sök …') + '" value="' + esc(st.q) + '" aria-label="' + esc(cfg.search.placeholder || 'Sök') + '"></label>';
       }
@@ -183,7 +204,7 @@ var OOSUI = (function () {
     cfg.columns.forEach(function (c) {
       var cls = (c.cls || '') + (c.sort ? ' sortable' : '');
       var arrow = st.sortKey === c.key ? (st.dir > 0 ? '↑' : '↓') : '';
-      h += '<th class="' + cls + '"' + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0" id="sort-' + esc(cfg.id) + '-' + esc(c.key) + '"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + (c.label ? esc(c.label) : '<span class="sr-only">Åtgärder</span>') + (c.sort ? '<span class="sort">' + arrow + '</span>' : '') + '</th>';
+      h += '<th class="' + cls + '"' + (c.opt ? ' data-opt="' + c.opt + '"' : '') + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0" id="sort-' + esc(cfg.id) + '-' + esc(c.key) + '"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + (c.label ? esc(c.label) : '<span class="sr-only">Åtgärder</span>') + (c.sort ? '<span class="sort">' + arrow + '</span>' : '') + '</th>';
     });
     h += '</tr></thead><tbody>';
     if (!shown.length) {
@@ -203,9 +224,13 @@ var OOSUI = (function () {
       h += '<div class="pager"><span>Visar ' + (rows.length ? from + 1 : 0) + '–' + Math.min(from + size, rows.length) + ' av ' + rows.length + ' ' + esc(cfg.noun || '') + '</span>';
       if (pages > 1) {
         h += '<div class="pager-pages"><button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page - 1) + '" id="pg-' + esc(cfg.id) + '-prev"' + (st.page === 1 ? ' disabled' : '') + ' aria-label="Föregående sida">←</button>';
-        for (var p = 1; p <= pages; p++) {
-          h += '<button type="button" class="' + (p === st.page ? 'on' : '') + '" id="pg-' + esc(cfg.id) + '-' + p + '" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + p + '"' + (p === st.page ? ' aria-current="page"' : '') + '>' + p + '</button>';
-        }
+        pageList(st.page, pages).forEach(function (p) {
+          if (p === null) {
+            h += '<span class="pager-gap" aria-hidden="true">…</span>';
+            return;
+          }
+          h += '<button type="button" class="' + (p === st.page ? 'on' : '') + '" id="pg-' + esc(cfg.id) + '-' + p + '" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + p + '"' + (p === st.page ? ' aria-current="page"' : '') + ' aria-label="Sida ' + p + '">' + p + '</button>';
+        });
         h += '<button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page + 1) + '" id="pg-' + esc(cfg.id) + '-next"' + (st.page === pages ? ' disabled' : '') + ' aria-label="Nästa sida">→</button></div>';
       }
       h += '</div>';

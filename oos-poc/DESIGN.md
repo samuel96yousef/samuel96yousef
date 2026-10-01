@@ -34,6 +34,22 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
+## Layout
+
+Appen ska fungera i alla fönster, från en mobil till en bred skärm och från helskärm till ett halvt fönster bredvid något annat. Därför följer layouten ytan som finns, inte vilken sorts enhet det är.
+
+| Del | Hur den anpassar sig |
+|---|---|
+| Mått | Marginaler, rubriker och avstånd växer flytande mellan ett golv och ett tak. Innehållet blir högst 1 360 px brett. Löptext hålls till cirka 70 tecken per rad. |
+| Meny | Fast till vänster från 960 px. Smalare fönster får ett toppfält och en meny som dras ut. |
+| Komponenter | Följer innehållsytans bredd (container queries), inte fönstrets. Nyckeltal, kolumner och sidopaneler bryts om när ytan blir smal, oavsett om menyn syns. |
+| Tabeller | Mäts efter varje omritning. Får tabellen inte plats döljs först mindre viktiga kolumner, som också finns i detaljvyn. Under 600 px blir varje rad ett kort med etikett och värde, med en sorteringslista ovanför. Matrisen rullar i sidled med första kolumnen fast. |
+| Kopplingskartan | Räknar ut rutornas bredd ur ytan och får alltid plats. Smala rutor får två rader text. Under 640 px visas samma kolumner som nivåer uppifrån och ned. |
+| Dialoger | Centrerade på stora skärmar. Under 560 px blir de ett ark som glider upp nerifrån. |
+| Pekskärm | Knappar, flikar och sidnummer får minst 40 px träffyta. |
+
+Regel: sidan rullar aldrig i sidled. Bara en tabell som inte kan bli smalare, som matrisen, får rulla inom sin egen yta.
+
 ## Rörelse
 
 Rörelsen ska få appen att kännas levande när man gör något, inte när man tittar på den. Den bygger på [anime.js](https://animejs.com) (MIT) i `js/vendor/` och samlas i `js/motion.js`.
