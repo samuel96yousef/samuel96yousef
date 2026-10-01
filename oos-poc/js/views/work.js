@@ -94,7 +94,7 @@
 
     var h = UI.pageHead({
       title: 'Epiker',
-      sub: 'Epiker är teamens arbete: utveckling, förvaltning, utredning och utbildning. Varje epik har en beslutad ram i timmar, och det är den som belastar teamets kapacitet.',
+      sub: 'Epiker är teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik för drift, utbildning och kompetensspridning. Ramen är den beslutade tiden, och det är den som belastar teamets kapacitet.',
       actions: UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-primary' })
     });
     h += UI.facts([
@@ -122,7 +122,7 @@
       rows: rows,
       search: {
         placeholder: 'Sök epik, team, initiativ …',
-        text: function (r) { return [r.ep.description, C.EPIC_TYPE[r.ep.type], r.init ? r.init.name : 'utan initiativ'].join(' '); }
+        text: function (r) { return [r.ep.description, C.EPIC_TYPE[r.ep.type], C.EPIC_STATUS[r.ep.status], r.init ? r.init.name : 'utan initiativ'].join(' '); }
       },
       rowGo: function (r) { return 'epics:' + r.id; },
       defaultSort: 'hours',
@@ -132,11 +132,10 @@
       columns: [
         {
           key: 'name', label: 'Epik', sort: function (r) { return r.ep.name; },
-          render: function (r) { return '<span class="name-cell wrap">' + C.typeSwatch(r.ep.type) + '<span><span class="name">' + esc(r.ep.name) + '</span><br><span class="sub">' + esc(C.EPIC_TYPE[r.ep.type] || '') + '</span></span></span>'; }
+          render: function (r) { return '<span class="name-cell wrap">' + C.typeSwatch(r.ep.type) + '<span><span class="name">' + esc(r.ep.name) + '</span><br><span class="sub">' + esc(C.EPIC_TYPE[r.ep.type] || '') + '</span>' + (r.ep.status === 'proposed' || r.ep.status === 'done' ? ' ' + C.epicStatus(r.ep.status) : '') + '</span></span>'; }
         },
         { key: 'team', label: 'Team', sort: function (r) { return r.team ? r.team.name : 'ö'; }, render: function (r) { return r.team ? esc(r.team.name) : '<span class="muted">–</span>'; } },
         { key: 'init', label: 'Initiativ', opt: 1, sort: function (r) { return r.init ? r.init.name : 'ö'; }, render: function (r) { return r.init ? esc(r.init.name) : '<span class="muted">–</span>'; } },
-        { key: 'status', label: 'Status', sort: function (r) { return r.ep.status; }, render: function (r) { return C.epicStatus(r.ep.status); } },
         { key: 'span', label: 'Gäller', opt: 2, sort: function (r) { return r.ep.from; }, render: function (r) { return '<span class="nowrap">' + U.fmtDate(r.ep.from) + ' –</span> <span class="nowrap">' + U.fmtDate(r.ep.to) + '</span>'; } },
         { key: 'frame', label: 'Ram', cls: 'num', opt: 2, sort: function (r) { return r.frame; }, render: function (r) { return C.epicFrameText(r.ep); } },
         {
@@ -404,7 +403,7 @@
     var maxOrg = Math.max.apply(null, org.map(function (c) { return Math.max(c.supply, c.demand); }).concat([1]));
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Kompetensområden i hela organisationen</div>' +
       '<div class="card-sub">Ett område kan ha tid över totalt men vara fullt i enskilda team. Då handlar det om att flytta arbete eller låna kompetens.</div></div></div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetensområde</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Arbete</th><th class="num">Ledigt</th><th class="cbar-col">Belastat och ledigt</th><th data-opt="2">Fullt i</th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetensområde</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Belastat</th><th class="num">Ledigt</th><th class="cbar-col">Belastat och ledigt</th><th data-opt="2">Fullt i</th></tr></thead><tbody>';
     org.slice().sort(function (a, b) { return b.loadPct - a.loadPct; }).forEach(function (c) {
       var full = c.teams.filter(function (x) { return x.row.gap || x.row.loadPct > 100.5; });
       h += '<tr><td>' + esc(c.category) + '</td><td class="num">' + U.fmtH(c.supply) + '</td><td class="num">' + U.fmtH(c.demand) + '</td>' +
@@ -519,7 +518,7 @@
     }
     h += UI.facts([
       { label: 'Beslutad ram', value: U.fmtH(sum.frame), note: U.plural(sum.decided.length, 'beslutad epik', 'beslutade epiker') },
-      { label: 'I ' + p.inText, value: U.fmtH(sum.hoursInPeriod), note: 'Av ramen' },
+      { label: 'I ' + p.inText, value: U.fmtH(sum.hoursInPeriod), note: 'Av ' + U.fmtH(sum.frame) + ' i ramen' },
       { label: 'Team', value: sum.teams.length, note: 'Bär arbetet' },
       { label: 'Förslag', value: U.fmtH(sum.proposedFrame), note: sum.proposedFrame ? 'Väntar på beslut' : 'Inga förslag', tone: null }
     ]);

@@ -80,6 +80,7 @@
       return acc.concat(e.teamsOfDomain(r.id).filter(function (t) { return t.relationship === 'primary'; }).map(function (t) { return t.team.id; }));
     }, [])).size;
     var totalCap = U.sum(rows, function (r) { return r.cap.capacity; });
+    var totalLoaded = U.sum(rows, function (r) { return r.cap.loaded; });
 
     var cols = [
       {
@@ -94,8 +95,8 @@
       cols.push({ key: 'obj', label: 'Primärt uppdrag', opt: 2, render: function (r) { return r.rec.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans'; } });
     }
     cols.push(
-      { key: 'teams', label: 'Antal team', cls: 'num', opt: 1, sort: function (r) { return r.teams; }, render: function (r) { return r.teams + (r.supportTeams ? '<span class="muted small"> +' + r.supportTeams + '</span>' : ''); } },
-      { key: 'people', label: 'Antal arbetare', cls: 'num', opt: 1, sort: function (r) { return r.people; }, render: function (r) { return r.people; } },
+      { key: 'teams', label: 'Team', cls: 'num', opt: 1, sort: function (r) { return r.teams; }, render: function (r) { return r.teams + (r.supportTeams ? '<span class="muted small"> +' + r.supportTeams + '</span>' : ''); } },
+      { key: 'people', label: 'Arbetare', cls: 'num', opt: 1, sort: function (r) { return r.people; }, render: function (r) { return r.people; } },
       { key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (r) { return r.cap.capacity; }, render: function (r) { return U.fmtH(r.cap.capacity); } },
       { key: 'load', label: 'Beläggning', sort: function (r) { return r.cap.loadPct; }, render: function (r) { return r.cap.capacity ? UI.bar(r.cap.loadPct) : '<span class="muted">–</span>'; } }
     );
@@ -106,13 +107,14 @@
       actions: UI.btn(k.addLabel, 'domain-add', { cls: 'btn-primary', data: { kind: kind } })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Antal ' + k.title.toLowerCase(), rows.length) +
-      UI.kpi(isDd(kind) ? 'Totalt antal team' : 'Team med primär koppling', totalTeams) +
-      UI.kpi('Kapacitet ' + ctx.period.inText, U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
+      UI.kpi(k.title, rows.length, isDd(kind) ? U.plural(S.db.domains.length, 'domän', 'domäner') + ' under dem' : U.plural(rows.filter(function (r) { return r.dd; }).length, 'med leveransdomän', 'med leveransdomän')) +
+      UI.kpi('Team', totalTeams, isDd(kind) ? 'Alla team hör till en leveransdomän' : 'Med en av domänerna som primär') +
+      UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
+      UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), U.fmtH(totalLoaded) + ' belastat, ' + U.fmtH(Math.max(0, totalCap - totalLoaded)) + ' ledigt') +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-' + kind,
-      title: esc(k.title),
+      title: 'Alla ' + esc(k.title.toLowerCase()),
       rows: rows,
       columns: cols,
       /* Utöver kolumnerna: syfte och ägare. */
@@ -169,7 +171,7 @@
     var ownerLabel = isDd(kind) ? 'Leveransdomänägare' : kind === 'itDomains' ? 'Domänansvarig' : 'Verksamhetsdomänansvarig';
     var h = UI.facts([
       { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(cap.capacity), note: 'Team och domänmoln, efter avdrag' },
-      { label: 'Beläggning', value: cap.capacity ? U.fmtPct(cap.loadPct) : '–', note: U.fmtH(cap.loaded) + ' planerat, ' + U.fmtH(cap.free) + ' ledigt', tone: cap.loadPct > 100.5 ? 'crit' : cap.loadPct >= 90 ? 'warn' : null },
+      { label: 'Beläggning', value: cap.capacity ? U.fmtPct(cap.loadPct) : '–', note: U.fmtH(cap.loaded) + ' belastat, ' + U.fmtH(cap.free) + ' ledigt', tone: cap.loadPct > 100.5 ? 'crit' : cap.loadPct >= 90 ? 'warn' : null },
       { label: 'Team', value: t.length, note: 'Med domänen som primär' },
       { label: 'Arbetare', value: headcount(kind, d.id), note: 'I teamen och domänmolnet' }
     ]);

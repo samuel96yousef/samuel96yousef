@@ -699,6 +699,17 @@ th.num {
   flex-wrap: wrap;
 }
 
+/* Rubriken tar platsen, knappar och val står kvar till höger tills ytan är riktigt smal. */
+.card-head > :first-child {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.card-head > :not(:first-child) {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
 .card-title {
   font-size: 17px;
   font-weight: 600;
@@ -812,6 +823,7 @@ th.num {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(16px, 2vw, 24px);
+  align-items: start;
 }
 
 .grid-4 {
@@ -884,6 +896,25 @@ table.tbl {
 .tbl th.sortable {
   cursor: pointer;
   user-select: none;
+}
+
+/* Sifferkolumner: rubriken står över talen, till höger. Sorteringspilen hänger ut i kanten så att texten linjerar. */
+.tbl th.num {
+  text-align: right;
+}
+
+.tbl th.num .sort {
+  margin-right: -13px;
+}
+
+/* Namn och undertext i tabeller, samma överallt. */
+.tbl .name {
+  font-weight: 500;
+}
+
+.tbl .sub {
+  color: var(--fg-3);
+  font-size: 12.5px;
 }
 
 .tbl th.sortable:hover {
@@ -3983,7 +4014,13 @@ p,
 }
 
 .table-tools > span:empty + .row {
+  margin-left: auto;
+}
+
+/* Med en förklaring (diagram) börjar raden till vänster, förklaringen först. */
+.table-tools > span:empty + .row:has(.legend-line) {
   flex: 1 1 auto;
+  margin-left: 0;
 }
 
 /* Översiktens staplar per leveransdomän: namn och kapacitet, stapel, sedan talen i klartext. */

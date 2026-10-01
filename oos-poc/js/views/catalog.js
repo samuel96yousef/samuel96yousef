@@ -35,9 +35,10 @@
       actions: UI.btn('Lägg till kompetens', 'comp-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal kompetenser', rows.length, U.plural(C.categories().length, 'kategori', 'kategorier')) +
-      UI.kpi('Arbetare med kompetens', withComp) +
+      UI.kpi('Kompetenser', rows.length, U.plural(C.categories().length, 'kategori', 'kategorier')) +
+      UI.kpi('Arbetare med kompetens', withComp, 'Av ' + S.db.workers.length + ' arbetare') +
       UI.kpi('Bärs av en person', risky, 'Bara en person på nivå 3–4') +
+      UI.kpi('Utan kapacitet', rows.filter(function (r) { return !r.cap; }).length, 'Ingen har den som primär kompetens') +
       '</div>';
 
     h += '<section class="card">';
@@ -142,19 +143,19 @@
     });
     var orphan = rows.filter(function (r) { return !r.owner; }).length;
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal system', rows.length) +
-      UI.kpi('System i drift', rows.filter(function (r) { return r.s.status === 'production'; }).length) +
-      UI.kpi('Under utveckling', rows.filter(function (r) { return r.s.status === 'development'; }).length) +
+      UI.kpi('System', rows.length, U.plural(new Set(rows.map(function (r) { return r.s.kind; })).size, 'typ', 'typer')) +
+      UI.kpi('I drift', rows.filter(function (r) { return r.s.status === 'production'; }).length, 'Används i verksamheten') +
+      UI.kpi('Under utveckling', rows.filter(function (r) { return r.s.status === 'development'; }).length, 'Inte i drift ännu') +
       UI.kpi('Utan ansvarigt team', orphan, orphan ? 'Behöver en ägare' : 'Alla har ett ansvarigt team') +
       '</div>';
     var selected = ctx.id ? e.get('systems', ctx.id) : null;
     h += '<section class="card">' + UI.table({
       id: 'tbl-systems',
       rows: rows,
-      title: 'System',
+      title: 'Alla system',
       /* Utöver kolumnerna: alla kopplade team och IT-domäner. */
       search: {
-        placeholder: 'Sök system, typ, team, status …',
+        placeholder: 'Sök system, team, domän …',
         text: function (r) {
           return e.systemTeams(r.id).map(function (x) { return x.team.name; })
             .concat(e.systemItDomains(r.id).map(function (x) { return x.domain.name; }))
@@ -169,7 +170,7 @@
       columns: [
         { key: 'name', label: 'Namn', sort: function (r) { return r.s.name; }, render: function (r) { return '<span class="name-cell">' + UI.avatar(r.s.name, r.id) + '<span class="name">' + esc(r.s.name) + '</span></span>'; } },
         { key: 'desc', label: 'Kort beskrivning', cls: 'desc', opt: 2, render: function (r) { return '<span class="muted">' + esc(r.s.description) + '</span>'; } },
-        { key: 'kind', label: 'Typ', opt: 2, sort: function (r) { return r.s.kind; }, render: function (r) { return UI.badge(r.s.kind || '–', 'muted'); } },
+        { key: 'kind', label: 'Typ', opt: 2, sort: function (r) { return r.s.kind; }, render: function (r) { return r.s.kind ? esc(r.s.kind) : '<span class="muted">–</span>'; } },
         { key: 'it', label: 'Primär IT-domän', opt: 1, sort: function (r) { return r.it ? r.it.name : 'ö'; }, render: function (r) { return r.it ? esc(r.it.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'owner', label: 'Ansvarigt team', sort: function (r) { return r.owner ? r.owner.name : 'ö'; }, render: function (r) { return r.owner ? esc(r.owner.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'status', label: 'Status', opt: 1, sort: function (r) { return r.s.status; }, render: function (r) { return UI.statusBadge(r.s.status); } }

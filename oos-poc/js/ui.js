@@ -275,7 +275,13 @@ var OOSUI = (function () {
     cfg.columns.forEach(function (c) {
       var cls = (c.cls || '') + (c.sort ? ' sortable' : '');
       var arrow = st.sortKey === c.key ? (st.dir > 0 ? '↑' : '↓') : '';
-      h += '<th class="' + cls + '"' + (c.opt ? ' data-opt="' + c.opt + '"' : '') + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0" id="sort-' + esc(cfg.id) + '-' + esc(c.key) + '"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + (c.label ? esc(c.label) : '<span class="sr-only">Åtgärder</span>') + (c.sort ? '<span class="sort">' + arrow + '</span>' : '') + '</th>';
+      /* Sista ordet och sorteringspilen hålls ihop, så att pilen aldrig hamnar ensam på en rad. */
+      var label = c.label ? esc(c.label) : '<span class="sr-only">Åtgärder</span>';
+      if (c.label && c.sort) {
+        var cut = c.label.lastIndexOf(' ');
+        label = (cut > 0 ? esc(c.label.slice(0, cut)) + ' ' : '') + '<span class="nowrap">' + esc(c.label.slice(cut + 1)) + '<span class="sort">' + arrow + '</span></span>';
+      }
+      h += '<th class="' + cls + '"' + (c.opt ? ' data-opt="' + c.opt + '"' : '') + (c.sort ? ' data-action="tbl-sort" data-table="' + esc(cfg.id) + '" data-key="' + esc(c.key) + '" tabindex="0" id="sort-' + esc(cfg.id) + '-' + esc(c.key) + '"' : '') + (c.sort ? ' aria-sort="' + (arrow ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '"' : '') + '>' + label + '</th>';
     });
     h += '</tr></thead><tbody>';
     if (!shown.length) {

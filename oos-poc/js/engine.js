@@ -1360,8 +1360,8 @@ var OOSEngine = (function () {
       var ai = sumCap(facts, function (f) { return workerOf(f).type === 'ai'; });
       var cov = coverage();
       var list = [
-        { key: 'load', label: 'Beläggningsgrad', value: org.loadPct, unit: '%', scale: [0, 100],
-          definition: 'Planerade timmar delat med kapacitet. För lågt betyder outnyttjad tid, för högt betyder att ingen marginal finns.' },
+        { key: 'load', label: 'Beläggning', value: org.loadPct, unit: '%', scale: [0, 100],
+          definition: 'Beslutat arbete delat med kapacitet. För lågt betyder outnyttjad tid, för högt betyder att ingen marginal finns.' },
         { key: 'overallocated', label: 'Överallokerade arbetare', value: sig.filter(function (x) { return x.kind === 'overallocated'; }).length, unit: 'st', severity: 'critical',
           definition: 'Arbetare vars team och domänroller kräver mer tid än de har.' },
         { key: 'producingShare', label: 'Kapacitet i producerande team', value: (producing / total) * 100, unit: '%', scale: [0, 100],

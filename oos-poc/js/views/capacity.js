@@ -33,7 +33,7 @@
       (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm' }) : '') +
       '</div></section>';
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Grundavdrag</div><div class="card-sub">Gäller alla team och arbetare</div></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     S.db.overheadReductions.forEach(function (r) {
       h += '<tr><td>' + esc(r.name) + (r.id === 'oh_kompetens' || /kompetensutveckling/i.test(r.name) ? '<div class="muted small">Personlig utveckling. Teamets utbildning och kompetensspridning ligger i förvaltningen.</div>' : '') + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
@@ -79,7 +79,7 @@
       '<div class="stack small">' +
       '<p><strong>Timmar som gemensam valuta.</strong> All kapacitet uttrycks i timmar så att team, ledning och verksamhet kan förhandla om samma sak.</p>' +
       '<p><strong>Domänmoln räknas med.</strong> Experter i verksamhets- och IT-domäner bidrar med h/månad utan att vara teammedlemmar. Tiden räknas till domänens och leveransdomänens kapacitet.</p>' +
-      '<p><strong>Belastning är manuell i Prototyp 1.</strong> Planerad belastning anges per teammedlem. När utvecklingsprocessen (arbetsblock) byggs ska belastningen räknas fram därifrån.</p>' +
+      '<p><strong>Beläggningen räknas ur epikerna.</strong> Teamens beslutade epiker belastar kapaciteten, fördelat efter kompetensbehov. Var det blir trångt syns under Flaskhalsar.</p>' +
       '<p class="muted">Förenkling: helgdagar räknas inte bort i POC:n.</p>' +
       '</div></div></section>';
     return h;

@@ -27,10 +27,10 @@
       actions: UI.btn('Lägg till team', 'team-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal team', rows.length, rows.filter(function (r) { return r.team.category === 'producing'; }).length + ' producerande, ' + rows.filter(function (r) { return r.team.category === 'supporting'; }).length + ' stödjande') +
-      UI.kpi('Arbetare i team', people) +
-      UI.kpi('Teamkapacitet ' + ctx.period.inText, U.fmtH(totalCap), U.fmtH(totalCap - totalLoaded) + ' ledigt') +
-      UI.kpi('Genomsnittlig beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0)) +
+      UI.kpi('Team', rows.length, rows.filter(function (r) { return r.team.category === 'producing'; }).length + ' producerande, ' + rows.filter(function (r) { return r.team.category === 'supporting'; }).length + ' stödjande') +
+      UI.kpi('Arbetare i team', people, 'Av ' + S.db.workers.length + ' arbetare') +
+      UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Teamen, efter avdrag') +
+      UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), U.fmtH(totalLoaded) + ' belastat, ' + U.fmtH(totalCap - totalLoaded) + ' ledigt') +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-teams',
@@ -38,7 +38,7 @@
       title: 'Alla team',
       /* Utöver kolumnerna: beskrivning, syfte, teamledare, medlemmar och system. */
       search: {
-        placeholder: 'Sök team, domän, person, system …',
+        placeholder: 'Sök team, domän, person …',
         text: function (r) {
           var e = ctx.e;
           var lead = r.team.leadId ? e.get('workers', r.team.leadId) : null;
@@ -105,15 +105,15 @@
       var room = (tc.categories || []).filter(function (r) { return !r.gap && r.free > 10; }).slice(0, 2);
       h += '<div class="note crit"><strong>' + tight.map(function (r) { return esc(r.category) + (r.gap ? ' saknas' : ' ' + U.fmtPct(r.loadPct)); }).join(', ') + ' i ' + esc(ctx.period.inText) + '.</strong> ' +
         (tight.length > 1 ? 'Områdena behöver' : 'Området behöver') + ' ' + U.fmtH(U.sum(tight, function (r) { return r.gap ? r.demand : -r.free; })) + ' mer än teamet har' +
-        (room.length ? ', medan ' + room.map(function (r) { return esc(r.category) + ' har ' + U.fmtH(r.free) + ' ledigt'; }).join(' och ') : '') + '. ' + C.link('bottlenecks', 'Se var kompetensen finns ledig') + '</div>';
+        (room.length ? ', medan ' + room.map(function (r) { return esc(r.category) + ' har ' + U.fmtH(r.free) + ' ledigt'; }).join(' och ') : '') + '. ' + C.link('bottlenecks', 'Se var kompetensen finns ledig') + '.</div>';
     }
 
     var diff = nx.capacity - tc.capacity;
     h += UI.facts([
       { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: U.plural(tc.headcount, 'medlem', 'medlemmar') + ', efter avdrag' },
-      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + (tc.loadSource === 'epics' ? ' beslutat arbete' : ' är planerat'), tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
+      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + ' belastat', tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
       { label: 'Ledigt', value: U.fmtH(tc.free), note: 'Kan planeras i ' + ctx.period.inText },
-      { label: ctx.next.label, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }
+      { label: 'Kapacitet i ' + ctx.next.inText, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }
     ]);
 
     var epicMode = tc.loadSource === 'epics';
@@ -128,7 +128,7 @@
     main += '<section class="card"><div class="card-head"><div><div class="card-title">' + (compMode === 'category' ? 'Kompetensområden' : 'Kompetenser') + '</div><div class="card-sub">' +
       (epicMode ? 'Kapacitet och beslutat arbete i ' + esc(ctx.period.inText) + ', fördelat efter epikernas kompetensbehov. Ett område kan vara fullt även när teamet totalt har plats.' : 'Fördelad på varje medlems primära kompetenser, ' + esc(ctx.period.inText) + '.') + '</div></div>' +
       UI.seg('team-comp', [{ key: 'category', label: 'Område' }, { key: 'competence', label: 'Kompetens' }], compMode) + '</div>';
-    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Arbete</th><th class="num">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Belastat</th><th class="num">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
     rows.forEach(function (r) {
       var gap = r.capacity < 0.5 && r.loaded > 0.5;
       var gapComp = compMode !== 'category' && String(r.key).indexOf('_gap_') === 0;

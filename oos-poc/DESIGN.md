@@ -44,6 +44,28 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Flaskhalsmatris | Team × kompetensområde med beläggning i procent. Neutral som standard, gul ruta från 90 % och röd över 100 % eller där teamet saknar kompetensen. Matrisen är till för att hitta avvikelser, inte för att läsa varje tal. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
+## Samma ord för samma sak
+
+| Ord | Betyder | Används som |
+|---|---|---|
+| Kapacitet | Timmar som finns, efter avdrag | "Kapacitet i oktober 2026" |
+| Belastat | Timmar som går till beslutat arbete | Kolumn och not: "556 h belastat" |
+| Ledigt | Kapacitet minus belastat | "136 h ledigt", negativt i rött |
+| Beläggning | Belastat delat med kapacitet, i procent | Alltid "Beläggning", aldrig beläggningsgrad eller belastning |
+| Allokering | Hur stor del av sin tid en person ger ett team | Procent per medlemskap, "Allokerat" i timmar |
+| Arbete | Epikerna, det som belastar | Rubriker som "Arbete i oktober 2026" |
+
+## Sidmönster
+
+| Del | Regel |
+|---|---|
+| Sidhuvud | Namnet på sidan, en mening om vad den visar och högst en svart knapp till höger. |
+| Nyckeltal | Fyra rutor. Etiketten är ett substantiv ("Team", "Beläggning"), aldrig "Totalt antal …". Varje ruta har en förklaring under talet. |
+| Listor | Kortet heter "Alla …" och upprepar inte sidrubriken. Sökfältet står till höger i kortets huvud. |
+| Tabeller | Sifferkolumner har rubriken till höger, ovanför talen. Sorteringspilen följer sista ordet och hamnar aldrig ensam på en rad. Namn står i halvfet stil med en grå undertext. |
+| Korthuvud | Rubrik och förklaring till vänster, knappar och val till höger. De bryts bara ned under rubriken när ytan är för smal. |
+| Kategorier | Typ och kategori är vanlig text. Märken används bara för det som avviker, till exempel Förslag, Saknas eller Flaskhals. |
+
 ## Sökning
 
 Samma sökregler gäller överallt: i tabellerna, i den globala sökningen och i rullistorna (`OOSUtil.matcher`).

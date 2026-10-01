@@ -28,7 +28,7 @@
 
     /* Läget i en mening: det är den som ska gå att säga högt på ett möte. */
     var lede = esc(S.db.settings.orgName) + ' har <strong>' + U.fmtH(org.capacity) + '</strong> verklig kapacitet i ' + esc(month) + '. ' +
-      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är planerat och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.';
+      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är belagt och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.';
     if (over) lede += ' <strong class="over">' + plural(over, 'person är', 'personer är') + ' överallokerad' + (over === 1 ? '' : 'e') + '.</strong>';
     if (keyp) lede += ' ' + plural(keyp, 'kompetens', 'kompetenser') + ' har bara en person på nivå 3–4.';
     h += '<p class="lede">' + lede + '</p>';
@@ -37,7 +37,7 @@
       UI.kpi('Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + U.plural(itCount, 'IT-domän', 'IT-domäner')) +
       UI.kpi('Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
       UI.kpi('Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
-      UI.kpi(ctx.next.label, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
+      UI.kpi('Kapacitet i ' + ctx.next.inText, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
       '</div>';
 
     var showAll = OOS.state.allSignals;
@@ -173,11 +173,11 @@
 
     /* Var belastningen kommer ifrån. Epiker är standard; manuell belastning finns kvar för jämförelse. */
     var src = st.loadSource === 'manual' ? 'manual' : 'epics';
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Belastning</div>' +
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Beläggning</div>' +
       '<div class="card-sub">Hur appen räknar ut hur mycket av kapaciteten som är planerad.</div></div>' +
       UI.seg('load-source', [{ key: 'epics', label: 'Ur epiker' }, { key: 'manual', label: 'Manuellt per teammedlem' }], src) + '</div>' +
       '<p class="aside-text">' + (src === 'epics'
-        ? 'Belastningen räknas fram ur teamens beslutade epiker: planerade och pågående epikers timmar i perioden delat med teamets kapacitet. Förslag räknas inte. Klara epiker räknas för den tid de pågick. Varje team har en förvaltningsepik som rymmer drift, utbildning och kompetensspridning.'
+        ? 'Beläggningen räknas fram ur teamens beslutade epiker: planerade och pågående epikers timmar i perioden delat med teamets kapacitet. Förslag räknas inte. Klara epiker räknas för den tid de pågick. Varje team har en förvaltningsepik som rymmer drift, utbildning och kompetensspridning.'
         : 'Belastningen anges som en procentsats på varje medlemskap i teamet. Epikerna visas men påverkar inte beläggningen.') + '</p></section>';
 
     var log = S.db.changeLog || [];
@@ -200,7 +200,7 @@
   OOS.segHandlers = OOS.segHandlers || {};
   OOS.segHandlers['load-source'] = function (key) {
     S.updateSettings({ loadSource: key === 'manual' ? 'manual' : 'epics' });
-    UI.toast(key === 'manual' ? 'Belastningen räknas nu från manuella procentsatser.' : 'Belastningen räknas nu ur epikerna.');
+    UI.toast(key === 'manual' ? 'Beläggningen räknas nu från manuella procentsatser.' : 'Beläggningen räknas nu ur epikerna.');
   };
 
   var A = OOS.actions;

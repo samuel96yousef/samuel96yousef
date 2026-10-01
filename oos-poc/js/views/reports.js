@@ -254,7 +254,7 @@
   function csv(ctx) {
     var r = rs();
     var rep = build(ctx);
-    var lines = [['Grupp', 'Kompetens', 'Kapacitet (h)', 'Belastad (h)', 'Ledig (h)', 'Grundkapacitet nästa period (h)', 'Beläggningsgrad (%)', 'Förändring (h)', 'Förändring (%)'].join(';')];
+    var lines = [['Grupp', 'Kompetens', 'Kapacitet (h)', 'Belastat (h)', 'Ledigt (h)', 'Kapacitet nästa period (h)', 'Beläggning (%)', 'Förändring (h)', 'Förändring (%)'].join(';')];
     function line(g, x) {
       return [g, x.name, Math.round(x.capacity), Math.round(x.loaded), Math.round(x.free), Math.round(x.nextCapacity), Math.round(x.loadPct), Math.round(x.change), Math.round(x.changePct)].join(';');
     }

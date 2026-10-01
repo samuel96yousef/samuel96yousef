@@ -546,8 +546,8 @@
         coverageMin: t.coverage.min, nextChangeMin: t.nextChange.min
       },
       fields: [
-        { key: 'loadMin', label: 'Beläggningsgrad, lägst (%)', type: 'number', min: 0, max: 100 },
-        { key: 'loadMax', label: 'Beläggningsgrad, högst (%)', type: 'number', min: 0, max: 100 },
+        { key: 'loadMin', label: 'Beläggning, lägst (%)', type: 'number', min: 0, max: 100 },
+        { key: 'loadMax', label: 'Beläggning, högst (%)', type: 'number', min: 0, max: 100 },
         { key: 'producingMin', label: 'Producerande team, minst (%)', type: 'number', min: 0, max: 100 },
         { key: 'consultantMax', label: 'Konsultandel, högst (%)', type: 'number', min: 0, max: 100 },
         { key: 'coverageMin', label: 'Modellens täckning, minst (%)', type: 'number', min: 0, max: 100 },

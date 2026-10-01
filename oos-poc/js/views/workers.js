@@ -42,9 +42,9 @@
       actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal arbetare', rows.length, ai + ' AI, ' + U.plural(rows.filter(function (r) { return r.w.consultant; }).length, 'konsult', 'konsulter')) +
-      UI.kpi('Arbetare i team', inTeams) +
-      UI.kpi('Arbetare med domänroll', inClouds, 'Domänmoln och nyckelroller') +
+      UI.kpi('Arbetare', rows.length, ai + ' AI, ' + U.plural(rows.filter(function (r) { return r.w.consultant; }).length, 'konsult', 'konsulter')) +
+      UI.kpi('I team', inTeams, U.plural(rows.length - inTeams, 'arbetare', 'arbetare') + ' utan team') +
+      UI.kpi('Med domänroll', inClouds, 'Domänmoln och nyckelroller') +
       UI.kpi('Överallokerade', over, over ? 'Mer än 100 % av tillgänglig tid' : 'Ingen över 100 %') +
       '</div>';
     h += '<section class="card">' + UI.table({
@@ -53,7 +53,7 @@
       title: UI.seg('workers-filter', FILTERS, filter),
       /* Utöver kolumnerna: alla kompetenser, alla team, domänroller, beskrivning och anställningsform. */
       search: {
-        placeholder: 'Sök namn, roll, team, kompetens …',
+        placeholder: 'Sök namn, roll, kompetens …',
         text: function (r) {
           return [r.w.description, r.w.consultant ? 'konsult' : 'anställd', r.w.type === 'ai' ? 'AI' : '']
             .concat(ctx.e.workerCompetences(r.id).map(function (x) { return x.competence.name + ' ' + x.competence.category; }))
@@ -75,10 +75,10 @@
         },
         { key: 'dd', label: 'Leveransdomän', opt: 2, sort: function (r) { return r.pd.deliveryDomain ? r.pd.deliveryDomain.name : 'ö'; }, render: function (r) { return r.pd.deliveryDomain ? esc(r.pd.deliveryDomain.name) : '<span class="muted">–</span>'; } },
         { key: 'team', label: 'Team', sort: function (r) { return r.pd.team ? r.pd.team.name : 'ö'; }, render: function (r) { return r.pd.team ? esc(r.pd.team.name) + (r.wc.teams.length > 1 ? ' <span class="muted small">+' + (r.wc.teams.length - 1) + '</span>' : '') : r.roles.length ? '<span class="muted">Domänroll</span>' : '<span class="muted">–</span>'; } },
-        { key: 'comp', label: 'Huvudkompetens', opt: 1, sort: function (r) { return r.main ? r.main.name : 'ö'; }, render: function (r) { return r.main ? esc(r.main.name) : '<span class="muted">–</span>'; } },
-        { key: 'base', label: 'Grundkap./v', opt: 2, cls: 'num', sort: function (r) { return r.w.baseHoursPerWeek; }, render: function (r) { return U.fmtH(r.w.baseHoursPerWeek); } },
+        { key: 'comp', label: 'Primär kompetens', opt: 1, sort: function (r) { return r.main ? r.main.name : 'ö'; }, render: function (r) { return r.main ? esc(r.main.name) : '<span class="muted">–</span>'; } },
+        { key: 'base', label: 'Tid i veckan', opt: 2, cls: 'num', sort: function (r) { return r.w.baseHoursPerWeek; }, render: function (r) { return U.fmtH(r.w.baseHoursPerWeek); } },
         { key: 'alloc', label: 'Allokering', sort: function (r) { return r.wc.allocationPct; }, render: function (r) { return UI.bar(r.wc.allocationPct, { warnAt: 1000, soft: true }); } },
-        { key: 'load', label: 'Belastning (period)', sort: function (r) { return r.wc.loadPct; }, render: function (r) { return UI.bar(r.wc.loadPct); } }
+        { key: 'load', label: 'Beläggning', sort: function (r) { return r.wc.loadPct; }, render: function (r) { return UI.bar(r.wc.loadPct); } }
       ]
     }) + '</section>';
     return h;
@@ -113,8 +113,8 @@
     var cost = wc.committed * (w.costPerHour || 0);
     h += UI.facts([
       { label: 'Tillgänglig tid i ' + ctx.period.inText, value: U.fmtH(wc.available), note: U.fmtNum(U.round(wc.availableWeek, 1)) + ' h i veckan efter grundavdrag' },
-      { label: 'Lovat bort', value: U.fmtH(wc.committed), note: U.fmtPct(wc.allocationPct) + ' av tillgänglig tid', tone: over ? 'crit' : null },
-      { label: 'Planerat arbete', value: U.fmtPct(wc.loadPct), note: U.fmtH(wc.loaded) + ' av tillgänglig tid', tone: wc.loadPct > 100.5 ? 'crit' : wc.loadPct >= 90 ? 'warn' : null },
+      { label: 'Allokerat', value: U.fmtH(wc.committed), note: U.fmtPct(wc.allocationPct) + ' av tillgänglig tid', tone: over ? 'crit' : null },
+      { label: 'Beläggning', value: U.fmtPct(wc.loadPct), note: U.fmtH(wc.loaded) + ' belastat av tillgänglig tid', tone: wc.loadPct > 100.5 ? 'crit' : wc.loadPct >= 90 ? 'warn' : null },
       w.costPerHour ? { label: 'Kostnad i perioden', value: U.fmtNum(cost) + ' kr', note: U.fmtNum(w.costPerHour) + ' kr per timme' } : null
     ]);
 
