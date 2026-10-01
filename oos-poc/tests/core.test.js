@@ -326,31 +326,42 @@ test('team som tas bort tar sina epiker med sig, initiativ lämnar epikerna kvar
   assert.ok(before > 0);
   Store.remove('initiatives', 'in_dora');
   assert.equal(Store.db.epics.filter((x) => x.initiativeId === 'in_dora').length, 0);
-  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 4);
+  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 3);
   Store.remove('teams', 't_sakerhet');
   assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 0);
   Store.reset();
 });
 
-test('inget räknas två gånger: utbildning räknas först mot grundavdraget för kompetensutveckling', () => {
+test('utbildning ingår i förvaltningen: en förvaltningsepik per team, ingen egen arbetstyp', () => {
+  assert.ok(!E.EPIC_TYPES.some((t) => t.value === 'training'));
   const db = Seed.build();
   const e = E.create(db);
-  const pool = e.trainingPool('t_kundportal', OCT);
-  /* 8 personer med 2 h kompetensutveckling i veckan, 22 arbetsdagar, efter allokering */
-  assert.ok(pool > 40 && pool < 90, 'pool ' + pool);
-  const d = e.teamDemand('t_kundportal', OCT);
-  const wcag = d.epics.find((x) => x.epic.name.startsWith('Utbildning i tillgänglighet'));
-  near(d.absorbed, Math.min(wcag.hours, pool));
-  near(wcag.load, wcag.hours - wcag.absorbed);
-  const raw = d.epics.filter((x) => x.counts).reduce((a, x) => a + x.hours, 0);
-  near(d.hours, raw - d.absorbed);
-  near(e.teamCapacity('t_kundportal', OCT).loaded, d.hours);
+  db.teams.forEach((t) => assert.equal(e.teamMaintenance(t.id, OCT).length, 1, t.id));
+  assert.equal(e.signals(OCT).filter((s) => s.kind === 'nomaintenance').length, 0);
+  /* Ett team utan förvaltning får en signal, ett team med två får en uppmaning att slå ihop. */
+  db.epics = db.epics.filter((x) => !(x.teamId === 't_webb' && x.type === 'maintenance'));
+  db.epics.push({ id: 'x', teamId: 't_api', name: 'Förvaltning 2', type: 'maintenance', status: 'active', effort: 'monthly', hours: 10, from: '2026-01-01', to: '2026-12-31', needs: [], dependsOn: [] });
+  const sig = E.create(db).signals(OCT);
+  assert.ok(sig.some((s) => s.kind === 'nomaintenance' && s.ref.id === 't_webb'));
+  assert.ok(sig.some((s) => s.kind === 'structure' && s.ref.id === 't_api' && /förvaltningsepiker/.test(s.title)));
+});
 
-  /* Utan grundavdrag som täcker utbildning belastar hela utbildningen teamet. */
-  db.overheadReductions.forEach((o) => { o.coversTraining = false; });
-  const d2 = E.create(db).teamDemand('t_kundportal', OCT);
-  near(d2.absorbed, 0);
-  near(d2.hours, raw);
+test('sparad data: utbildningsepiker försvinner in i förvaltningen', () => {
+  const Store = require('../js/store.js');
+  const old = Seed.build();
+  old.epics.push(
+    { id: 'old1', teamId: 't_kundportal', name: 'Utbildning i tillgänglighet (WCAG 2.2)', type: 'training', status: 'planned', effort: 'total', hours: 120, from: '2026-10-01', to: '2026-10-31', needs: [], dependsOn: [] },
+    { id: 'old2', teamId: 't_webb', name: 'Egen kurs', type: 'training', status: 'planned', effort: 'total', hours: 20, from: '2026-10-01', to: '2026-10-31', needs: [], dependsOn: [] }
+  );
+  old.epics.find((x) => x.name === 'Chattbot för vanliga frågor').dependsOn.push('old1');
+  old.overheadReductions[1].coversTraining = true;
+  Store.importJSON(JSON.stringify(old));
+  const db = Store.db;
+  assert.ok(!db.epics.some((x) => x.id === 'old1'));
+  assert.equal(db.epics.find((x) => x.id === 'old2').type, 'maintenance');
+  assert.ok(!db.epics.some((x) => (x.dependsOn || []).includes('old1')));
+  assert.ok(!db.overheadReductions.some((o) => 'coversTraining' in o));
+  Store.reset();
 });
 
 test('inget räknas två gånger: avdrag är frånvaro, arbete som avdrag flaggas', () => {
@@ -374,15 +385,14 @@ test('sparad data: avdrag som är arbete ersätts av epiker, utan dubbletter', (
     { id: 'tr_a', teamId: 't_data', type: 'Systembyte', percent: 30, from: '2026-10-01', to: '2026-10-31', comment: 'Migrering till ny dataplattform' },
     { id: 'tr_b', teamId: 't_test', type: 'Verktygsinförande', percent: 15, from: '2026-10-01', to: '2026-10-31', comment: 'Införande av nytt testverktyg' }
   );
-  old.epics = old.epics.filter((ep) => ep.name !== 'Införande av nytt testverktyg');
-  old.overheadReductions.forEach((o) => { delete o.coversTraining; });
+
   Store.importJSON(JSON.stringify(old));
   const db = Store.db;
   assert.equal(db.teamReductions.filter((r) => E.isWorkReduction(r.type)).length, 0);
-  assert.equal(db.epics.filter((ep) => ep.name === 'Införande av nytt testverktyg').length, 1);
+  /* Införandet ryms i testteamets förvaltning. Ingen ny epik läggs till. */
+  assert.equal(db.epics.filter((ep) => ep.name === 'Införande av nytt testverktyg').length, 0);
   /* Migreringen i Data & Analys täcks redan av en epik. Ingen ny epik läggs till. */
   assert.equal(db.epics.filter((ep) => ep.teamId === 't_data' && /migrer/i.test(ep.name)).length, 1);
-  assert.equal(db.overheadReductions.find((o) => o.id === 'oh_kompetens').coversTraining, true);
   Store.reset();
 });
 

@@ -36,14 +36,14 @@
     h += '<section class="card"><div class="card-head"><div class="card-title">Grundavdrag <span class="card-sub">(alla team och arbetare)</span></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     S.db.overheadReductions.forEach(function (r) {
-      h += '<tr><td>' + esc(r.name) + (r.coversTraining ? '<div class="muted small">Utbildningsepiker räknas först mot det här</div>' : '') + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
+      h += '<tr><td>' + esc(r.name) + (r.id === 'oh_kompetens' || /kompetensutveckling/i.test(r.name) ? '<div class="muted small">Personlig utveckling. Teamets utbildning och kompetensspridning ligger i förvaltningen.</div>' : '') + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
     });
     h += '<tr class="total"><td>Summa</td><td class="num">' + U.fmtNum(ohTotal) + ' h/v</td><td colspan="2" class="muted small">' + U.fmtPct((ohTotal / st.standardWeekHours) * 100) + ' av arbetstiden</td></tr>';
     h += '</tbody></table></div></section>';
     h += '</div>';
 
     var reds = S.db.teamReductions.slice().sort(function (a, b) { return a.from.localeCompare(b.from); });
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Tid som inte finns i ett team under en period, till exempel föräldraledighet eller långtidsfrånvaro. Arbete, som utbildning eller systembyte, läggs som en epik så att det inte räknas två gånger. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Tid som inte finns i ett team under en period, till exempel föräldraledighet eller långtidsfrånvaro. Arbete läggs som epik: utbildning och underhåll i teamets förvaltning, systembyten och annat i egna epiker. Då räknas inget två gånger. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
       UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-primary' }) + '</div>';
     h += UI.table({
       id: 'tbl-reductions',

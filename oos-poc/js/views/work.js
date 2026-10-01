@@ -17,7 +17,7 @@
   var C = OOS.common;
   var E = OOSEngine;
 
-  var TYPE_ORDER = ['development', 'maintenance', 'investigation', 'training'];
+  var TYPE_ORDER = ['development', 'maintenance', 'investigation'];
 
   function monthSpan(ep) {
     return U.fmtDate(ep.from) + ' – ' + U.fmtDate(ep.to);
@@ -276,9 +276,7 @@
     var months = Math.max(1, periodsIn(ep.from, ep.to, 60).length);
     var mine = team ? e.teamDemand(team.id, p).epics.filter(function (x) { return x.epic.id === ep.id; })[0] : null;
     h += UI.facts([
-      { label: 'I ' + p.inText, value: U.fmtH(hrs), note: mine && mine.absorbed > 0.5
-        ? U.fmtH(mine.absorbed) + ' ryms i grundavdraget för kompetensutveckling, ' + U.fmtH(mine.load) + ' belastar teamet'
-        : tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
+      { label: 'I ' + p.inText, value: U.fmtH(hrs), note: tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
       { label: 'Ram', value: ep.effort === 'monthly' ? U.fmtNum(ep.hours) + ' h/mån' : U.fmtH(ep.hours), note: ep.effort === 'monthly' ? U.fmtH(frame) + ' under hela tiden' : 'Fördelas jämnt över tiden' },
       { label: 'Tid', value: U.plural(months, 'period', 'perioder'), note: monthSpan(ep) },
       tc ? { label: 'Teamets beläggning', value: U.fmtPct(tc.loadPct), note: 'I ' + p.inText + ', allt beslutat arbete', tone: loadTone(tc.loadPct) } : null
@@ -365,7 +363,7 @@
     var free = U.sum(org, function (c) { return Math.max(0, c.free); });
     /* Behov spelar roll när teamet har flera kompetensområden. Utbildning gäller hela teamet. */
     var noNeeds = S.db.epics.filter(function (ep) {
-      if (!E.epicCounts(ep.status) || ep.status === 'done' || ep.type === 'training' || E.epicHoursInPeriod(ep, p) <= 0 || E.normNeeds(ep.needs)) return false;
+      if (!E.epicCounts(ep.status) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0 || E.normNeeds(ep.needs)) return false;
       return e.teamCategoryLoad(ep.teamId, p).rows.filter(function (r) { return r.supply > 0.5; }).length > 1;
     });
 
@@ -592,18 +590,22 @@
       '<div class="card-sub">Beslutade epiker mot teamets kapacitet. Det är de som ger teamets beläggning.</div></div>' +
       UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-sm', data: { team: team.id } }) + '</div>';
     var rows = '';
-    d.epics.forEach(function (x) {
+    /* Förvaltningen först: den löpande ramen för drift, utbildning och kompetensspridning. */
+    var list = d.epics.slice().sort(function (a, b) { return (b.epic.type === 'maintenance') - (a.epic.type === 'maintenance') || b.hours - a.hours; });
+    if (!e.teamMaintenance(team.id, p).length) {
+      rows += '<div class="commit is-missing">' + C.typeSwatch('maintenance') + '<div><strong>Förvaltning saknas</strong>' +
+        '<div class="commit-sub">Varje team har en förvaltningsepik för drift, utbildning och kompetensspridning.</div></div>' +
+        '<span></span>' + UI.btn('Lägg till', 'epic-add', { cls: 'btn-sm', data: { team: team.id, kind: 'maintenance' } }) + '</div>';
+    }
+    list.forEach(function (x) {
       var init = x.epic.initiativeId ? e.get('initiatives', x.epic.initiativeId) : null;
+      var what = x.epic.type === 'maintenance' ? 'Förvaltning: drift, utbildning och kompetensspridning' : esc(C.EPIC_TYPE[x.epic.type] || '');
       rows += '<div class="commit' + (x.counts ? '' : ' is-proposal') + '">' + C.typeSwatch(x.epic.type) + '<div>' + C.epicRef(x.epic) +
-        '<div class="commit-sub">' + esc(C.EPIC_TYPE[x.epic.type] || '') + (init ? ' · ' + esc(init.name) : '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status]) + ', räknas inte') +
-        (x.absorbed > 0.5 ? ' · ' + U.fmtH(x.hours) + ', varav ' + U.fmtH(x.absorbed) + ' i kompetensutvecklingen' : '') + '</div></div>' +
+        '<div class="commit-sub">' + what + (init ? ' · ' + esc(init.name) : '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status]) + ', räknas inte') + '</div></div>' +
         '<span class="commit-hours">' + (x.counts ? U.fmtH(x.load) : '(' + U.fmtH(x.hours) + ')') + '</span>' + UI.iconBtn('edit', 'epic-edit', { id: x.epic.id }, 'Ändra ' + x.epic.name) + '</div>';
     });
-    if (!d.epics.length) rows += '<div class="empty">Inget arbete i perioden. Lägg till teamets förvaltning och de epiker teamet ska göra.</div>';
+    if (!d.epics.length) rows += '<div class="empty">Inget annat arbete i perioden.</div>';
     h += workSplit(d.byType, tc.capacity, 'Kapacitet', rows);
-    if (d.absorbed > 0.5) {
-      h += '<p class="small muted">' + U.fmtH(d.absorbed) + ' utbildning ryms i grundavdraget för kompetensutveckling och belastar inte teamet. Det avdraget är redan draget från kapaciteten.</p>';
-    }
     if (d.proposed > 0 && tc.capacity) {
       var after = ((tc.loaded + d.proposed) / tc.capacity) * 100;
       h += '<p class="small' + (after > 100.5 ? ' crit-text' : ' muted') + '">Om förslagen beslutas blir beläggningen ' + U.fmtPct(after) + (after > 100.5 ? ', mer än teamet har.' : '.') + '</p>';
@@ -615,6 +617,17 @@
   A['epic-add'] = function (el) {
     var defaults = {};
     if (el && el.dataset.team) defaults.teamId = el.dataset.team;
+    /* Förvaltning: löpande ram per månad. Förslaget är en femtedel av teamets kapacitet. */
+    if (el && el.dataset.kind === 'maintenance') {
+      var t = S.engine().get('teams', el.dataset.team);
+      var cap = S.engine().teamCapacity(el.dataset.team, OOS.period()).capacity;
+      var today = U.todayISO();
+      Object.assign(defaults, {
+        type: 'maintenance', effort: 'monthly', status: 'active', name: 'Förvaltning' + (t ? ' – ' + t.name : ''),
+        hours: Math.max(10, Math.round((cap * 0.2) / 10) * 10), from: today, to: (Number(today.slice(0, 4)) + 1) + '-12-31',
+        description: 'Drift, rättningar, utbildning och kompetensspridning.'
+      });
+    }
     if (el && el.dataset.initiative) {
       defaults.initiativeId = el.dataset.initiative;
       defaults.type = 'development';

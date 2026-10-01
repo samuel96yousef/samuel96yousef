@@ -103,10 +103,23 @@ var OOSStore = (function () {
         }
       });
     }
-    /* Grundavdraget för kompetensutveckling är den tid som utbildningsepiker räknas mot först. */
-    (d.overheadReductions || []).forEach(function (o) {
-      if (o.coversTraining === undefined) o.coversTraining = o.id === 'oh_kompetens' || /kompetensutveckling/i.test(o.name || '');
-    });
+    /*
+     * Utbildning är ingen egen arbetstyp längre. Den ingår i teamets förvaltning. Demodatans
+     * utbildnings- och införandeepiker tas bort, andra utbildningsepiker blir förvaltning.
+     */
+    (d.overheadReductions || []).forEach(function (o) { delete o.coversTraining; });
+    if (Array.isArray(d.epics)) {
+      var retired = (Seed.RETIRED_EPICS || []).map(function (x) { return x[0] + '|' + x[1]; });
+      var gone = new Set();
+      d.epics = d.epics.filter(function (ep) {
+        if (retired.indexOf(ep.teamId + '|' + ep.name) >= 0) { gone.add(ep.id); return false; }
+        return true;
+      });
+      d.epics.forEach(function (ep) {
+        if (ep.type === 'training') ep.type = 'maintenance';
+        if (ep.dependsOn && gone.size) ep.dependsOn = ep.dependsOn.filter(function (id) { return !gone.has(id); });
+      });
+    }
     /* Avdrag i äldre demodata som egentligen är arbete ersätts av epiker, så att inget räknas två gånger. */
     if (Array.isArray(d.teamReductions) && Array.isArray(d.epics)) {
       (Seed.RETIRED_REDUCTIONS || []).forEach(function (rr) {

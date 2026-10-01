@@ -3134,9 +3134,15 @@ kbd {
   background: color-mix(in srgb, var(--bar) 40%, var(--bg));
 }
 
-.budget-seg.training,
-.sw-k.training {
-  background: color-mix(in srgb, var(--bar) 24%, var(--bg));
+/* Saknad förvaltning: en tom rad med streckad ruta, som visar vad som borde finnas. */
+.commit.is-missing .sw-k {
+  background: none;
+  border: 1px dashed var(--warn);
+}
+
+.commit.is-missing strong {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 .sw-k {

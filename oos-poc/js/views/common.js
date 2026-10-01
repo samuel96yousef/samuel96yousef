@@ -327,7 +327,25 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     }
     hours = Math.max(1, Math.round((hours * (r.percent || 0)) / 100));
     var t = r.type || '';
-    var type = /utbild|kurs/i.test(t) ? 'training' : /underhåll|förvalt|verktyg|uppgrader/i.test(t) ? 'maintenance' : /utred/i.test(t) ? 'investigation' : 'development';
+    /*
+     * Utbildning, underhåll, införanden och uppgraderingar hör till teamets förvaltning. Avdraget tas
+     * bort och tiden ryms i förvaltningsramen. Räcker inte ramen höjs den, i stället för en ny epik.
+     */
+    if (/utbild|kurs|kompetens|underhåll|förvalt|verktyg|uppgrader|inför/i.test(t)) {
+      var team = S.engine().get('teams', r.teamId);
+      var mt = S.db.epics.filter(function (x) { return x.teamId === r.teamId && x.type === 'maintenance' && x.status !== 'done' && x.status !== 'proposed'; })[0];
+      var common = {
+        title: 'Lägg avdraget i förvaltningen',
+        intro: esc(t) + ' är arbete, inte frånvaro, och hör till ' + (team ? esc(team.name) + 's' : 'teamets') + ' förvaltning. Avdraget tas bort när du sparar. Det motsvarade ' + U.fmtH(hours) + ' under perioden. Höj ramen om den inte räcker.',
+        patch: without,
+        savedText: 'Avdraget togs bort och ryms i förvaltningen.',
+        afterSave: function () { S.remove('teamReductions', r.id); }
+      };
+      if (mt) F.epic(mt, null, common);
+      else F.epic(null, { teamId: r.teamId, name: 'Förvaltning' + (team ? ' – ' + team.name : ''), type: 'maintenance', effort: 'monthly', hours: hours, status: 'active', from: U.todayISO(), to: (Number(U.todayISO().slice(0, 4)) + 1) + '-12-31' }, common);
+      return;
+    }
+    var type = /utred/i.test(t) ? 'investigation' : 'development';
     F.epic(null, {
       teamId: r.teamId, name: r.comment || t, type: type, effort: 'total', hours: hours, from: r.from, to: r.to,
       status: r.to < U.todayISO() ? 'done' : 'planned',
@@ -943,7 +961,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     var p = OOS.period();
     UI.openForm({
       title: isNew ? 'Lägg till avdrag' : 'Ändra avdrag',
-      intro: 'Ett avdrag är tid som inte finns, till exempel föräldraledighet eller långtidsfrånvaro. Arbete, som utbildning, systembyte eller underhåll, läggs som en epik. Annars räknas samma tid två gånger.',
+      intro: 'Ett avdrag är tid som inte finns, till exempel föräldraledighet eller långtidsfrånvaro. Arbete läggs som epik: utbildning och underhåll i teamets förvaltning, systembyten och annat i egna epiker. Annars räknas samma tid två gånger.',
       values: r || { teamId: teamId || '', percent: 10, from: p.start, to: p.end },
       fields: [
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams(), full: true },
@@ -954,7 +972,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
         { key: 'comment', label: 'Orsak/kommentar', full: true }
       ],
       validate: function (v) {
-        if (OOSEngine.isWorkReduction(v.type)) return { type: 'Det här är arbete. Lägg det som en epik i stället, annars räknas tiden två gånger.' };
+        if (OOSEngine.isWorkReduction(v.type)) return { type: 'Det här är arbete. Utbildning och underhåll ryms i teamets förvaltning, annat arbete läggs som en epik. Annars räknas tiden två gånger.' };
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
       },
       onSubmit: function (v) {
@@ -979,7 +997,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
-        { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes },
+        { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes, help: 'Förvaltning rymmer drift, rättningar, utbildning och kompetensspridning. En per team.' },
         { key: 'initiativeId', label: 'Initiativ', type: 'select', placeholder: 'Inget initiativ', options: C.opts.initiatives(), help: 'Utvecklingsarbete bör höra till ett beslutat initiativ.' },
         { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: 'Förslag belastar inte teamet. Klara epiker räknas för den tid de pågick.' },
         { key: 'effort', label: 'Ram', type: 'select', required: true, options: C.opts.effort },
@@ -993,6 +1011,14 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       preview: function (v) { return C.impactHtml(C.epicImpact(v, r, opts.patch)); },
       validate: function (v) {
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
+        /* Förvaltning är en löpande ram, och varje team har en. Mer förvaltning = högre ram, inte en till epik. */
+        if (v.type === 'maintenance') {
+          if (v.effort !== 'monthly') return { effort: 'Förvaltning är löpande. Välj ram per månad.' };
+          var other = S.db.epics.filter(function (x) {
+            return x.teamId === v.teamId && x.type === 'maintenance' && (!r || x.id !== r.id) && x.status !== 'done' && x.from <= v.to && x.to >= v.from;
+          })[0];
+          if (other) return { type: 'Teamet har redan förvaltningen ' + other.name + '. Höj dess ram i stället, utbildning och kompetensspridning ryms där.' };
+        }
         var sum = U.sum(v.needs || [], function (n) { return n.share; });
         if (sum && Math.abs(sum - 100) > 0.5) return { needs: 'Andelarna ska bli 100 %. Nu är de ' + U.fmtNum(sum) + ' %.' };
       },
@@ -1048,12 +1074,11 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     UI.openForm({
       title: isNew ? 'Lägg till grundavdrag' : 'Ändra ' + r.name,
       intro: 'Grundavdrag gäller alla arbetare och skalas mot deras grundkapacitet.',
-      values: r || { hoursPerWeek: 1, appliesToAI: false, coversTraining: false },
+      values: r || { hoursPerWeek: 1, appliesToAI: false },
       fields: [
         { key: 'name', label: 'Avdragstyp', required: true, full: true },
         { key: 'hoursPerWeek', label: 'Värde (h/vecka vid heltid)', type: 'number', min: 0, max: 40, step: 0.5, required: true },
-        { key: 'appliesToAI', label: 'Gäller även AI-arbetare', type: 'checkbox' },
-        { key: 'coversTraining', label: 'Tiden används till utbildning', type: 'checkbox', full: true, help: 'Utbildningsepiker räknas först mot det här avdraget. Bara det som går utöver belastar teamet, så att samma tid inte räknas två gånger.' }
+        { key: 'appliesToAI', label: 'Gäller även AI-arbetare', type: 'checkbox' }
       ],
       onSubmit: function (v) {
         if (isNew) S.insert('overheadReductions', v);

@@ -451,43 +451,20 @@ var OOSEngine = (function () {
           proposed += h;
         }
       });
-      /*
-       * Utbildning räknas först mot grundavdraget för kompetensutveckling, som redan är draget från
-       * kapaciteten. Bara det som går utöver belastar teamet. Annars räknas samma tid två gånger.
-       */
-      var training = byType.training || 0;
-      var pool = training ? trainingPool(teamId, period) : 0;
-      var absorbed = Math.min(training, pool);
-      list.forEach(function (x) {
-        x.absorbed = x.counts && x.epic.type === 'training' && training ? (x.hours * absorbed) / training : 0;
-        x.load = x.counts ? x.hours - x.absorbed : 0;
-      });
-      if (absorbed) {
-        hours -= absorbed;
-        byType.training = training - absorbed;
-        if (byType.training < 0.01) delete byType.training;
-      }
+      list.forEach(function (x) { x.load = x.counts ? x.hours : 0; });
       list.sort(function (a, b) { return b.hours - a.hours; });
-      var res = { hours: hours, byType: byType, epics: list, proposed: proposed, trainingPool: pool, absorbed: absorbed };
+      var res = { hours: hours, byType: byType, epics: list, proposed: proposed };
       demandCache.set(key, res);
       return res;
     }
 
     /*
-     * Teamets andel av de grundavdrag som täcker utbildning (normalt kompetensutveckling), i timmar.
-     * Räknas som kapaciteten: medlemmens andel av tiden, nedskalning vid överallokering och teamavdrag.
+     * Teamets förvaltning: drift, rättningar, utbildning och kompetensspridning. Varje team har en
+     * förvaltningsepik med en löpande ram per månad. Utbildning är ingen egen epik utan ryms i ramen.
      */
-    function trainingPool(teamId, period) {
-      var covers = (db.overheadReductions || []).filter(function (r) { return r.coversTraining; });
-      if (!covers.length) return 0;
-      var red = teamReductionShare(teamId, period);
-      return U.sum(teamMembers(teamId), function (m) {
-        var w = m.worker;
-        var perWeek = U.sum(covers.filter(function (r) { return w.type !== 'ai' || r.appliesToAI; }), function (r) {
-          return r.hoursPerWeek * ((w.baseHoursPerWeek || 0) / standardWeek);
-        });
-        var wh = workerHours(w.id, period);
-        return ((weekToPeriod(perWeek, period) * m.tw.allocation) / 100) * wh.scale * (1 - red.share);
+    function teamMaintenance(teamId, period) {
+      return where('epics', 'teamId', teamId).filter(function (ep) {
+        return ep.type === 'maintenance' && COUNTS[ep.status] && ep.from <= period.end && ep.to >= period.start;
       });
     }
 
@@ -1193,6 +1170,27 @@ var OOSEngine = (function () {
             ref: { page: 'teams', id: t.id }
           });
         }
+        /* Varje team har en förvaltningsepik. Utan den syns inte drift, utbildning och kompetensspridning. */
+        if (epicMode && tc.capacity > 0) {
+          var mt = teamMaintenance(t.id, period);
+          if (!mt.length) {
+            out.push({
+              kind: 'nomaintenance',
+              severity: 'warning',
+              title: t.name + ' saknar förvaltning',
+              detail: 'Teamet har ingen förvaltningsepik i perioden. Drift, utbildning och kompetensspridning syns då inte i beläggningen.',
+              ref: { page: 'teams', id: t.id }
+            });
+          } else if (mt.length > 1) {
+            out.push({
+              kind: 'structure',
+              severity: 'warning',
+              title: t.name + ' har ' + mt.length + ' förvaltningsepiker',
+              detail: 'Förvaltning är en epik per team med en löpande ram. Slå ihop ' + mt.map(function (x) { return x.name; }).join(' och ') + '.',
+              ref: { page: 'teams', id: t.id }
+            });
+          }
+        }
         /* Flaskhalsar: ett kompetensområde kan vara fullt även när teamet som helhet har tid. */
         if (epicMode && tc.capacity > 0) {
           tc.categories.forEach(function (r) {
@@ -1240,7 +1238,7 @@ var OOSEngine = (function () {
             kind: 'double',
             severity: 'warning',
             title: r.type + ' i ' + t.name + ' är arbete, men ligger som avdrag',
-            detail: 'Avdrag är tid som inte finns, till exempel frånvaro. Arbete ska vara en epik. Annars kan samma tid räknas två gånger: först som minskad kapacitet, sedan som belastning.',
+            detail: 'Avdrag är tid som inte finns, till exempel frånvaro. Utbildning och underhåll hör till teamets förvaltning, annat arbete till en epik. Annars kan samma tid räknas två gånger: först som minskad kapacitet, sedan som belastning.',
             ref: { page: 'teams', id: t.id }
           });
         });
@@ -1278,7 +1276,7 @@ var OOSEngine = (function () {
             kind: 'keyperson',
             severity: 'warning',
             title: c.name + ': bara en person på nivå 3–4',
-            detail: holders[0].worker.name + ' bär kunskapen. ' + (any.length - 1 ? (any.length - 1) + ' till har kompetensen på lägre nivå.' : 'Ingen annan har kompetensen.'),
+            detail: holders[0].worker.name + ' bär kunskapen. ' + (any.length - 1 ? (any.length - 1) + ' till har kompetensen på lägre nivå.' : 'Ingen annan har kompetensen.') + ' Kompetensspridning planeras inom teamets förvaltning.',
             ref: { page: 'competences', id: c.id }
           });
         }
@@ -1589,7 +1587,7 @@ var OOSEngine = (function () {
       workerCapacity: workerCapacity,
       teamCapacity: teamCapacity,
       teamDemand: teamDemand,
-      trainingPool: trainingPool,
+      teamMaintenance: teamMaintenance,
       teamCategoryLoad: teamCategoryLoad,
       orgCategoryLoad: orgCategoryLoad,
       epicDependencies: epicDependencies,
@@ -1654,8 +1652,7 @@ var OOSEngine = (function () {
    */
   var EPIC_TYPES = [
     { value: 'development', label: 'Utveckling' },
-    { value: 'maintenance', label: 'Förvaltning' },
-    { value: 'training', label: 'Utbildning' },
+    { value: 'maintenance', label: 'Förvaltning', help: 'Drift, rättningar, utbildning och kompetensspridning. En per team, med löpande ram per månad.' },
     { value: 'investigation', label: 'Utredning' }
   ];
   var EPIC_STATUS = [

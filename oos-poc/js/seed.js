@@ -326,6 +326,20 @@ var OOSSeed = (function () {
     d_digital: 'w_emma', d_crm: 'w_per', d_integration: 'w_henrik', d_infra: 'w_erik', d_penplat: 'w_mikael'
   };
 
+  /*
+   * Epiker som tidigare låg i demodatan men som nu ingår i teamets förvaltning: utbildning,
+   * införanden och uppgraderingar. Sparad data uppdateras så att de inte ligger kvar som egna epiker.
+   */
+  var RETIRED_EPICS = [
+    ['t_kundportal', 'Utbildning i tillgänglighet (WCAG 2.2)'],
+    ['t_agportal', 'Utbildning i tillgänglighet (WCAG 2.2)'],
+    ['t_test', 'Utbildning i det nya testverktyget'],
+    ['t_kundportal', 'Utbildning i nytt CMS'],
+    ['t_infra', 'Uppgradering av infrastruktur'],
+    ['t_sakerhet', 'Säkerhetsutbildning (ISO 27001)'],
+    ['t_test', 'Införande av nytt testverktyg']
+  ];
+
   /* Teamavdrag är tid som inte finns: frånvaro. Arbete ligger som epiker, så att inget räknas två gånger. */
   var TEAM_REDUCTIONS = [
     ['t_forsakring', 'Föräldraledighet', 20, '2026-09-01', '2026-12-31', 'Två medarbetare på föräldraledighet'],
@@ -333,20 +347,21 @@ var OOSSeed = (function () {
   ];
 
   /*
-   * Avdrag som tidigare låg i demodatan men som är arbete. Sparad data uppdateras: avdraget tas bort
-   * och ersätts av epiken med samma arbete. null betyder att en epik redan täcker arbetet.
+   * Avdrag som tidigare låg i demodatan men som är arbete. Sparad data uppdateras: avdraget tas bort.
+   * Arbetet ryms i teamets förvaltning eller i en epik som redan finns.
    */
   var RETIRED_REDUCTIONS = [
-    { teamId: 't_kundportal', type: 'Utbildning', comment: 'Utbildning i nytt CMS', epic: 'Utbildning i nytt CMS' },
+    { teamId: 't_kundportal', type: 'Utbildning', comment: 'Utbildning i nytt CMS', epic: null },
     { teamId: 't_data', type: 'Systembyte', comment: 'Migrering till ny dataplattform', epic: null },
-    { teamId: 't_infra', type: 'Planerat underhåll', comment: 'Uppgradering av infrastruktur', epic: 'Uppgradering av infrastruktur' },
-    { teamId: 't_sakerhet', type: 'Utbildning', comment: 'Säkerhetsutbildning (ISO 27001)', epic: 'Säkerhetsutbildning (ISO 27001)' },
-    { teamId: 't_test', type: 'Verktygsinförande', comment: 'Införande av nytt testverktyg', epic: 'Införande av nytt testverktyg' }
+    { teamId: 't_infra', type: 'Planerat underhåll', comment: 'Uppgradering av infrastruktur', epic: null },
+    { teamId: 't_sakerhet', type: 'Utbildning', comment: 'Säkerhetsutbildning (ISO 27001)', epic: null },
+    { teamId: 't_test', type: 'Verktygsinförande', comment: 'Införande av nytt testverktyg', epic: null }
   ];
 
   /*
    * Arbete. Initiativ är beslutade satsningar som en leveransdomän äger. Epiker är teamens arbete:
-   * utveckling (ofta nedbrutet från ett initiativ), förvaltning, utbildning och utredning.
+   * utveckling (ofta nedbrutet från ett initiativ), förvaltning och utredning. Varje team har en
+   * förvaltningsepik. Den rymmer drift, rättningar, utbildning och kompetensspridning.
    * Timmarna är beslutade ramar, inte estimat (omvänd estimering, problem 17):
    * monthly = timmar per månad så länge epiken pågår, total = timmar fördelade jämnt över arbetsdagarna.
    */
@@ -369,7 +384,6 @@ var OOSSeed = (function () {
   var EPICS = [
     ['t_kundportal', 'Förvaltning av kundportalen', 'maintenance', null, 'active', 'monthly', 200, '2026-01-01', '2027-12-31', 'Rättningar, mindre förbättringar och uppgraderingar av kundportalen och notifikationstjänsten.'],
     ['t_kundportal', 'Självservice: byta förmånstagare', 'development', 'in_sjalvservice', 'active', 'total', 1100, '2026-09-01', '2026-12-31', 'Kunden ska kunna byta förmånstagare själv, med signering och kvittens.'],
-    ['t_kundportal', 'Utbildning i tillgänglighet (WCAG 2.2)', 'training', null, 'planned', 'total', 120, '2026-10-01', '2026-10-31', 'Hela teamet går kursen och gör en genomgång av kundportalen.'],
     ['t_kundportal', 'Chattbot för vanliga frågor', 'development', 'in_sjalvservice', 'proposed', 'total', 600, '2026-11-01', '2027-01-31', 'Förslag: en chattbot som svarar på de tjugo vanligaste frågorna.'],
     ['t_radgivning', 'Förvaltning av rådgivarstödet', 'maintenance', null, 'active', 'monthly', 180, '2026-01-01', '2027-12-31', 'Löpande förvaltning av verktygen som rådgivarna använder.'],
     ['t_radgivning', 'Digitalt rådgivningsmöte', 'development', 'in_sjalvservice', 'active', 'total', 1500, '2026-09-01', '2027-02-28', 'Kunden ska kunna boka och genomföra rådgivning på distans med delad skärm.'],
@@ -388,7 +402,6 @@ var OOSSeed = (function () {
     ['t_sapcrm', 'Förstudie: uppgradering till S/4', 'investigation', null, 'active', 'total', 300, '2026-09-14', '2026-11-30', 'Vad kostar en uppgradering till S/4HANA och när behöver den göras?'],
     ['t_agportal', 'Förvaltning av arbetsgivarportalen', 'maintenance', null, 'active', 'monthly', 160, '2026-01-01', '2027-12-31', 'Löpande förvaltning av arbetsgivarportalen.'],
     ['t_agportal', 'Digital anslutning: nytt onboardingflöde', 'development', 'in_anslutning', 'active', 'total', 2400, '2026-08-03', '2027-03-31', 'Arbetsgivaren ansluter sig och tecknar avtal i ett sammanhängande flöde.'],
-    ['t_agportal', 'Utbildning i tillgänglighet (WCAG 2.2)', 'training', null, 'planned', 'total', 80, '2026-10-01', '2026-10-31', 'Teamet går samma kurs som Kundportal Team.'],
     ['t_api', 'Förvaltning av Arbetsgivar-API', 'maintenance', null, 'active', 'monthly', 120, '2026-01-01', '2027-12-31', 'Förvaltning och övervakning av API:et.'],
     ['t_api', 'Rapportering via API för lönesystem', 'development', 'in_anslutning', 'active', 'total', 1350, '2026-09-01', '2027-01-29', 'Lönesystem ska kunna rapportera direkt utan filöverföring.'],
     ['t_integration', 'Förvaltning av integrationsplattformen', 'maintenance', null, 'active', 'monthly', 260, '2026-01-01', '2027-12-31', 'Drift och förvaltning av integrationsplattformen.'],
@@ -403,16 +416,10 @@ var OOSSeed = (function () {
     ['t_sakerhet', 'DORA: register över tredjepartsleverantörer', 'investigation', 'in_dora', 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kartläggning av alla IT-leverantörer och deras kritikalitet.'],
     ['t_test', 'Förvaltning av testmiljöerna', 'maintenance', null, 'active', 'monthly', 110, '2026-01-01', '2027-12-31', 'Testmiljöer, testdata och verktyg.'],
     ['t_test', 'Testautomation för ITP 1', 'development', 'in_itp1', 'active', 'total', 700, '2026-09-01', '2027-01-29', 'Automatiserade regressionstester för hela utbetalningskedjan.'],
-    ['t_test', 'Utbildning i det nya testverktyget', 'training', null, 'planned', 'total', 60, '2026-10-01', '2026-10-31', 'Alla i teamet går grundkursen.'],
     ['t_ipa', 'Förvaltning av Kolbot RPA', 'maintenance', null, 'active', 'monthly', 220, '2026-01-01', '2027-12-31', 'Övervakning, rättningar och nya versioner av robotarna.'],
     ['t_ipa', 'Kolbot: automatiserade avtalsändringar', 'development', 'in_kolbot', 'active', 'total', 1600, '2026-09-01', '2027-02-26', 'Robotar som hanterar de vanligaste avtalsändringarna utan manuellt steg.'],
     ['t_ipa', 'Kolbot: robotar för ITP 1-utbetalningar', 'development', 'in_itp1', 'planned', 'total', 500, '2026-11-02', '2027-03-31', 'Robotar för de undantag som den nya motorn inte hanterar.'],
-    ['t_ipa', 'Utredning: AI-agenter i Kolbot', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan AI-agenter ta över ärenden där robotarna i dag stannar?'],
-    /* Tidigare avdrag som är arbete. */
-    ['t_kundportal', 'Utbildning i nytt CMS', 'training', null, 'done', 'total', 84, '2026-09-01', '2026-09-30', 'Teamet lärde sig det nya publiceringsverktyget.'],
-    ['t_infra', 'Uppgradering av infrastruktur', 'maintenance', null, 'done', 'total', 30, '2026-09-15', '2026-09-22', 'Planerat underhåll av servrar och nätverk.'],
-    ['t_sakerhet', 'Säkerhetsutbildning (ISO 27001)', 'training', null, 'planned', 'total', 31, '2026-11-01', '2026-11-30', 'Hela teamet går utbildningen inför certifieringen.'],
-    ['t_test', 'Införande av nytt testverktyg', 'maintenance', null, 'active', 'total', 65, '2026-10-01', '2026-10-31', 'Konfiguration och flytt av testfall till det nya verktyget.']
+    ['t_ipa', 'Utredning: AI-agenter i Kolbot', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan AI-agenter ta över ärenden där robotarna i dag stannar?']
   ];
 
   /*
@@ -476,7 +483,7 @@ var OOSSeed = (function () {
       settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'month', periodAnchor: null, loadSource: 'epics' },
       overheadReductions: [
         { id: 'oh_semester', name: 'Semester', hoursPerWeek: 4, appliesToAI: false },
-        { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false, coversTraining: true },
+        { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false },
         { id: 'oh_moten', name: 'Interna möten', hoursPerWeek: 2, appliesToAI: false },
         { id: 'oh_admin', name: 'Administration', hoursPerWeek: 1, appliesToAI: false }
       ],
@@ -635,7 +642,7 @@ var OOSSeed = (function () {
     return db;
   }
 
-  return { build: build, RETIRED_REDUCTIONS: RETIRED_REDUCTIONS };
+  return { build: build, RETIRED_REDUCTIONS: RETIRED_REDUCTIONS, RETIRED_EPICS: RETIRED_EPICS };
 })();
 
 if (typeof module !== 'undefined') module.exports = OOSSeed;
