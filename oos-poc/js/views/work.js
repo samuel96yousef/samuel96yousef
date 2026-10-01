@@ -72,20 +72,17 @@
   /* ---------- Epiker ---------- */
 
   function timelineCard(ctx) {
-    var group = OOS.segVal('gantt-group', 'team');
-    var scope = OOS.segVal('gantt-scope', 'work');
+    var group = OOS.segVal('tl-group', 'chain');
     return '<section class="card"><div class="card-head"><div><div class="card-title">Tidslinje</div>' +
-      '<div class="card-sub">Epikerna över tid, från två månader bakåt till nio framåt. Förvaltningen löper hela tiden och visas när du väljer Allt arbete.</div></div>' +
-      '<div class="row">' + UI.seg('gantt-group', [{ key: 'team', label: 'Per team' }, { key: 'initiative', label: 'Per initiativ' }], group) +
-      UI.seg('gantt-scope', [{ key: 'work', label: 'Utveckling och utredning' }, { key: 'all', label: 'Allt arbete' }], scope) + '</div></div>' +
-      OOS.epicViz.gantt(ctx, { group: group, scope: scope }) + '</section>';
+      '<div class="card-sub">Utveckling och utredning, två månader bakåt och nio framåt. Ett beroende är en romb på epikens rad, där det den väntar på blir klart.</div></div>' +
+      UI.seg('tl-group', [{ key: 'chain', label: 'Kedjor' }, { key: 'team', label: 'Team' }, { key: 'initiative', label: 'Initiativ' }], group) + '</div>' +
+      OOS.epicViz.timeline(ctx, { group: group, open: OOS.state.tlOpen, loose: OOS.state.tlLoose }) + '</section>';
   }
 
-  function flowCard(ctx) {
-    return '<section class="card" id="flow-section"><div class="card-head"><div><div class="card-title">Kopplingar i ' + esc(ctx.period.inText) + '</div>' +
-      '<div class="card-sub">Varifrån arbetet kommer, vilket team som gör det och vilken kompetens det kräver. Tjockleken är timmar.</div></div>' +
-      (OOS.state.flowSel ? UI.btn('Visa allt', 'flow-clear', { cls: 'btn-sm' }) : '') + '</div>' +
-      OOS.epicViz.flow(ctx, OOS.state.flowSel) + '</section>';
+  function linksCard(ctx) {
+    return '<section class="card" id="links-section"><div class="card-head"><div><div class="card-title">Kopplingar i ' + esc(ctx.period.inText) + '</div>' +
+      '<div class="card-sub">Varifrån arbetet kommer, vilka team som gör det och vilken kompetens det kräver.</div></div></div>' +
+      OOS.epicViz.links(ctx, OOS.state.linkSel) + '</section>';
   }
 
   function epicList(ctx) {
@@ -130,7 +127,7 @@
     }
 
     if (view === 'timeline') return h + timelineCard(ctx);
-    if (view === 'flow') return h + flowCard(ctx);
+    if (view === 'flow') return h + linksCard(ctx);
 
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Var tiden går i ' + esc(p.inText) + '</div>' +
       '<div class="card-sub">Beslutat arbete per typ mot alla teams kapacitet. Domänmoln och nyckelroller ingår inte.</div></div></div>';
@@ -308,19 +305,33 @@
       var imp = counts ? null : C.epicImpact(ep, ep);
       var after = {};
       if (imp) imp.rows.forEach(function (r) { after[r.period.start] = r.after; });
-      main += OOS.epicViz.periodChart(ep, team, periods, ctx);
-      main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Period</th><th class="num">Epiken</th><th class="num" data-opt="1">Teamets arbete</th><th class="num" data-opt="2">Kapacitet</th><th>Teamets beläggning</th>' +
-        (imp ? '<th class="num">Om beslutad</th>' : '') + '</tr></thead><tbody>';
-      periods.forEach(function (pp) {
+      /*
+       * En rad per period med en stapel: längden är teamets kapacitet, mörk del epiken och grå
+       * del annat arbete. Ett förslag ritas streckat ovanpå, som beläggningen skulle bli.
+       */
+      var rowsP = periods.map(function (pp) {
         var t = e.teamCapacity(team.id, pp);
         var mine = E.epicHoursInPeriod(ep, pp);
-        var a = after[pp.start];
-        main += '<tr' + (pp.start === p.start ? ' class="selected"' : '') + '><td>' + esc(pp.label) + '</td><td class="num">' + (counts ? U.fmtH(mine) : '<span class="muted">(' + U.fmtH(mine) + ')</span>') + '</td>' +
-          '<td class="num">' + U.fmtH(t.loaded) + '</td><td class="num">' + U.fmtH(t.capacity) + '</td><td>' + UI.bar(t.loadPct) + '</td>' +
-          (imp ? '<td class="num">' + (a === undefined ? '<span class="muted">–</span>' : '<strong' + (a > 100.5 ? ' class="crit-text"' : '') + '>' + U.fmtPct(a) + '</strong>') + '</td>' : '') + '</tr>';
+        var other = Math.max(0, t.loaded - (counts ? mine : 0));
+        return { pp: pp, t: t, mine: mine, other: other, after: after[pp.start] };
+      });
+      var maxP = Math.max.apply(null, rowsP.map(function (r) { return Math.max(r.t.capacity, r.mine + r.other); }).concat([1]));
+      main += OOS.epicViz.periodLegend(!counts);
+      main += '<div class="table-wrap"><table class="tbl period-tbl"><thead><tr><th>Period</th><th class="pbar-col">Teamets arbete mot kapaciteten</th><th class="num">' + (counts ? 'Beläggning' : 'Om beslutad') + '</th>' +
+        '<th class="num" data-opt="1">Epiken</th><th class="num" data-opt="2">Annat arbete</th><th class="num" data-opt="2">Kapacitet</th></tr></thead><tbody>';
+      rowsP.forEach(function (r) {
+        var pctNow = r.t.capacity ? ((r.mine + r.other) / r.t.capacity) * 100 : 0;
+        var shown = counts ? r.t.loadPct : (r.after !== undefined ? r.after : pctNow);
+        var tone = shown > 100.5 ? ' class="crit-text"' : '';
+        var say = r.pp.label + ': epiken ' + U.fmtH(r.mine) + ', annat arbete ' + U.fmtH(r.other) + ', kapacitet ' + U.fmtH(r.t.capacity) + ', ' + U.fmtPct(shown) + (counts ? ' belagt' : ' belagt om den beslutas');
+        main += '<tr' + (r.pp.start === p.start ? ' class="selected"' : '') + ' data-id="' + esc('pp-' + r.pp.start) + '"><td>' + esc(r.pp.label) + '</td>' +
+          '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, maxP, !counts, 'pp-' + r.pp.start, say) + '</td>' +
+          '<td class="num"><strong' + tone + '>' + U.fmtPct(shown) + '</strong></td>' +
+          '<td class="num">' + (counts ? U.fmtH(r.mine) : '<span class="muted">(' + U.fmtH(r.mine) + ')</span>') + '</td>' +
+          '<td class="num">' + U.fmtH(r.other) + '</td><td class="num">' + U.fmtH(r.t.capacity) + '</td></tr>';
       });
       main += '</tbody></table></div>';
-      if (!counts) main += '<p class="muted small">Epikens timmar står inom parentes eftersom den inte är beslutad. Om beslutad visar teamets beläggning med epiken.</p>';
+      if (!counts) main += '<p class="muted small">Epiken är inte beslutad. Dess timmar står inom parentes och är streckade i stapeln. Om beslutad visar teamets beläggning med epiken.</p>';
     }
     main += '</section>';
 
@@ -647,13 +658,6 @@
       defaults.type = 'development';
     }
     C.forms.epic(null, defaults);
-  };
-  A['flow-clear'] = function () {
-    OOS.state.flowSel = null;
-    OOS.motion('quiet');
-    OOS.refresh();
-    var svg = document.querySelector('.flow');
-    if (svg) OOSMotion.focusFlow(svg);
   };
   A['epic-edit'] = function (el) { C.forms.epic(S.engine().get('epics', el.dataset.id)); };
   A['epic-delete'] = function (el) { C.removeEntity('epics', el.dataset.id, 'epics'); };

@@ -4442,16 +4442,6 @@ p,
   margin-bottom: 12px;
 }
 
-.chart-wrap {
-  margin-bottom: 4px;
-  /* Skugga i kanten som går att rulla mot, så att man ser att bilden fortsätter. */
-  background:
-    linear-gradient(to right, var(--bg) 40%, transparent) left / 28px 100% no-repeat local,
-    linear-gradient(to left, var(--bg) 40%, transparent) right / 28px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--fg) 16%, transparent), transparent) left / 12px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--fg) 16%, transparent), transparent) right / 12px 100% no-repeat scroll;
-}
-
 .sw-k.proposal {
   background: none;
   border: 1px dashed var(--fg-3);
@@ -4493,297 +4483,6 @@ p,
   height: 12px;
   border-top: 0;
   border-left: 1.5px solid var(--fg);
-}
-
-.sw-line.cap {
-  border-top: 2px solid var(--fg);
-}
-
-.sw-line.thick {
-  border-top-width: 5px;
-  border-top-color: color-mix(in srgb, var(--bar) 30%, var(--bg));
-  border-radius: 2px;
-}
-
-.sw-line.thick.crit {
-  border-top-color: color-mix(in srgb, var(--crit) 55%, var(--bg));
-}
-
-/* Tidslinje */
-.gantt {
-  display: block;
-  font-family: var(--font);
-  max-width: none;
-}
-
-.g-grid {
-  stroke: var(--line);
-  stroke-width: 1;
-}
-
-.g-current {
-  fill: var(--canvas);
-}
-
-.g-month {
-  font-size: 12px;
-  fill: var(--fg-3);
-}
-
-.g-month.cur {
-  fill: var(--fg);
-  font-weight: 600;
-}
-
-.g-rule {
-  stroke: var(--line);
-}
-
-.g-group {
-  cursor: pointer;
-  outline: none;
-}
-
-.g-group-name {
-  font-size: 12.5px;
-  font-weight: 600;
-  fill: var(--fg);
-  letter-spacing: 0.01em;
-}
-
-.g-group:hover .g-group-name,
-.g-group:focus-visible .g-group-name {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.g-group-meta {
-  font-size: 12px;
-  fill: var(--fg-3);
-}
-
-.g-group-meta.warn {
-  fill: var(--warn);
-}
-
-.g-group-meta.crit {
-  fill: var(--crit);
-}
-
-.gbar {
-  cursor: pointer;
-  outline: none;
-  transition: opacity 0.2s;
-}
-
-.g-hit {
-  fill: transparent;
-}
-
-.gbar:hover .g-hit,
-.gbar:focus-visible .g-hit {
-  fill: var(--hover);
-}
-
-.gbar:focus-visible .g-hit {
-  stroke: var(--fg-3);
-  stroke-width: 1;
-}
-
-.g-label {
-  font-size: 12.5px;
-  fill: var(--fg-2);
-}
-
-/* Smal tidslinje: namnet står ovanpå rutnätet, så det får en kant i bakgrundens färg. */
-.gantt.compact .g-label,
-.gantt.compact .g-group-name,
-.gantt.compact .g-group-meta {
-  paint-order: stroke;
-  stroke: var(--bg);
-  stroke-width: 4px;
-  stroke-linejoin: round;
-}
-
-.gbar:hover .g-label,
-.gbar.on .g-label {
-  fill: var(--fg);
-}
-
-.gb {
-  fill: var(--bar);
-  transform-box: fill-box;
-  transform-origin: left center;
-}
-
-.gbar.maintenance .gb {
-  fill: color-mix(in srgb, var(--bar) 62%, var(--bg));
-}
-
-.gbar.investigation .gb {
-  fill: color-mix(in srgb, var(--bar) 40%, var(--bg));
-}
-
-.gbar.proposed .gb {
-  fill: none;
-  stroke: var(--fg-3);
-  stroke-width: 1.2;
-  stroke-dasharray: 3 2;
-}
-
-.gbar.done .gb {
-  opacity: 0.45;
-}
-
-.g-flag,
-.f-flag {
-  fill: var(--crit);
-}
-
-.g-today line {
-  stroke: var(--fg);
-  stroke-width: 1.5;
-}
-
-.g-today text {
-  font-size: 11.5px;
-  font-weight: 600;
-  fill: var(--fg);
-}
-
-.g-deps .dep {
-  fill: none;
-  stroke: var(--fg-3);
-  stroke-width: 1.4;
-  transition: opacity 0.2s, stroke-width 0.2s;
-}
-
-.g-arrow {
-  fill: var(--fg-3);
-}
-
-.g-arrow.risk {
-  fill: var(--warn);
-}
-
-.g-arrow.late {
-  fill: var(--crit);
-}
-
-/* Risk ritas i textens gula ton, inte markeringens, så att linjen syns mot ljus bakgrund. */
-.g-deps .dep.risk {
-  stroke: var(--warn);
-}
-
-.g-deps .dep.late {
-  stroke: var(--crit);
-}
-
-/* Pekar man på en epik lyser dess beroenden upp och resten tonas ned. */
-.gantt.hot .gbar:not(.on) {
-  opacity: 0.38;
-}
-
-.gantt.hot .dep:not(.on) {
-  opacity: 0.12;
-}
-
-.gantt.hot .dep.on {
-  stroke-width: 2.2;
-}
-
-/* Flöde */
-.flow {
-  display: block;
-  font-family: var(--font);
-  max-width: none;
-}
-
-.flink {
-  fill: none;
-  stroke: color-mix(in srgb, var(--bar) 22%, var(--bg));
-  stroke-linecap: butt;
-  transition: opacity 0.25s, stroke 0.15s;
-}
-
-.flink:hover {
-  stroke: color-mix(in srgb, var(--bar) 45%, var(--bg));
-}
-
-.flink.tight {
-  stroke: color-mix(in srgb, var(--crit) 45%, var(--bg));
-}
-
-.flink.tight:hover {
-  stroke: color-mix(in srgb, var(--crit) 70%, var(--bg));
-}
-
-.flink.gap {
-  stroke-dasharray: 6 3;
-}
-
-.flow.focused .flink.off {
-  opacity: 0.12;
-}
-
-.flow.focused .flink.far {
-  opacity: 0.45;
-}
-
-.flow.focused .flink.on:not(.tight) {
-  stroke: color-mix(in srgb, var(--bar) 55%, var(--bg));
-}
-
-.fnode {
-  cursor: pointer;
-  outline: none;
-  transition: opacity 0.25s;
-}
-
-.f-hit {
-  fill: transparent;
-}
-
-.f-bar {
-  fill: var(--bar);
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.f-label {
-  font-size: 12.5px;
-  fill: var(--fg);
-  paint-order: stroke;
-  stroke: var(--bg);
-  stroke-width: 4px;
-  stroke-linejoin: round;
-}
-
-.f-val {
-  fill: var(--fg-3);
-}
-
-.fnode:hover .f-label,
-.fnode:focus-visible .f-label {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.fnode:focus-visible .f-hit {
-  stroke: var(--fg-3);
-  stroke-width: 1;
-}
-
-.fnode.sel .f-bar {
-  fill: var(--fg);
-}
-
-.fnode.sel .f-label {
-  font-weight: 650;
-}
-
-.flow.focused .fnode.off {
-  opacity: 0.3;
 }
 
 /* Beroendekedja på epiken: tre kolumner med pilar emellan, staplade i en smal ruta. */
@@ -4993,128 +4692,694 @@ p,
   }
 }
 
-/* Teamets arbete period för period */
-.pchart {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: clamp(6px, 1.2vw, 14px);
-  margin-bottom: 18px;
+.sw-mark {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  rotate: 45deg;
+  border-radius: 1px;
+  background: var(--fg-3);
 }
 
-.pcol {
-  display: grid;
-  grid-template-rows: auto 150px auto;
-  gap: 6px;
-  text-align: center;
-  min-width: 0;
-  outline: none;
-  border-radius: 8px;
-  padding: 4px 2px;
+.sw-mark.risk {
+  background: var(--warn-mark);
 }
 
-.pcol:hover,
-.pcol:focus-visible {
-  background: var(--hover);
+.sw-mark.late {
+  background: var(--crit);
 }
 
-.pval {
-  font-size: 12px;
-  color: var(--fg-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.pval.warn {
-  color: var(--warn);
-}
-
-.pval.crit {
-  color: var(--crit);
-  font-weight: 600;
-}
-
-.pcol.current .pval:not(.warn):not(.crit) {
-  color: var(--fg);
-  font-weight: 600;
-}
-
-.pplot {
-  position: relative;
-  border-bottom: 1px solid var(--line-strong);
+/* Stapel för belastning mot kapacitet: valets del, annat arbete, ledigt och över kapaciteten. */
+.lbar {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.pstack {
-  position: relative;
-  width: min(36px, 70%);
-  display: flex;
-  flex-direction: column;
   gap: 2px;
-  transform-origin: center bottom;
+  width: 100%;
+  height: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  transform-origin: left center;
 }
 
-.pstack > span {
-  display: block;
-  min-height: 0;
-  flex-basis: 0;
+.lbar > span {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 100%;
 }
 
-/* Det som går över kapaciteten ligger överst i stapeln, randigt rött. */
-.pstack > .pover {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  border-radius: 4px 4px 0 0;
+/* Tomma delar tas bort, så att mellanrummen bara står mellan delar som syns. */
+.lbar > span[style^="width:0.00%"],
+.lbar > span[style*="width: 0%"] {
+  display: none;
 }
 
-.pmine {
+.lb-part {
   background: var(--bar);
 }
 
-.pmine.proposal {
+.lb-rest {
+  background: color-mix(in srgb, var(--bar) 35%, var(--bg));
+}
+
+.lb-free {
+  background: var(--track);
+}
+
+.lb-over {
+  background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
+}
+
+.lbar.proposal .lb-part {
   background: none;
   border: 1px dashed var(--fg-3);
   box-sizing: border-box;
 }
 
-.pother {
-  background: color-mix(in srgb, var(--bar) 35%, var(--bg));
+/* Tidslinje: rader i html, linjer för beroenden i svg ovanpå rutnätet och under staplarna. */
+.tl {
+  --tl-label: clamp(150px, 28%, 290px);
+  --tl-gap: 16px;
+  container: tl / inline-size;
+  margin-bottom: 4px;
 }
 
-.pstack > span:first-child {
-  border-radius: 4px 4px 0 0;
+.tl-head,
+.tl-foot {
+  display: grid;
+  grid-template-columns: var(--tl-label) minmax(0, 1fr);
+  column-gap: var(--tl-gap);
 }
 
-.pover {
-  background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
+.tl-axis,
+.tl-foot-axis {
+  position: relative;
+  height: 26px;
 }
 
-.pcap {
+.tl-month {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  height: 0;
-  border-top: 2px solid var(--fg);
-}
-
-.plabel {
+  top: 0;
+  line-height: 26px;
+  text-align: center;
   font-size: 12px;
   color: var(--fg-3);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.pcol.current .plabel {
+.tl-month.cur {
   color: var(--fg);
   font-weight: 600;
 }
 
+.tl-month .m1 {
+  display: none;
+}
+
+.tl-body {
+  position: relative;
+  border-top: 1px solid var(--line);
+}
+
+.tl-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--tl-label) + var(--tl-gap));
+  right: 0;
+  pointer-events: none;
+}
+
+.tl-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--line);
+}
+
+.tl-cur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--canvas);
+}
+
+.tl-today {
+  position: absolute;
+  top: 0;
+  bottom: -6px;
+  border-left: 1.5px solid var(--fg);
+}
+
+.tl-today-label {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tl-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tl-link .cline {
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 1.5;
+  transition: opacity 0.2s, stroke-width 0.2s;
+}
+
+.tl-link.risk .cline {
+  stroke: var(--warn);
+}
+
+.tl-link.late .cline {
+  stroke: var(--crit);
+}
+
+.tl-group {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 16px 0 6px;
+  border-top: 1px solid var(--line);
+}
+
+.tl-body > .tl-group:first-of-type {
+  border-top: 0;
+}
+
+.tl-gname {
+  font-size: 13.5px;
+  font-weight: 650;
+  min-width: 0;
+}
+
+.tl-gname .link {
+  font-weight: 650;
+}
+
+.tl-gmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--fg-3);
+  background: var(--bg);
+  padding-left: 6px;
+}
+
+.tl-group.warn .tl-gmeta {
+  color: var(--warn);
+}
+
+.tl-group.crit .tl-gmeta {
+  color: var(--crit);
+}
+
+.tl-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tl-label) minmax(0, 1fr);
+  column-gap: var(--tl-gap);
+  align-items: center;
+  min-height: 34px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.tl-row:hover,
+.tl-row.is-open {
+  background: color-mix(in srgb, var(--hover) 80%, transparent);
+}
+
+.tl-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 0 7px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--fg-2);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.tl-name:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+}
+
+.tl-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tl-row:hover .tl-name,
+.tl-row.on .tl-name,
+.tl-row.is-open .tl-name {
+  color: var(--fg);
+}
+
+.tl-row.is-open .tl-name {
+  font-weight: 600;
+}
+
+.tl-flag {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--crit);
+}
+
+.tl-track {
+  position: relative;
+  height: 34px;
+}
+
+.tl-track > * {
+  transition: opacity 0.2s;
+}
+
+.tl-bar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 3px;
+  background: var(--bar);
+  transform-origin: left center;
+}
+
+.tl-bar.investigation {
+  background: color-mix(in srgb, var(--bar) 40%, var(--bg));
+}
+
+.tl-bar.proposed {
+  background: none;
+  border: 1.2px dashed var(--fg-3);
+  box-sizing: border-box;
+}
+
+.tl-bar.done {
+  opacity: 0.45;
+}
+
+/* En epik som fortsätter utanför axeln tonar ut i kanten. */
+.tl-bar.cut-l {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  mask-image: linear-gradient(to right, transparent, #000 14px);
+}
+
+.tl-bar.cut-r {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  mask-image: linear-gradient(to left, transparent, #000 14px);
+}
+
+.tl-bar.cut-l.cut-r {
+  mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+
+.tl-mark {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  rotate: 45deg;
+  border-radius: 1.5px;
+  background: var(--fg-3);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.tl-mark.risk {
+  background: var(--warn-mark);
+}
+
+.tl-mark.late {
+  background: var(--crit);
+}
+
+.tl-delay {
+  position: absolute;
+  top: 50%;
+  margin-top: -1px;
+  border-top: 2px dashed var(--crit);
+  transform-origin: left center;
+}
+
+/* Pekar man på en epik lyser dess kedja upp och resten tonas ned. */
+.tl.hot .tl-row:not(.on) .tl-track > * {
+  opacity: 0.3;
+}
+
+.tl.hot .tl-link:not(.on) .cline {
+  opacity: 0.12;
+}
+
+.tl.hot .tl-link.on .cline {
+  stroke-width: 2.2;
+}
+
+/* Grupperat per team eller initiativ står det som hänger ihop långt isär. Då ritas linjerna
+   bara för den epik man pekar på eller har fällt ut, och rombernas datum räcker annars. */
+.tl.lines-on-hover .tl-link .cline {
+  opacity: 0;
+}
+
+.tl.lines-on-hover.hot .tl-link.on .cline,
+.tl.lines-on-hover .tl-link.pin .cline {
+  opacity: 1;
+}
+
+/* Detaljer under en utfälld rad */
+.tl-panel {
+  position: relative;
+  margin: 4px 0 12px;
+  padding: 14px 16px 16px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px -12px rgb(0 0 0 / 0.25);
+}
+
+.tl-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.tl-panel-title {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.tl-panel-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.tl-panel-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin-top: 14px;
+}
+
+.tl-ph {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.tl-deps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tl-dep {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line-strong);
+  font-size: 13.5px;
+}
+
+.tl-dep.risk {
+  border-left-color: var(--warn-mark);
+}
+
+.tl-dep.late {
+  border-left-color: var(--crit);
+}
+
+.tl-dep-sub {
+  font-size: 12.5px;
+  color: var(--fg-3);
+}
+
+.tl-risk {
+  font-size: 12.5px;
+  color: var(--warn);
+}
+
+.tl-risk.late {
+  color: var(--crit);
+}
+
+@container tl (max-width: 760px) {
+  .tl-month .yr {
+    display: none;
+  }
+  .tl-panel-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Smal tidslinje: namnet står ovanför stapeln och axeln får hela bredden. */
+@container tl (max-width: 560px) {
+  .tl-head,
+  .tl-body,
+  .tl-foot {
+    --tl-label: 0px;
+    --tl-gap: 0px;
+  }
+  .tl-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tl-name {
+    padding: 8px 0 0 6px;
+  }
+  .tl-track {
+    height: 24px;
+  }
+  .tl-month .m3 {
+    display: none;
+  }
+  .tl-month .m1 {
+    display: inline;
+  }
+}
+
+/* Kopplingar: tre listor, linjer bara för det som hänger ihop med valet. */
+.lk-focus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-height: 44px;
+  margin-bottom: 18px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 10px;
+  background: var(--canvas);
+  font-size: 13.5px;
+}
+
+.lk-focus.idle {
+  color: var(--fg-3);
+}
+
+.lk {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr);
+  align-items: start;
+  margin-bottom: 4px;
+}
+
+.lk-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.lk-link .cline {
+  fill: none;
+  stroke: color-mix(in srgb, var(--bar) 28%, var(--bg));
+  stroke-linecap: butt;
+}
+
+.lk-link.tight .cline {
+  stroke: color-mix(in srgb, var(--crit) 55%, var(--bg));
+}
+
+.lk-head {
+  margin: 0 10px 8px;
+}
+
+.lk-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.lk-sub {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.lk-list {
+  display: grid;
+  gap: 2px;
+}
+
+.lk-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name val" "bar bar";
+  align-items: baseline;
+  gap: 5px 10px;
+  width: 100%;
+  padding: 8px 10px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.lk-row:hover {
+  background: var(--hover);
+}
+
+.lk-row:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+}
+
+.lk-row.sel {
+  background: var(--hover);
+  box-shadow: inset 3px 0 0 var(--fg);
+}
+
+.lk-row.sel .lk-name {
+  font-weight: 650;
+}
+
+.lk-name {
+  grid-area: name;
+  display: block;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.lk-val {
+  grid-area: val;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lk-val.warn {
+  color: var(--warn);
+}
+
+.lk-val.crit {
+  color: var(--crit);
+}
+
+.lk-of {
+  color: var(--fg-3);
+}
+
+.lk-name .tl-flag {
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.lk-row .lbar {
+  grid-area: bar;
+}
+
+.lk-row.dim .lk-name,
+.lk-row.dim .lk-val,
+.lk-row.dim .lk-val .lk-of {
+  color: var(--fg-3);
+}
+
+.lk-row.dim .lbar {
+  opacity: 0.4;
+}
+
+.lk-more {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--fg-3);
+}
+
+@container card (max-width: 820px) {
+  .lk {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 22px;
+  }
+  .lk-gutter,
+  .lk-links {
+    display: none;
+  }
+  /* Staplat visas bara valet i sin lista, så att det som hänger ihop med det står nära. */
+  .lk-row.dim {
+    display: none;
+  }
+}
+
+/* Period för period: en stapel per period i tabellen. */
+.period-tbl .pbar-col {
+  width: 44%;
+  min-width: 140px;
+}
+
+.pbar {
+  display: block;
+  transform-origin: left center;
+}
+
+.pbar .lbar {
+  height: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .gbar,
-  .flink,
-  .fnode,
-  .g-deps .dep {
+  .tl-row,
+  .tl-track > *,
+  .tl-link .cline,
+  .lk-row {
     transition: none;
   }
 }

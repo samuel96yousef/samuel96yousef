@@ -13,7 +13,7 @@
 var OOSMotion = (function () {
   var A = typeof anime !== 'undefined' ? anime : null;
   var EASE = 'out(3)';
-  var BARS = '.bar-fill, .loadbar-fill, .cbar, .stack100-seg, .depth-seg';
+  var BARS = '.bar-fill, .loadbar-fill, .cbar, .stack100-seg, .depth-seg, .pbar';
   var NUMS = '.kpi-value, .lede strong, .big, .donut text';
   var COUNT_ON_ENTER = '.kpi-value, .lede strong';
   var nf = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 });
@@ -99,9 +99,11 @@ var OOSMotion = (function () {
   /* ---------- Ögonblicksbild före omritning ---------- */
 
   function snapshot(scope) {
-    var snap = { bars: new Map(), cols: new Map(), marks: new Map(), rings: new Map(), nums: new Map(), rows: new Map(), charts: new Set() };
+    var snap = { bars: new Map(), cols: new Map(), marks: new Map(), rings: new Map(), nums: new Map(), rows: new Map(), charts: new Set(), morph: new Map(), lk: new Set() };
     if (!enabled() || !scope.firstChild) return snap;
     scope.querySelectorAll('[data-chart]').forEach(function (el) { snap.charts.add(el.getAttribute('data-chart')); });
+    scope.querySelectorAll('[data-morph]').forEach(function (el) { snap.morph.set(el.getAttribute('data-morph'), el.style.width); });
+    scope.querySelectorAll('.lk-row').forEach(function (el) { snap.lk.add(el.id); });
     keyed(scope, BARS, function (el, k) { snap.bars.set(k, el.style.width); });
     keyed(scope, '.col-bar', function (el, k) { snap.cols.set(k, el.style.height); });
     keyed(scope, '.bullet-mark', function (el, k) { snap.marks.set(k, el.style.left); });
@@ -147,33 +149,38 @@ var OOSMotion = (function () {
     });
     var graph = scope.querySelector('.graph');
     if (graph) drawEdges(graph, null, 200);
-    scope.querySelectorAll('[data-chart]').forEach(function (el) { drawChart(el, 220); });
+    scope.querySelectorAll('[data-chart]').forEach(function (el) { drawChart(el, 220, true); });
   }
 
   /*
-   * Bilderna av arbetet byggs upp i den ordning man läser dem: staplarna växer ut från sitt
-   * startdatum, sedan ritas beroendena. I flödet ritas flödena ut kolumn för kolumn,
-   * från initiativ till team och vidare till kompetens.
+   * Bilderna av arbetet byggs upp i den ordning man läser dem. I tidslinjen växer staplarna ut
+   * från sitt startdatum, sedan dyker beroendenas romber upp och linjerna ritas. I kopplingarna
+   * växer staplarna första gången, och linjerna för ett val ritas från vänster till höger.
+   * fresh är sant när bilden visas första gången, falskt när den ritas om efter ett val.
    */
-  function drawChart(el, delay) {
+  function drawChart(el, delay, fresh) {
     if (!enabled()) return;
     var d = delay || 0;
-    if (el.classList.contains('gantt')) {
-      var bars = el.querySelectorAll('.gb');
-      if (bars.length) run(bars, { scaleX: [0, 1], duration: 620, delay: A.stagger(16, { start: d }), ease: 'out(4)' });
-      var today = el.querySelector('.g-today');
-      if (today) run(today, { opacity: [0, 1], translateY: [-6, 0], duration: 420, delay: d + 260, ease: EASE });
-      el.querySelectorAll('.dep').forEach(function (path, i) {
-        var at = d + 520 + i * 70;
-        run(path, { opacity: [0, 1], duration: 160, delay: at, ease: EASE });
-        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 560, delay: at, ease: 'inOut(2)' });
+    if (el.classList.contains('tl')) {
+      var bars = el.querySelectorAll('.tl-bar');
+      if (bars.length) run(bars, { scaleX: [0, 1], duration: 560, delay: A.stagger(14, { start: d }), ease: 'out(4)' });
+      var today = el.querySelector('.tl-today');
+      if (today) run(today, { opacity: [0, 1], duration: 400, delay: d + 200, ease: EASE });
+      var marks = el.querySelectorAll('.tl-mark');
+      if (marks.length) run(marks, { opacity: [0, 1], scale: [0.4, 1], duration: 300, delay: A.stagger(40, { start: d + 480 }), ease: 'out(3)' });
+      var delays = el.querySelectorAll('.tl-delay');
+      if (delays.length) run(delays, { scaleX: [0, 1], duration: 420, delay: d + 640, ease: 'out(3)' });
+      el.querySelectorAll('.tl-link:not([hidden]) .cline').forEach(function (path, i) {
+        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 420, delay: d + 520 + i * 40, ease: 'inOut(2)' });
       });
-    } else if (el.classList.contains('flow')) {
-      var nodes = el.querySelectorAll('.f-bar');
-      if (nodes.length) run(nodes, { scaleY: [0, 1], duration: 460, delay: A.stagger(14, { start: d }), ease: 'out(3)' });
-      el.querySelectorAll('.flink').forEach(function (path, i) {
-        var col = +path.getAttribute('data-c');
-        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 720, delay: d + 160 + col * 380 + (i % 24) * 8, ease: 'inOut(2)' });
+    } else if (el.classList.contains('lk')) {
+      if (fresh) {
+        var lbars = el.querySelectorAll('.lbar');
+        if (lbars.length) run(lbars, { scaleX: [0, 1], duration: 600, delay: A.stagger(10, { start: d }), ease: 'out(4)' });
+      }
+      el.querySelectorAll('.lk-link:not([hidden]) .cline').forEach(function (path, i) {
+        var col = +path.parentNode.getAttribute('data-c');
+        A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 480, delay: d + 80 + col * 260 + (i % 12) * 18, ease: 'inOut(2)' });
       });
     } else if (el.classList.contains('chain')) {
       /* Epiken först, sedan det den väntar på och det som väntar på den, sist pilarna mellan dem. */
@@ -189,16 +196,6 @@ var OOSMotion = (function () {
         run(g.querySelector('.carrow'), { opacity: [0, 1], duration: 160, delay: at + 400, ease: EASE });
       });
     }
-  }
-
-  /* Ett nytt val i flödet: flödena som hör till valet ritas ut på nytt, resten tonas ned. */
-  function focusFlow(svg) {
-    if (!enabled() || !svg) return;
-    svg.querySelectorAll('.flink.on, .flink.far').forEach(function (path) {
-      A.animate(A.svg.createDrawable(path), { draw: ['0 0', '0 1'], duration: 520, delay: (+path.getAttribute('data-c')) * 200, ease: 'inOut(2)' });
-    });
-    var dim = svg.querySelectorAll('.flink.off, .fnode.off');
-    if (dim.length) run(dim, { opacity: [0.7, svg.classList.contains('focused') ? 0.12 : 1], duration: 360, ease: EASE });
   }
 
   /* ---------- Uppdatering: från gamla värden till nya ---------- */
@@ -240,9 +237,22 @@ var OOSMotion = (function () {
     if (fresh.length && fresh.length <= 15 && snap.rows.size) {
       run(fresh, { opacity: [0, 1], duration: 260, delay: A.stagger(25), ease: EASE });
     }
-    /* En bild med nytt innehåll (annan gruppering, period eller epik) byggs upp igen. */
+    /* Delar av en stapel glider till sina nya värden. Nya delar växer från noll. */
+    scope.querySelectorAll('[data-morph]').forEach(function (el) {
+      var k = el.getAttribute('data-morph');
+      var old = snap.morph.get(k);
+      if (old === undefined && !snap.morph.size) return;
+      if (old === undefined) old = '0%';
+      if (old !== el.style.width) A.animate(el, { width: [old, el.style.width], duration: 520, ease: EASE });
+    });
+    /* Rader som kommer till i kopplingarna tonas in. */
+    if (snap.lk.size) {
+      var freshRows = Array.prototype.filter.call(scope.querySelectorAll('.lk-row'), function (el) { return !snap.lk.has(el.id); });
+      if (freshRows.length) run(freshRows, { opacity: [0, 1], translateY: [4, 0], duration: 280, delay: A.stagger(20), ease: EASE });
+    }
+    /* En bild med nytt innehåll (annan gruppering, period, epik eller ett nytt val) byggs upp igen. */
     scope.querySelectorAll('[data-chart]').forEach(function (el) {
-      if (!snap.charts.has(el.getAttribute('data-chart'))) drawChart(el, 60);
+      if (!snap.charts.has(el.getAttribute('data-chart'))) drawChart(el, 60, false);
     });
   }
 
@@ -312,8 +322,8 @@ var OOSMotion = (function () {
 
   /* Ett block som fått nytt innehåll tonas fram. */
   function reveal(el) {
-    if (!enabled() || !el) return;
-    run(el, { opacity: [0, 1], translateY: [6, 0], duration: 300, ease: EASE });
+    if (!enabled() || !el || el.length === 0) return;
+    run(el, { opacity: [0, 1], translateY: [6, 0], duration: 300, delay: el.length > 1 ? A.stagger(25) : 0, ease: EASE });
   }
 
   function dialogIn(el) {
@@ -333,7 +343,6 @@ var OOSMotion = (function () {
 
   return {
     drawChart: drawChart,
-    focusFlow: focusFlow,
     enabled: enabled,
     snapshot: snapshot,
     play: play,

@@ -1,11 +1,11 @@
 /*
- * Bilder av arbetet: tidslinje med beroenden, flöde från initiativ via team till kompetensområde,
- * beroendekedja för en epik och teamets arbete period för period.
+ * Bilder av arbetet: tidslinje med beroenden, kopplingar från initiativ via team till
+ * kompetensområde, beroendekedja för en epik och teamets arbete period för period.
  *
- * Samma uttryck som kopplingskartan: gråskala för identitet (arbetstyp), gult och rött bara för
- * avvikelser (risk, flaskhals, klart för sent). Tunna markeringar, hårfina linjer, värden i
- * klartext. Allt som visas i en bild finns också i listan, så att inget bara går att läsa i en
- * tooltip. Rörelsen finns i js/motion.js (drawCharts).
+ * Allt är vanlig HTML som bryter text och följer bredden, så att inget behöver kortas eller
+ * rullas. Bara linjerna mellan rutor ritas i svg, efter layouten (js/layout.js, connect).
+ * Gråskala för identitet (arbetstyp), gult och rött bara för avvikelser. Det som syns i en bild
+ * står också i text. Rörelsen finns i js/motion.js (drawChart).
  */
 (function () {
   var U = OOSUtil;
@@ -15,37 +15,16 @@
   var C = OOS.common;
   var esc = U.esc;
 
-  /* Textens bredd mäts med samma typsnitt som sidan, så att etiketter kortas där de faktiskt tar slut. */
-  var pen = null;
-  function textW(s, size, weight) {
-    if (!pen) pen = document.createElement('canvas').getContext('2d');
-    pen.font = (weight || 400) + ' ' + size + 'px ' + getComputedStyle(document.body).fontFamily;
-    return pen.measureText(s).width;
-  }
-
-  function trunc(s, px, size, weight) {
-    size = size || 12.5;
-    px -= 4;
-    if (textW(s, size, weight) <= px) return s;
-    var lo = 1;
-    var hi = s.length - 1;
-    while (lo < hi) {
-      var mid = (lo + hi + 1) >> 1;
-      if (textW(s.slice(0, mid).replace(/\s+$/, '') + '…', size, weight) <= px) lo = mid;
-      else hi = mid - 1;
-    }
-    return s.slice(0, lo).replace(/\s+$/, '') + '…';
-  }
-
-  /* Bredden inne i ett kort: dra av kortets kant och innermarginal (se .card i app.css). */
-  function cardInner() {
-    var pad = Math.min(24, Math.max(16, 0.022 * window.innerWidth));
-    return OOS.measure() - 2 * pad - 4;
-  }
-
   function ms(iso) { return U.parseDate(iso).getTime(); }
   var DAY = 86400000;
 
+  function slug(s) { return String(s).replace(/[^a-zA-Z0-9_-]+/g, '-'); }
+
+  function toneOf(risks) {
+    return risks.some(function (r) { return r.kind === 'late'; }) ? 'late' : risks.length ? 'risk' : '';
+  }
+
+  /* Områden som epiken behöver och som är fulla eller saknas i teamet. */
   function tightAreas(e, ep, p) {
     var needs = E.normNeeds(ep.needs);
     if (!needs || !E.epicCounts(ep.status) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0) return [];
@@ -54,373 +33,466 @@
     });
   }
 
+  function areaText(r) {
+    return r.gap ? r.category + ' saknas i teamet' : r.category + ' är fullt, ' + U.fmtPct(r.loadPct);
+  }
+
+  /*
+   * Stapel för belastning mot kapacitet. Längden är kapaciteten, eller arbetet om det är större.
+   * Mörk del är det som hör till valet, grå del annat arbete, ljus del ledigt och randig röd
+   * del det som går över kapaciteten. key gör att delarna glider till nya värden vid ett nytt val.
+   */
+  function loadBar(part, rest, cap, key, opts) {
+    opts = opts || {};
+    var loaded = part + rest;
+    /* Utan kapacitet (kompetensen saknas) är allt arbete över kapaciteten. */
+    var limit = Math.max(0, cap);
+    var total = Math.max(cap, loaded, 0.0001);
+    var inside = Math.min(loaded, limit);
+    var pIn = Math.min(part, inside);
+    var rIn = Math.max(0, inside - pIn);
+    var free = Math.max(0, cap - loaded);
+    var over = Math.max(0, loaded - limit);
+    function seg(cls, v, k) {
+      return '<span class="' + cls + '" data-morph="' + esc(key + '|' + k) + '" style="width:' + ((v / total) * 100).toFixed(2) + '%"></span>';
+    }
+    return '<span class="lbar' + (opts.proposal ? ' proposal' : '') + '" aria-hidden="true">' +
+      seg('lb-part', pIn, 'p') + seg('lb-rest', rIn, 'r') + seg('lb-free', free, 'f') + seg('lb-over', over, 'o') + '</span>';
+  }
+
   /* ---------- Tidslinje ---------- */
 
   /*
-   * Epikerna på en tidsaxel, grupperade per team eller initiativ. Beroenden ritas som en båge
-   * mellan slutdatumen: från det som måste bli klart först till epiken som väntar. Pekar bågen
-   * bakåt i tiden blir beroendet klart för sent, och den blir röd.
+   * Epikerna på en tidsaxel. Standard är att gruppera efter beroendekedjor, så att det som hänger
+   * ihop står under varandra i den ordning det måste göras. Ett beroende visas på den väntande
+   * epikens rad som en romb där det den väntar på blir klart. Ligger romben efter epikens slut blir
+   * beroendet klart för sent, och glappet ritas rött. En lodrät linje går upp till beroendet.
+   * Ett klick på en rad fäller ut detaljerna under den.
    */
-  function gantt(ctx, opts) {
+  function timeline(ctx, opts) {
     var e = ctx.e;
     var p = ctx.period;
-    var group = opts.group || 'team';
-    var scope = opts.scope || 'work';
+    var group = opts.group || 'chain';
+    var open = opts.open || null;
     var months = [];
     var m = E.prevPeriod(E.prevPeriod(E.periodOf(p.start, 'month')));
     for (var i = 0; i < 12; i++) { months.push(m); m = E.nextPeriod(m); }
     var t0 = ms(months[0].start);
     var t1 = ms(months[11].end) + DAY;
+    function pct(t) { return Math.max(0, Math.min(1, (t - t0) / (t1 - t0))) * 100; }
+    function endOf(ep) { return ms(ep.to) + DAY; }
+    var curMonth = E.periodOf(p.start, 'month').start;
 
+    /* Förvaltningen löper hela tiden och har inga beroenden, så den står inte i tidslinjen. */
     var visible = S.db.epics.filter(function (ep) {
-      if (scope === 'work' && ep.type === 'maintenance') return false;
-      return ms(ep.from) < t1 && ms(ep.to) + DAY > t0;
+      return ep.type !== 'maintenance' && ms(ep.from) < t1 && endOf(ep) > t0;
     });
+    if (!visible.length) return '<div class="empty">Inget arbete i perioden runt ' + esc(p.inText) + '.</div>';
+    var byId = new Map(visible.map(function (ep) { return [ep.id, ep]; }));
 
-    /* Grupper: team eller initiativ, i namnordning. Utan initiativ och förvaltning sist. */
-    var groups = new Map();
+    var edges = [];
     visible.forEach(function (ep) {
-      var key, name, go;
-      if (group === 'initiative') {
-        var init = ep.initiativeId ? e.get('initiatives', ep.initiativeId) : null;
-        key = init ? init.id : ep.type === 'maintenance' ? '~maint' : '~none';
-        name = init ? init.name : ep.type === 'maintenance' ? 'Förvaltning' : 'Utan initiativ';
-        go = init ? 'initiatives:' + init.id : null;
-      } else {
-        var t = e.get('teams', ep.teamId);
-        key = t ? t.id : '~none';
-        name = t ? t.name : 'Utan team';
-        go = t ? 'teams:' + t.id : null;
-      }
-      if (!groups.has(key)) groups.set(key, { key: key, name: name, go: go, epics: [] });
-      groups.get(key).epics.push(ep);
-    });
-    var list = Array.from(groups.values()).sort(function (a, b) {
-      return (a.key.charAt(0) === '~') - (b.key.charAt(0) === '~') || a.name.localeCompare(b.name, 'sv');
-    });
-    list.forEach(function (g) {
-      g.epics.sort(function (a, b) { return a.from.localeCompare(b.from) || a.name.localeCompare(b.name, 'sv'); });
-    });
-
-    /* I en smal ruta står namnet ovanför stapeln, så att tidsaxeln får hela bredden. */
-    var inner = cardInner();
-    var compact = inner < 640;
-    var W = Math.max(220, inner);
-    var L = compact ? 0 : Math.round(Math.max(170, Math.min(260, W * 0.24)));
-    var T = W - L - (compact ? 22 : 36); /* plats till höger för beroendebågar */
-    var TOP = 34;
-    var GROW = 30;
-    var ROW = compact ? 42 : 28;
-    var LX = compact ? 0 : 12;
-    function x(tms) { return L + Math.max(0, Math.min(1, (tms - t0) / (t1 - t0))) * T; }
-    function barY(ry) { return compact ? ry + 30 : ry + ROW / 2; }
-
-    /* Rader och deras y-läge. */
-    var y = TOP;
-    var rowY = new Map();
-    var rows = [];
-    list.forEach(function (g) {
-      rows.push({ kind: 'group', g: g, y: y });
-      y += GROW;
-      g.epics.forEach(function (ep) {
-        rowY.set(ep.id, barY(y));
-        rows.push({ kind: 'epic', ep: ep, y: y });
-        y += ROW;
+      e.epicDependencies(ep.id, p).forEach(function (d) {
+        if (!byId.has(d.epic.id)) return;
+        edges.push({ from: d.epic.id, to: ep.id, risks: d.risks, tone: toneOf(d.risks) });
       });
     });
-    var BOTTOM = y;
-    var H = y + 26;
-    if (!visible.length) return '<div class="empty">Inget arbete i perioden runt ' + esc(p.inText) + '.</div>';
+    var tones = { late: 0, risk: 0 };
+    edges.forEach(function (x) { if (x.tone) tones[x.tone]++; });
 
-    var arrow = function (id, cls) {
-      return '<marker id="' + id + '" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="g-arrow' + cls + '" d="M0 0 L8 4 L0 8 z"/></marker>';
-    };
-    var svg = '<svg class="gantt' + (compact ? ' compact' : '') + '" data-chart="gantt-' + esc(group + '-' + scope + '-' + p.start + (compact ? '-c' : '')) + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="group" aria-labelledby="gantt-title">' +
-      '<title id="gantt-title">Tidslinje för epikerna, ' + esc(months[0].label) + ' till ' + esc(months[11].label) + '</title>' +
-      '<defs>' + arrow('ga', '') + arrow('ga-risk', ' risk') + arrow('ga-late', ' late') + '</defs>';
-
-    /* Månader: hårfina linjer, förkortade namn, aktuell period markerad. */
-    svg += '<g class="g-months">';
-    months.forEach(function (mm, mi) {
-      var xa = x(ms(mm.start));
-      var xb = x(ms(mm.end) + DAY);
-      var cur = mm.start === E.periodOf(p.start, 'month').start;
-      if (cur) svg += '<rect class="g-current" x="' + xa + '" y="' + (TOP - 6) + '" width="' + (xb - xa) + '" height="' + (BOTTOM - TOP + 6) + '"/>';
-      svg += '<line class="g-grid" x1="' + xa + '" x2="' + xa + '" y1="' + (TOP - 6) + '" y2="' + BOTTOM + '"/>';
-      var d = U.parseDate(mm.start);
-      var lab = U.MONTHS[d.getUTCMonth()] + (d.getUTCMonth() === 0 || mi === 0 ? ' ' + d.getUTCFullYear() : '');
-      if (xb - xa < 52) lab = U.MONTHS[d.getUTCMonth()];
-      if (xb - xa < 30) lab = lab.slice(0, 1);
-      svg += '<text class="g-month' + (cur ? ' cur' : '') + '" x="' + ((xa + xb) / 2) + '" y="16" text-anchor="middle">' + esc(lab) + '</text>';
-    });
-    svg += '<line class="g-grid" x1="' + (L + T) + '" x2="' + (L + T) + '" y1="' + (TOP - 6) + '" y2="' + BOTTOM + '"/></g>';
-
-    /* Rader */
-    rows.forEach(function (r) {
-      if (r.kind === 'group') {
-        var g = r.g;
-        var meta = '';
-        var tone = '';
+    /* Grupper */
+    var groups = [];
+    function byStart(a, b) { return a.from.localeCompare(b.from) || a.name.localeCompare(b.name, 'sv'); }
+    if (group === 'chain') {
+      var root = new Map(visible.map(function (ep) { return [ep.id, ep.id]; }));
+      var find = function (x) { while (root.get(x) !== x) x = root.get(x); return x; };
+      edges.forEach(function (x) { var a = find(x.from); var b = find(x.to); if (a !== b) root.set(a, b); });
+      var comp = new Map();
+      visible.forEach(function (ep) {
+        var r = find(ep.id);
+        if (!comp.has(r)) comp.set(r, []);
+        comp.get(r).push(ep);
+      });
+      var loose = [];
+      comp.forEach(function (list) {
+        if (list.length < 2) { loose.push(list[0]); return; }
+        var ids = new Set(list.map(function (x) { return x.id; }));
+        var inner = edges.filter(function (x) { return ids.has(x.to); });
+        /* Ordning: det som måste bli klart först överst, sedan efter start. */
+        var indeg = new Map(list.map(function (x) { return [x.id, 0]; }));
+        inner.forEach(function (x) { indeg.set(x.to, indeg.get(x.to) + 1); });
+        var ready = list.filter(function (x) { return !indeg.get(x.id); }).sort(byStart);
+        var order = [];
+        while (ready.length) {
+          var next = ready.shift();
+          order.push(next);
+          inner.filter(function (x) { return x.from === next.id; }).forEach(function (x) {
+            indeg.set(x.to, indeg.get(x.to) - 1);
+            if (!indeg.get(x.to)) { ready.push(byId.get(x.to)); ready.sort(byStart); }
+          });
+        }
+        var inits = new Set(list.map(function (x) { return x.initiativeId || ''; }));
+        var init = inits.size === 1 && list[0].initiativeId ? e.get('initiatives', list[0].initiativeId) : null;
+        var sinks = list.filter(function (x) { return !inner.some(function (y) { return y.from === x.id; }); })
+          .sort(function (a, b) { return b.to.localeCompare(a.to); });
+        var worst = inner.some(function (x) { return x.tone === 'late'; }) ? 'late' : inner.some(function (x) { return x.tone === 'risk'; }) ? 'risk' : '';
+        groups.push({
+          key: 'k:' + order[0].id,
+          name: init ? init.name : 'Kedja till ' + sinks[0].name,
+          go: init ? 'initiatives:' + init.id : null,
+          tone: worst === 'late' ? 'crit' : worst === 'risk' ? 'warn' : '',
+          meta: U.plural(list.length, 'epik', 'epiker') + ', ' + (worst === 'late' ? 'något blir klart för sent' : worst === 'risk' ? 'risk i beroendena' : 'inga risker'),
+          rank: worst === 'late' ? 0 : worst === 'risk' ? 1 : 2,
+          start: order[0].from,
+          epics: order
+        });
+      });
+      groups.sort(function (a, b) { return a.rank - b.rank || a.start.localeCompare(b.start); });
+      if (loose.length) {
+        groups.push({ key: '~loose', name: 'Utan beroenden', meta: U.plural(loose.length, 'epik', 'epiker'), loose: true, epics: loose.sort(byStart) });
+      }
+    } else {
+      var map = new Map();
+      visible.forEach(function (ep) {
+        var key, name, go;
+        if (group === 'initiative') {
+          var init2 = ep.initiativeId ? e.get('initiatives', ep.initiativeId) : null;
+          key = init2 ? init2.id : '~none';
+          name = init2 ? init2.name : 'Utan initiativ';
+          go = init2 ? 'initiatives:' + init2.id : null;
+        } else {
+          var t = e.get('teams', ep.teamId);
+          key = t ? t.id : '~none';
+          name = t ? t.name : 'Utan team';
+          go = t ? 'teams:' + t.id : null;
+        }
+        if (!map.has(key)) map.set(key, { key: key, name: name, go: go, epics: [] });
+        map.get(key).epics.push(ep);
+      });
+      groups = Array.from(map.values()).sort(function (a, b) {
+        return (a.key.charAt(0) === '~') - (b.key.charAt(0) === '~') || a.name.localeCompare(b.name, 'sv');
+      });
+      groups.forEach(function (g) {
+        g.epics.sort(byStart);
         if (group === 'team' && g.go) {
           var tc = e.teamCapacity(g.key, p);
           var tight = (tc.categories || []).some(function (c) { return c.gap || c.loadPct > 100.5; });
-          tone = tc.loadPct > 100.5 || tight ? ' crit' : tc.loadPct >= 90 ? ' warn' : '';
-          meta = U.fmtPct(tc.loadPct) + ' belagt' + (tight ? ', flaskhals' : '');
+          g.tone = tc.loadPct > 100.5 || tight ? 'crit' : tc.loadPct >= 90 ? 'warn' : '';
+          g.meta = U.fmtPct(tc.loadPct) + ' belagt i ' + p.inText + (tight ? ', flaskhals' : '');
         } else if (g.go) {
-          var sum = e.initiativeSummary(g.key, p);
-          meta = U.fmtH(sum.hoursInPeriod) + ' i ' + p.inText;
+          g.meta = U.fmtH(e.initiativeSummary(g.key, p).hoursInPeriod) + ' i ' + p.inText;
+        } else {
+          g.meta = U.plural(g.epics.length, 'epik', 'epiker');
         }
-        var nameRoom = compact ? W - (meta ? textW(meta, 12) + 16 : 0) : L - 12;
-        svg += '<g class="g-group"' + (g.go ? ' data-go="' + esc(g.go) + '" tabindex="0" role="link" aria-label="' + esc(g.name + (meta ? ', ' + meta : '')) + '"' : '') + '>' +
-          '<line class="g-rule" x1="0" x2="' + W + '" y1="' + r.y + '" y2="' + r.y + '"/>' +
-          '<text class="g-group-name" x="0" y="' + (r.y + 19) + '">' + esc(trunc(g.name, nameRoom, 12.5, 600)) + '</text>' +
-          (meta ? '<text class="g-group-meta' + tone + '" x="' + (L + T) + '" y="' + (r.y + 19) + '" text-anchor="end">' + esc(meta) + '</text>' : '') + '</g>';
-        return;
-      }
-      var ep = r.ep;
-      var xa = x(ms(ep.from));
-      var xb = Math.max(xa + 4, x(ms(ep.to) + DAY));
-      var cy = barY(r.y);
-      var tightRows = tightAreas(e, ep, p);
-      var team = e.get('teams', ep.teamId);
-      var status = C.EPIC_STATUS[ep.status] || '';
-      var tip = ep.name + '\n' + [C.EPIC_TYPE[ep.type], team ? team.name : ''].filter(Boolean).join(' · ') + '\n' +
-        U.fmtDate(ep.from) + ' – ' + U.fmtDate(ep.to) + '\n' + C.epicFrameText(ep) + ' · ' + status +
-        (tightRows.length ? '\nFlaskhals: ' + tightRows.map(function (t) { return t.category; }).join(', ') : '');
-      var label = trunc(ep.name, (compact ? W - 8 : L - 22) - LX - (tightRows.length ? 14 : 0));
-      var ly = compact ? r.y + 17 : cy + 4;
-      svg += '<g class="gbar ' + esc(ep.type) + (ep.status === 'proposed' ? ' proposed' : '') + (ep.status === 'done' ? ' done' : '') + '" data-epic="' + esc(ep.id) + '" data-go="epics:' + esc(ep.id) + '" tabindex="0" role="link" aria-label="' + esc(tip.replace(/\n/g, ', ')) + '" data-tip="' + esc(tip) + '">' +
-        '<rect class="g-hit" x="0" y="' + r.y + '" width="' + W + '" height="' + ROW + '"/>' +
-        '<text class="g-label" x="' + LX + '" y="' + ly + '">' + esc(label) + '</text>' +
-        (tightRows.length ? '<circle class="g-flag" cx="' + (LX + textW(label, 12.5) + 9).toFixed(1) + '" cy="' + (ly - 4) + '" r="3.5"/>' : '') +
-        '<rect class="gb" x="' + xa + '" y="' + (cy - 6) + '" width="' + (xb - xa) + '" height="12" rx="3"/>' +
-        '</g>';
-    });
-
-    /* I dag: linjen genom raderna, etiketten under, så att den inte krockar med månaderna. */
-    var today = ms(U.todayISO());
-    if (today >= t0 && today < t1) {
-      var tx = x(today);
-      svg += '<g class="g-today"><line x1="' + tx + '" x2="' + tx + '" y1="' + (TOP - 6) + '" y2="' + (BOTTOM + 4) + '"/><text x="' + tx + '" y="' + (H - 6) + '" text-anchor="middle">I dag</text></g>';
+      });
     }
 
-    /* Beroenden: båge från slutet av det som måste bli klart först till slutet av epiken som väntar. */
-    svg += '<g class="g-deps">';
-    var depCount = 0;
-    var tones = { risk: 0, late: 0 };
-    visible.forEach(function (ep) {
-      (ep.dependsOn || []).forEach(function (id) {
-        if (!rowY.has(id) || !rowY.has(ep.id)) return;
-        var dep = e.get('epics', id);
-        var risks = e.epicDependencies(ep.id, p).filter(function (d) { return d.epic.id === id; })[0];
-        risks = risks ? risks.risks : [];
-        var tone = risks.some(function (r) { return r.kind === 'late'; }) ? 'late' : risks.length ? 'risk' : '';
-        if (tone) tones[tone]++;
-        var x1 = x(ms(dep.to) + DAY);
-        var y1 = rowY.get(id);
-        var x2 = x(ms(ep.to) + DAY);
-        var y2 = rowY.get(ep.id);
-        var reach = Math.min(W - 4, Math.max(x1, x2) + (compact ? 16 : 22));
-        var tip = ep.name + ' väntar på ' + dep.name + (risks.length ? '\n' + risks.map(function (r) { return r.text; }).join('\n') : '');
-        svg += '<path class="dep' + (tone ? ' ' + tone : '') + '" data-from="' + esc(id) + '" data-to="' + esc(ep.id) + '" data-tip="' + esc(tip) + '" ' +
-          'd="M' + (x1 + 2) + ' ' + y1 + ' C' + reach + ' ' + y1 + ' ' + reach + ' ' + y2 + ' ' + (x2 + 3) + ' ' + y2 + '" marker-end="url(#ga' + (tone ? '-' + tone : '') + ')"/>';
-        depCount++;
-      });
+    /* Rutnät och axel: månader, aktuell månad och i dag. Rutnätet ligger under raderna. */
+    var grid = '<div class="tl-grid" aria-hidden="true">';
+    var axis = '<div class="tl-axis" aria-hidden="true">';
+    months.forEach(function (mm, mi) {
+      var a = pct(ms(mm.start));
+      var b = pct(ms(mm.end) + DAY);
+      var cur = mm.start === curMonth;
+      var d = U.parseDate(mm.start);
+      var name = U.MONTHS[d.getUTCMonth()];
+      var year = d.getUTCMonth() === 0 || mi === 0 ? ' ' + d.getUTCFullYear() : '';
+      if (cur) grid += '<span class="tl-cur" style="left:' + a.toFixed(3) + '%;width:' + (b - a).toFixed(3) + '%"></span>';
+      if (mi) grid += '<span class="tl-line" style="left:' + a.toFixed(3) + '%"></span>';
+      axis += '<span class="tl-month' + (cur ? ' cur' : '') + '" style="left:' + a.toFixed(3) + '%;width:' + (b - a).toFixed(3) + '%">' +
+        '<span class="m3">' + esc(name) + '</span><span class="m1">' + esc(name.charAt(0)) + '</span>' + (year ? '<span class="yr">' + esc(year) + '</span>' : '') + '</span>';
     });
-    svg += '</g></svg>';
+    var today = ms(U.todayISO());
+    var hasToday = today >= t0 && today < t1;
+    if (hasToday) grid += '<span class="tl-today" style="left:' + pct(today).toFixed(3) + '%"></span>';
+    grid += '</div>';
+    axis += '</div>';
 
-    var anyFlag = visible.some(function (ep) { return tightAreas(e, ep, p).length; });
+    function rowTone(incoming) {
+      return incoming.some(function (x) { return x.tone === 'late'; }) ? ' has-late' : incoming.some(function (x) { return x.tone; }) ? ' has-risk' : '';
+    }
+
+    /* Detaljer under raden: samma uppgifter som epiksidan, i kort form. */
+    function panel(ep, tight) {
+      var team = e.get('teams', ep.teamId);
+      var waiting = e.epicDependents(ep.id, p);
+      var deps = e.epicDependencies(ep.id, p);
+      var hrs = E.epicHoursInPeriod(ep, p);
+      function item(x) {
+        var t = toneOf(x.risks);
+        var tm = e.get('teams', x.epic.teamId);
+        return '<li class="tl-dep' + (t ? ' ' + t : '') + '">' + C.epicRef(x.epic) +
+          '<span class="tl-dep-sub">' + esc((tm ? tm.name + ' · ' : '') + 'klar ' + U.fmtDate(x.epic.to)) + '</span>' +
+          x.risks.map(function (r) { return '<span class="tl-risk ' + (r.kind === 'late' ? 'late' : 'risk') + '">' + esc(r.text) + '</span>'; }).join('') + '</li>';
+      }
+      return '<div class="tl-panel" id="tl-panel-' + esc(slug(ep.id)) + '" role="region" aria-label="' + esc('Om ' + ep.name) + '">' +
+        '<div class="tl-panel-head"><div><div class="tl-panel-title">' + esc(ep.name) + (ep.status === 'proposed' ? ' ' + C.epicStatus(ep.status) : '') + '</div>' +
+        '<div class="tl-panel-sub">' + esc([C.EPIC_TYPE[ep.type], team ? team.name : '', U.fmtDate(ep.from) + ' – ' + U.fmtDate(ep.to), C.epicFrameText(ep)].filter(Boolean).join(' · ') +
+          (hrs > 0 ? ' · ' + U.fmtH(hrs) + ' i ' + p.inText : '')) + '</div></div>' +
+        UI.btn('Öppna epiken', 'go', { cls: 'btn-sm', data: { to: 'epics:' + ep.id } }) + '</div>' +
+        '<div class="tl-panel-cols">' +
+        '<div><div class="tl-ph">Väntar på</div>' + (deps.length ? '<ul class="tl-deps">' + deps.map(item).join('') + '</ul>' : '<p class="muted small">Inget.</p>') + '</div>' +
+        '<div><div class="tl-ph">Väntar på den här</div>' + (waiting.length ? '<ul class="tl-deps">' + waiting.map(item).join('') + '</ul>' : '<p class="muted small">Inget.</p>') + '</div>' +
+        '<div><div class="tl-ph">Kompetens i teamet</div>' + (tight.length ? '<ul class="tl-deps">' + tight.map(function (r) { return '<li class="tl-dep late"><span class="tl-risk late">' + esc(areaText(r)) + '</span></li>'; }).join('') + '</ul>' :
+          '<p class="muted small">' + (E.normNeeds(ep.needs) ? 'Teamet har plats i de områden epiken behöver.' : 'Epiken har inget kompetensbehov angivet.') + '</p>') + '</div>' +
+        '</div></div>';
+    }
+
+    function row(ep) {
+      var a = pct(ms(ep.from));
+      var b = pct(endOf(ep));
+      var team = e.get('teams', ep.teamId);
+      var tight = tightAreas(e, ep, p);
+      var incoming = edges.filter(function (x) { return x.to === ep.id; });
+      var isOpen = open === ep.id;
+      var info = [C.EPIC_TYPE[ep.type], team ? team.name : '', C.EPIC_STATUS[ep.status]].filter(Boolean).join(' · ') +
+        '\n' + U.fmtDate(ep.from) + ' – ' + U.fmtDate(ep.to) + ' · ' + C.epicFrameText(ep);
+      var label = ep.name + ', ' + info.replace(/\n/g, ', ') +
+        (incoming.length ? ', väntar på ' + U.plural(incoming.length, 'epik', 'epiker') + (incoming.some(function (x) { return x.tone === 'late'; }) ? ', något blir klart för sent' : incoming.some(function (x) { return x.tone; }) ? ', med risk' : '') : '') +
+        (tight.length ? ', flaskhals: ' + tight.map(areaText).join(', ') : '');
+      var track = '<span class="tl-bar ' + esc(ep.type) + (ep.status === 'proposed' ? ' proposed' : '') + (ep.status === 'done' ? ' done' : '') +
+        (ms(ep.from) < t0 ? ' cut-l' : '') + (endOf(ep) > t1 ? ' cut-r' : '') + '" style="left:' + a.toFixed(3) + '%;width:' + Math.max(0.6, b - a).toFixed(3) + '%" data-tip="' + esc(ep.name + '\n' + info) + '"></span>';
+      incoming.forEach(function (x) {
+        var dep = byId.get(x.from);
+        var at = pct(endOf(dep));
+        if (x.tone === 'late' && at > b) track += '<span class="tl-delay" style="left:' + b.toFixed(3) + '%;width:' + (at - b).toFixed(3) + '%"></span>';
+        track += '<span class="tl-mark' + (x.tone ? ' ' + x.tone : '') + '" data-from="' + esc(x.from) + '" style="left:' + at.toFixed(3) + '%" data-tip="' +
+          esc('Väntar på ' + dep.name + '\nKlar ' + U.fmtDate(dep.to) + (x.risks.length ? '\n' + x.risks.map(function (r) { return r.text; }).join('\n') : '')) + '"></span>';
+      });
+      var h = '<div class="tl-row' + (isOpen ? ' is-open' : '') + rowTone(incoming) + '" data-node="' + esc(ep.id) + '" data-epic="' + esc(ep.id) + '" data-action="tl-open" data-id="' + esc(ep.id) + '">' +
+        '<button type="button" class="tl-name" id="tl-' + esc(slug(ep.id)) + '" data-action="tl-open" data-id="' + esc(ep.id) + '" aria-expanded="' + isOpen + '" aria-controls="tl-panel-' + esc(slug(ep.id)) + '" aria-label="' + esc(label) + '">' +
+        '<span class="tl-text">' + esc(ep.name) + '</span>' + (tight.length ? '<span class="tl-flag"></span>' : '') + '</button>' +
+        '<div class="tl-track" aria-hidden="true">' + track + '</div></div>';
+      if (isOpen) h += panel(ep, tight);
+      return h;
+    }
+
+    var body = '';
+    groups.forEach(function (g) {
+      var collapsed = g.loose && !opts.loose;
+      body += '<div class="tl-group' + (g.tone ? ' ' + g.tone : '') + '">' +
+        '<div class="tl-gname">' + (g.go ? C.link(g.go, g.name) : esc(g.name)) + '</div>' +
+        '<div class="tl-gmeta">' + esc(g.meta || '') +
+        (g.loose ? ' <button type="button" class="btn btn-sm" data-action="tl-loose" aria-expanded="' + !collapsed + '">' + (collapsed ? 'Visa' : 'Dölj') + '</button>' : '') + '</div></div>';
+      if (!collapsed) g.epics.forEach(function (ep) { body += row(ep); });
+    });
+
+    /* Den utfällda epikens kedja ritas alltid, också när linjerna annars bara syns för pekaren. */
+    var pinned = new Set();
+    if (open) {
+      var ends = edges.map(function (x) { return { x: x, a: x.from, b: x.to }; });
+      chainOf(ends, open, 'b', 'a').on.forEach(function (o) { pinned.add(o.x); });
+      chainOf(ends, open, 'a', 'b').on.forEach(function (o) { pinned.add(o.x); });
+    }
+    var lines = '<svg class="tl-links" data-connect="drop" aria-hidden="true">';
+    edges.forEach(function (x) {
+      lines += '<g class="tl-link' + (x.tone ? ' ' + x.tone : '') + (pinned.has(x) ? ' pin' : '') + '" data-a="' + esc(x.from) + '" data-b="' + esc(x.to) + '"><path class="cline"/></g>';
+    });
+    lines += '</svg>';
+
     var legend = '<div class="legend-line chart-legend" aria-hidden="true">' +
       '<span><span class="sw-k development"></span>Utveckling</span><span><span class="sw-k investigation"></span>Utredning</span>' +
-      (scope === 'all' ? '<span><span class="sw-k maintenance"></span>Förvaltning</span>' : '') +
-      '<span><span class="sw-k proposal"></span>Förslag</span><span><span class="sw-line"></span>Beroende</span>' +
-      (tones.risk ? '<span><span class="sw-line risk"></span>Beroende med risk</span>' : '') +
-      (tones.late ? '<span><span class="sw-line late"></span>Klart för sent</span>' : '') +
-      (anyFlag ? '<span><span class="sw-dot crit"></span>Flaskhals i teamet</span>' : '') +
-      '<span><span class="sw-line today"></span>I dag</span></div>';
-    return legend + '<div class="graph-wrap chart-wrap">' + svg + '</div>' +
-      '<p class="card-note">' + U.plural(visible.length, 'epik', 'epiker') + ' och ' + U.plural(depCount, 'beroende', 'beroenden') + '. Bågen går från slutet av det som måste bli klart först till slutet av epiken som väntar. ' +
-      (compact ? 'Tryck på en epik för att öppna den.' : 'Håll pekaren över en epik för att se hela dess kedja av beroenden, klicka för att öppna den.') + '</p>';
+      '<span><span class="sw-k proposal"></span>Förslag</span>' +
+      (edges.length ? '<span><span class="sw-mark"></span>Beroende blir klart</span>' : '') +
+      (tones.risk ? '<span><span class="sw-mark risk"></span>Med risk</span>' : '') +
+      (tones.late ? '<span><span class="sw-mark late"></span>Klart för sent</span>' : '') +
+      '<span><span class="sw-dot crit"></span>Flaskhals i teamet</span>' +
+      (hasToday ? '<span><span class="sw-line today"></span>I dag</span>' : '') + '</div>';
+
+    var key = 'tl-' + group + '-' + p.start;
+    return legend +
+      '<div class="tl' + (group === 'chain' ? '' : ' lines-on-hover') + '" data-chart="' + esc(key) + '" role="group" aria-label="' + esc('Tidslinje, ' + months[0].label + ' till ' + months[11].label) + '">' +
+      '<div class="tl-head"><span></span>' + axis + '</div>' +
+      '<div class="tl-body">' + grid + lines + body + '</div>' +
+      (hasToday ? '<div class="tl-foot" aria-hidden="true"><span></span><div class="tl-foot-axis"><span class="tl-today-label" style="left:' + pct(today).toFixed(3) + '%">I dag</span></div></div>' : '') +
+      '</div>' +
+      '<p class="card-note">' + U.plural(visible.length, 'epik', 'epiker') + ' och ' + U.plural(edges.length, 'beroende', 'beroenden') +
+      (tones.late || tones.risk ? ': ' + [tones.late ? tones.late + ' blir klara för sent' : '', tones.risk ? tones.risk + ' med risk' : ''].filter(Boolean).join(', ') : '') +
+      '. Klicka på en epik för att se vad den väntar på och vad som väntar på den.</p>';
   }
 
-  /* ---------- Flöde: initiativ → team → kompetensområde ---------- */
+  /* ---------- Kopplingar: initiativ, team och kompetensområde ---------- */
 
   /*
-   * Periodens beslutade arbete som flöden. Från vänster: varifrån arbetet kommer (initiativ,
-   * förvaltning eller utan initiativ), vilket team som gör det och vilken kompetens det kräver.
-   * Tjockleken är timmar. Ett flöde till ett område som är fullt i teamet är rött.
+   * Tre listor som går att läsa var för sig: varifrån arbetet kommer, vilka team som gör det och
+   * vilka kompetensområden det kräver. Teamen och områdena står med mest belagt först, så att
+   * flaskhalsarna syns direkt. Väljer man en rad visar de andra listorna bara det som hänger ihop
+   * med den, och staplarna visar valets del. Linjer ritas bara för valet, så att bilden förblir läsbar.
    */
-  function flow(ctx, sel) {
+  function links(ctx, sel) {
     var e = ctx.e;
     var p = ctx.period;
     var src = new Map();
     var teams = new Map();
-    var cats = new Map();
-    var l1 = new Map();
-    var l2 = [];
-    function node(map, id, name, col, go) {
-      if (!map.has(id)) map.set(id, { id: id, name: name, col: col, go: go, value: 0, inV: 0, outV: 0 });
-      return map.get(id);
-    }
+    var flows = [];
     S.db.teams.forEach(function (t) {
-      var d = e.teamDemand(t.id, p);
-      if (d.hours <= 0.5) return;
-      var tn = node(teams, 't:' + t.id, t.name, 1, 'teams:' + t.id);
-      d.epics.forEach(function (x2) {
-        if (!x2.counts || x2.load <= 0) return;
-        var ep = x2.epic;
+      var cl = e.teamCategoryLoad(t.id, p);
+      if (!cl.epics.length) return;
+      var tc = e.teamCapacity(t.id, p);
+      var areas = new Map(cl.rows.map(function (r) { return ['c:' + r.category, r]; }));
+      var tight = cl.rows.filter(function (r) { return r.demand > 0.5 && (r.gap || r.loadPct > 100.5); });
+      teams.set('t:' + t.id, { key: 't:' + t.id, name: t.name, go: 'teams:' + t.id, cap: tc.capacity, loaded: tc.loaded, pct: tc.loadPct, tight: tight, areas: areas });
+      cl.epics.forEach(function (x) {
+        var ep = x.epic;
         var init = ep.initiativeId ? e.get('initiatives', ep.initiativeId) : null;
-        var sid = init ? 's:' + init.id : ep.type === 'maintenance' ? 's:~maint' : 's:~none';
-        var sn = node(src, sid, init ? init.name : ep.type === 'maintenance' ? 'Förvaltning' : 'Utan initiativ', 0, init ? 'initiatives:' + init.id : null);
-        var key = sid + '|' + tn.id;
-        l1.set(key, (l1.get(key) || 0) + x2.load);
-        sn.outV += x2.load;
-        tn.inV += x2.load;
-      });
-      e.teamCategoryLoad(t.id, p).rows.forEach(function (r) {
-        if (r.demand <= 0.5) return;
-        var cn = node(cats, 'c:' + r.category, r.category, 2, null);
-        cn.inV += r.demand;
-        tn.outV += r.demand;
-        l2.push({ a: tn.id, b: cn.id, v: r.demand, tight: r.gap || r.loadPct > 100.5, gap: r.gap, row: r, team: t });
+        var sk = 's:' + (init ? init.id : ep.type === 'maintenance' ? '~maint' : '~none');
+        if (!src.has(sk)) src.set(sk, { key: sk, name: init ? init.name : ep.type === 'maintenance' ? 'Förvaltning' : 'Utan initiativ', go: init ? 'initiatives:' + init.id : null, hours: 0, special: !init });
+        src.get(sk).hours += x.load;
+        Object.keys(x.categories).forEach(function (c) {
+          flows.push({ s: sk, t: 't:' + t.id, c: 'c:' + c, h: x.categories[c] });
+        });
       });
     });
-    var links = [];
-    l1.forEach(function (v, key) { var k = key.split('|'); links.push({ a: k[0], b: k[1], v: v }); });
-    links = links.concat(l2);
-    var cols = [Array.from(src.values()), Array.from(teams.values()), Array.from(cats.values())];
-    if (!cols[1].length) return '<div class="empty">Inget beslutat arbete i ' + esc(p.inText) + '.</div>';
-    cols.forEach(function (c) { c.forEach(function (n) { n.value = Math.max(n.inV, n.outV); }); });
+    if (!teams.size) return '<div class="empty">Inget beslutat arbete i ' + esc(p.inText) + '.</div>';
+    var cats = new Map();
+    e.orgCategoryLoad(p).forEach(function (r) {
+      if (r.demand <= 0.5) return;
+      var gapTeams = (r.teams || []).filter(function (x) { return x.row.gap && x.row.demand > 0.5; }).length;
+      cats.set('c:' + r.category, { key: 'c:' + r.category, name: r.category, supply: r.supply, demand: r.demand, pct: r.supply ? (r.demand / r.supply) * 100 : Infinity, gapTeams: gapTeams });
+    });
+    function sum(f) { return flows.filter(f).reduce(function (a, x) { return a + x.h; }, 0); }
+    if (sel && !src.has(sel) && !teams.has(sel) && !cats.has(sel)) sel = null;
+    var kind = sel ? sel.charAt(0) : '';
+    var total = U.sum(Array.from(src.values()), function (x) { return x.hours; });
 
-    /* Ordning: källor efter storlek (förvaltning och utan initiativ sist), sedan efter tyngdpunkt. */
-    cols[0].sort(function (a, b) { return (a.id.indexOf('~') > 0) - (b.id.indexOf('~') > 0) || b.value - a.value; });
-    function barycenter(col, prev, dir) {
-      var idx = new Map(prev.map(function (n, i) { return [n.id, i]; }));
-      col.forEach(function (n) {
-        var w = 0;
-        var s = 0;
-        links.forEach(function (l) {
-          var other = dir > 0 ? (l.b === n.id ? l.a : null) : (l.a === n.id ? l.b : null);
-          if (other && idx.has(other)) { w += l.v; s += l.v * idx.get(other); }
-        });
-        n.bc = w ? s / w : 999;
-      });
-      col.sort(function (a, b) { return a.bc - b.bc; });
+    var srcList = Array.from(src.values()).sort(function (a, b) { return a.special - b.special || b.hours - a.hours; });
+    var teamList = Array.from(teams.values()).sort(function (a, b) { return b.pct - a.pct; });
+    var catList = Array.from(cats.values()).sort(function (a, b) { return b.pct - a.pct; });
+    var maxSrc = Math.max.apply(null, srcList.map(function (x) { return x.hours; }));
+
+    function pctText(v) { return isFinite(v) ? U.fmtPct(v) : 'saknas'; }
+    function freeText(r) { return r.free >= 0 ? U.fmtH(r.free) + ' ledigt' : U.fmtH(-r.free) + ' för mycket'; }
+    function rowHtml(key, name, value, bar, opts) {
+      var on = key === sel;
+      var dim = sel && !on && opts.col === kind;
+      return '<button type="button" class="lk-row' + (on ? ' sel' : '') + (dim ? ' dim' : '') + (opts.tone ? ' ' + opts.tone : '') + '" id="lk-' + esc(slug(key)) + '" data-node="' + esc(key) + '" data-id="' + esc(key) + '" ' +
+        'data-action="links-select" data-key="' + esc(key) + '" aria-pressed="' + on + '" aria-label="' + esc(name + ', ' + opts.say) + '">' +
+        '<span class="lk-name">' + esc(name) + (opts.flag ? '<span class="tl-flag"></span>' : '') + '</span>' +
+        '<span class="lk-val' + (opts.tone ? ' ' + opts.tone : '') + '">' + value + '</span>' + bar + '</button>';
     }
-    barycenter(cols[1], cols[0], 1);
-    barycenter(cols[2], cols[1], 1);
-    barycenter(cols[1], cols[2], -1);
-    barycenter(cols[1], cols[0], 1);
-
-    var W = Math.max(600, cardInner());
-    var NW = 10;
-    var LW = Math.round(Math.max(170, Math.min(300, W * 0.26)));
-    var RW = Math.round(Math.max(170, Math.min(230, W * 0.2)));
-    var TOP = 30;
-    var GAP = 8;
-    var maxN = Math.max(cols[0].length, cols[1].length, cols[2].length);
-    var H = Math.max(420, maxN * 30 + TOP + 10);
-    var total = U.sum(cols[1], function (n) { return n.value; });
-    var k = Math.min.apply(null, cols.map(function (c) {
-      var t = U.sum(c, function (n) { return n.value; }) || 1;
-      return (H - TOP - 10 - (c.length - 1) * GAP) / t;
-    }));
-    var X = [LW, Math.round((LW + W - RW - NW) / 2), W - RW - NW];
-    cols.forEach(function (c, ci) {
-      var used = U.sum(c, function (n) { return n.value * k; }) + (c.length - 1) * GAP;
-      var yy = TOP + Math.max(0, (H - TOP - 10 - used) / 2);
-      c.forEach(function (n) {
-        n.x = X[ci];
-        n.y = yy;
-        n.h = Math.max(2, n.value * k);
-        n.outOff = 0;
-        n.inOff = 0;
-        yy += n.h + GAP;
+    /* En filtrerad lista sorteras efter det den visar. Den valda listan står kvar i sin ordning. */
+    function byShown(list, value) {
+      return list.map(function (x) { return { x: x, v: value(x) }; }).sort(function (a, b) { return b.v - a.v; }).map(function (o) { return o.x; });
+    }
+    function areaLoad(r) { return r.gap ? Infinity : r.loadPct; }
+    function areaRow(key, name, r) {
+      var tone = r.gap || r.loadPct > 100.5 ? 'crit' : r.loadPct >= 90 ? 'warn' : '';
+      var v = r.gap ? 'saknas i teamet' : esc(pctText(r.loadPct)) + '<span class="lk-of"> · ' + esc(freeText(r)) + '</span>';
+      return rowHtml(key, name, v, loadBar(r.demand, 0, r.supply, key), {
+        col: key.charAt(0), tone: tone, flag: tone === 'crit',
+        say: r.gap ? 'saknas i teamet, ' + U.fmtH(r.demand) + ' arbete' : U.fmtPct(r.loadPct) + ' belagt, ' + freeText(r)
       });
+    }
+
+    /* Varifrån arbetet kommer */
+    var colS = [];
+    var srcOrder = !kind || kind === 's' ? srcList : byShown(srcList, function (x) {
+      return kind === 't' ? sum(function (f) { return f.s === x.key && f.t === sel; }) : sum(function (f) { return f.s === x.key && f.c === sel; });
     });
-    var byId = new Map();
-    cols.forEach(function (c) { c.forEach(function (n) { byId.set(n.id, n); }); });
-    /* Flödena staplas i noden i samma ordning som noderna de går till, så att de korsar så lite som möjligt. */
-    links.sort(function (a, b) { return byId.get(a.b).y - byId.get(b.b).y; });
-    links.forEach(function (l) { var a = byId.get(l.a); l.th = l.v * k; l.y0 = a.y + a.outOff + l.th / 2; a.outOff += l.th; });
-    links.slice().sort(function (a, b) { return byId.get(a.a).y - byId.get(b.a).y; }).forEach(function (l) {
-      var b = byId.get(l.b); l.y1 = b.y + b.inOff + l.th / 2; b.inOff += l.th;
+    srcOrder.forEach(function (x) {
+      var part = !kind || kind === 's' ? x.hours : kind === 't' ? sum(function (f) { return f.s === x.key && f.t === sel; }) : sum(function (f) { return f.s === x.key && f.c === sel; });
+      var filtered = kind && kind !== 's';
+      if (filtered && part <= 0.5) return;
+      var value = esc(U.fmtH(part)) + (filtered ? '<span class="lk-of"> av ' + esc(U.fmtH(x.hours)) + '</span>' : '');
+      colS.push(rowHtml(x.key, x.name, value, loadBar(part, filtered ? x.hours - part : 0, maxSrc, x.key), {
+        col: 's', say: U.fmtH(part) + (filtered ? ' av ' + U.fmtH(x.hours) : '')
+      }));
     });
 
-    /* Fokus: den valda noden och det som hänger ihop med den, ett steg åt varje håll. */
-    var focus = null;
-    if (sel && byId.has(sel)) {
-      focus = { nodes: new Set([sel]), links: new Set(), far: new Set() };
-      links.forEach(function (l, i) {
-        if (l.a === sel || l.b === sel) { focus.links.add(i); focus.nodes.add(l.a); focus.nodes.add(l.b); }
-      });
-      var col = byId.get(sel).col;
-      if (col !== 1) {
-        links.forEach(function (l, i) {
-          if (focus.links.has(i)) return;
-          var touchesTeam = (col === 0 && focus.nodes.has(l.a) && byId.get(l.a).col === 1) || (col === 2 && focus.nodes.has(l.b) && byId.get(l.b).col === 1);
-          if (touchesTeam) { focus.far.add(i); focus.nodes.add(l.a); focus.nodes.add(l.b); }
-        });
+    /* Team */
+    var colT = [];
+    var teamOrder = kind === 'c' ? byShown(teamList, function (x) { var r = x.areas.get(sel); return r ? areaLoad(r) : -1; }) :
+      kind === 's' ? byShown(teamList, function (x) { return sum(function (f) { return f.s === sel && f.t === x.key; }); }) : teamList;
+    teamOrder.forEach(function (x) {
+      if (kind === 'c') {
+        /* Teamets läge i det valda området, också team som har ledig tid där. */
+        var r = x.areas.get(sel);
+        if (!r || (r.demand <= 0.5 && r.supply <= 0.5)) return;
+        colT.push(areaRow(x.key, x.name, r));
+        return;
       }
+      var part = kind === 's' ? sum(function (f) { return f.s === sel && f.t === x.key; }) : x.loaded;
+      if (kind === 's' && part <= 0.5) return;
+      var tone = x.pct > 100.5 || x.tight.length ? 'crit' : x.pct >= 90 ? 'warn' : '';
+      var val = kind === 's' ? esc(U.fmtH(part)) + '<span class="lk-of"> · ' + esc(U.fmtPct(x.pct)) + ' belagt</span>' : esc(U.fmtPct(x.pct)) + '<span class="lk-of"> · ' + esc(U.fmtH(x.loaded)) + '</span>';
+      colT.push(rowHtml(x.key, x.name, val, loadBar(part, x.loaded - part, x.cap, x.key), {
+        col: 't', tone: tone, flag: x.tight.length > 0,
+        say: (kind === 's' ? U.fmtH(part) + ' från valet, ' : '') + U.fmtPct(x.pct) + ' belagt' + (x.tight.length ? ', flaskhals i ' + x.tight.map(function (r) { return r.category; }).join(' och ') : '')
+      }));
+    });
+
+    /* Kompetensområden */
+    var colC = [];
+    if (kind === 't') {
+      /* Teamets områden: arbete mot teamets kapacitet i området, också där det finns plats. */
+      Array.from(teams.get(sel).areas.values()).filter(function (r) { return r.demand > 0.5 || r.supply > 0.5; })
+        .sort(function (a, b) { return areaLoad(b) - areaLoad(a); })
+        .forEach(function (r) { colC.push(areaRow('c:' + r.category, r.category, r)); });
+    } else {
+      (kind === 's' ? byShown(catList, function (x) { return sum(function (f) { return f.s === sel && f.c === x.key; }); }) : catList).forEach(function (x) {
+        var part = kind === 's' ? sum(function (f) { return f.s === sel && f.c === x.key; }) : x.demand;
+        if (kind === 's' && part <= 0.5) return;
+        var tone = x.pct > 100.5 || x.gapTeams ? 'crit' : x.pct >= 90 ? 'warn' : '';
+        var val = kind === 's' ? esc(U.fmtH(part)) + '<span class="lk-of"> · ' + esc(pctText(x.pct)) + ' belagt</span>' : esc(pctText(x.pct)) + '<span class="lk-of"> · ' + esc(U.fmtH(x.demand)) + ' av ' + esc(U.fmtH(x.supply)) + '</span>';
+        colC.push(rowHtml(x.key, x.name, val, loadBar(part, x.demand - part, x.supply, x.key), {
+          col: 'c', tone: tone, flag: tone === 'crit',
+          say: (kind === 's' ? U.fmtH(part) + ' från valet, ' : '') + pctText(x.pct) + ' belagt i organisationen' + (x.gapTeams ? ', saknas i ' + U.plural(x.gapTeams, 'team', 'team') : '')
+        }));
+      });
     }
 
-    var svg = '<svg class="flow' + (focus ? ' focused' : '') + '" data-chart="flow-' + esc(p.start) + '" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="group" aria-labelledby="flow-title">' +
-      '<title id="flow-title">Beslutat arbete i ' + esc(p.inText) + ' från initiativ via team till kompetensområde</title>';
-    ['Varifrån arbetet kommer', 'Team', 'Kompetensområde'].forEach(function (t, ci) {
-      svg += '<text class="graph-head" x="' + (ci === 0 ? X[0] + NW : ci === 1 ? X[1] : X[2]) + '" y="14"' + (ci === 0 ? ' text-anchor="end"' : '') + '>' + esc(t) + '</text>';
+    /* Linjer för valet: tjocklek efter timmar, röd till ett område som är fullt i teamet. */
+    var agg = new Map();
+    flows.forEach(function (f) {
+      if (!kind || (kind === 's' && f.s !== sel) || (kind === 't' && f.t !== sel) || (kind === 'c' && f.c !== sel)) return;
+      agg.set(f.s + '>' + f.t, (agg.get(f.s + '>' + f.t) || 0) + f.h);
+      agg.set(f.t + '>' + f.c, (agg.get(f.t + '>' + f.c) || 0) + f.h);
     });
-    svg += '<g class="flinks">';
-    links.forEach(function (l, i) {
-      var a = byId.get(l.a);
-      var b = byId.get(l.b);
-      var x0 = a.x + NW;
-      var x1 = b.x;
-      var mx = (x0 + x1) / 2;
-      var state = !focus ? '' : focus.links.has(i) ? ' on' : focus.far.has(i) ? ' far' : ' off';
-      var tip = a.name + ' → ' + b.name + '\n' + U.fmtH(l.v) + (l.tight ? '\n' + (l.gap ? l.team.name + ' saknar ' + b.name : b.name + ' är fullt i ' + l.team.name + ': ' + U.fmtPct(l.row.loadPct)) : '');
-      svg += '<path class="flink' + (l.tight ? ' tight' : '') + (l.gap ? ' gap' : '') + state + '" data-c="' + a.col + '" data-a="' + esc(l.a) + '" data-b="' + esc(l.b) + '" data-tip="' + esc(tip) + '" ' +
-        'd="M' + x0 + ' ' + l.y0.toFixed(1) + ' C' + mx + ' ' + l.y0.toFixed(1) + ' ' + mx + ' ' + l.y1.toFixed(1) + ' ' + x1 + ' ' + l.y1.toFixed(1) + '" stroke-width="' + Math.max(1, l.th).toFixed(1) + '"/>';
+    var lines = [];
+    agg.forEach(function (h, k) {
+      if (h <= 0.5) return;
+      var ab = k.split('>');
+      var r = ab[1].charAt(0) === 'c' && teams.get(ab[0]) ? teams.get(ab[0]).areas.get(ab[1]) : null;
+      lines.push({ a: ab[0], b: ab[1], h: h, tight: !!r && (r.gap || r.loadPct > 100.5) });
     });
-    svg += '</g>';
-    cols.forEach(function (c, ci) {
-      c.forEach(function (n) {
-        var state = !focus ? '' : n.id === sel ? ' sel' : focus.nodes.has(n.id) ? ' on' : ' off';
-        var tightTeam = ci === 1 && links.some(function (l) { return l.a === n.id && l.tight; });
-        var label = n.name;
-        var hours = U.fmtH(n.value);
-        /* Kolumnen heter Team, så ordet behöver inte stå i varje etikett. Hela namnet finns i aria-label. */
-        var shown = ci === 1 ? label.replace(/\s+Team$/, '') : label;
-        var tx = ci === 0 ? n.x - 8 : n.x + NW + 8;
-        var room = (ci === 0 ? LW - 14 : ci === 1 ? (X[2] - X[1]) * 0.72 : RW - 14) - textW(' ' + hours, 12.5);
-        var cy = n.y + n.h / 2;
-        svg += '<g class="fnode c' + ci + state + (tightTeam ? ' issue' : '') + '" data-id="' + esc(n.id) + '" data-c="' + ci + '" tabindex="0" role="button" aria-pressed="' + (n.id === sel) + '" ' +
-          'aria-label="' + esc(label + ', ' + hours + (tightTeam ? ', flaskhals' : '')) + '" data-action="flow-select" data-tip="' + esc(label + '\n' + hours + (tightTeam ? '\nFlaskhals i teamet' : '')) + '">' +
-          '<rect class="f-hit" x="' + (ci === 0 ? n.x - LW + 4 : n.x) + '" y="' + (n.y - 2) + '" width="' + (ci === 0 ? LW - 4 + NW : NW + room) + '" height="' + Math.max(16, n.h + 4) + '"/>' +
-          '<rect class="f-bar" x="' + n.x + '" y="' + n.y + '" width="' + NW + '" height="' + n.h + '" rx="2"/>' +
-          '<text class="f-label" x="' + tx + '" y="' + (cy + 4) + '"' + (ci === 0 ? ' text-anchor="end"' : '') + '>' + esc(trunc(shown, room)) + ' <tspan class="f-val">' + esc(hours) + '</tspan></text>' +
-          (tightTeam ? '<circle class="f-flag" cx="' + (ci === 0 ? n.x - 4 : n.x + NW / 2) + '" cy="' + (n.y - 6) + '" r="3"/>' : '') + '</g>';
-      });
-    });
-    svg += '</svg>';
-    var legend = '<div class="legend-line chart-legend" aria-hidden="true"><span><span class="sw-line thick"></span>Timmar, tjockare är mer</span>' +
-      '<span><span class="sw-line thick crit"></span>Till ett område som är fullt i teamet</span></div>';
-    return legend + '<div class="graph-wrap chart-wrap">' + svg + '</div>' +
-      '<p class="card-note">' + U.fmtH(total) + ' beslutat arbete i ' + esc(p.inText) + '. ' +
-      (W > cardInner() + 1 ? 'Dra i sidled för att se team och kompetensområden. Tryck' : 'Klicka') + ' på en nod för att se vad som hänger ihop med den, och en gång till för att släppa.</p>';
+    var maxH = Math.max.apply(null, lines.map(function (l) { return l.h; }).concat([1]));
+    var svg = '<svg class="lk-links" data-connect="flow" aria-hidden="true">' + lines.map(function (l) {
+      return '<g class="lk-link' + (l.tight ? ' tight' : '') + '" data-a="' + esc(l.a) + '" data-b="' + esc(l.b) + '" data-c="' + (l.a.charAt(0) === 's' ? 0 : 1) + '">' +
+        '<path class="cline" style="stroke-width:' + Math.max(1.5, (l.h / maxH) * 10).toFixed(1) + 'px"/></g>';
+    }).join('') + '</svg>';
+
+    function col(cls, title, sub, rows, hidden) {
+      return '<div class="lk-col ' + cls + '"><div class="lk-head"><div class="lk-title">' + title + '</div><div class="lk-sub">' + esc(sub) + '</div></div>' +
+        '<div class="lk-list">' + rows.join('') + (hidden > 0 ? '<div class="lk-more">' + esc(U.plural(hidden, 'rad', 'rader') + ' utan koppling till valet') + '</div>' : '') + '</div></div>';
+    }
+    var chosen = sel ? (src.get(sel) || teams.get(sel) || cats.get(sel)) : null;
+    var head = chosen ? '<div class="lk-focus"><span>Det som hänger ihop med <strong>' + esc(chosen.name) + '</strong></span><span class="row">' +
+      (chosen.go ? UI.btn(kind === 't' ? 'Öppna teamet' : 'Öppna initiativet', 'go', { cls: 'btn-sm', data: { to: chosen.go } }) : '') +
+      UI.btn('Visa allt', 'links-clear', { cls: 'btn-sm' }) + '</span></div>' :
+      '<div class="lk-focus idle"><span>Välj ett initiativ, ett team eller ett kompetensområde för att se vad det hänger ihop med.</span></div>';
+
+    return head + '<div class="lk' + (kind ? ' focused' : '') + '" data-chart="' + esc('lk-' + p.start + '-' + (sel || 'all')) + '">' + svg +
+      col('s', 'Varifrån arbetet kommer', kind && kind !== 's' ? 'Timmar som hör till valet, flest först' : 'Störst först', colS, kind && kind !== 's' ? srcList.length - colS.length : 0) +
+      '<div class="lk-gutter" aria-hidden="true"></div>' +
+      col('t', 'Team', kind === 'c' ? 'Läget i ' + chosen.name + ', mest belagt först' : kind === 's' ? 'Timmar som hör till valet, flest först' : 'Mest belagt först', colT, kind === 's' || kind === 'c' ? teamList.length - colT.length : 0) +
+      '<div class="lk-gutter" aria-hidden="true"></div>' +
+      col('c', 'Kompetensområde', kind === 't' ? 'Läget i teamet, mest belagt först' : kind === 's' ? 'Timmar som hör till valet, flest först' : 'Hela organisationen, mest belagt först', colC, kind === 's' ? catList.length - colC.length : 0) +
+      '</div>' +
+      '<p class="card-note">' + U.fmtH(total) + ' beslutat arbete i ' + esc(p.inText) + '. Mörk del av stapeln är det som hör till valet, grå del annat arbete, ljus del ledigt och randig röd del det som går över kapaciteten.</p>';
   }
 
   /* ---------- Beroendekedja för en epik ---------- */
 
   /*
    * Det epiken väntar på till vänster, epiken i mitten och det som väntar på den till höger.
-   * Rutorna är vanlig HTML som bryter text som allt annat. Pilarna ritas efter layouten i
-   * js/layout.js (connect), från rutornas faktiska läge, så att de håller vid varje bredd.
+   * Pilarna ritas efter layouten i js/layout.js (connect), från rutornas faktiska läge.
    * I en smal ruta staplas kolumnerna och pilarna pekar nedåt.
    */
   function chain(ep, deps, waiting, ctx) {
     var e = ctx.e;
     function tone(risks) {
-      return risks.some(function (r) { return r.kind === 'late'; }) ? ' late' : risks.length ? ' risk' : '';
+      var t = toneOf(risks);
+      return t ? ' ' + t : '';
     }
     function node(x, key, center) {
       var t = e.get('teams', x.epic.teamId);
@@ -453,48 +525,30 @@
       column('out', 'Väntar på den här', waiting, 'out') + '</div>';
   }
 
-  /* ---------- Teamets arbete period för period, med epikens del ---------- */
+  /* ---------- Period för period ---------- */
 
-  function periodChart(ep, team, periods, ctx) {
-    var e = ctx.e;
-    var counts = E.epicCounts(ep.status);
-    var data = periods.map(function (pp) {
-      var tc = e.teamCapacity(team.id, pp);
-      var mine = E.epicHoursInPeriod(ep, pp);
-      var loaded = tc.loaded + (counts ? 0 : mine);
-      return { p: pp, cap: tc.capacity, loaded: loaded, mine: mine, other: loaded - mine, current: pp.start === ctx.period.start };
-    });
-    var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.cap, d.loaded); }).concat([1]));
-    var h = '<div class="legend-line chart-legend" aria-hidden="true"><span><span class="sw loaded"></span>Epiken' + (counts ? '' : ' (förslag)') + '</span>' +
-      '<span><span class="sw other"></span>Annat arbete i teamet</span><span><span class="sw-line cap"></span>Kapacitet</span><span><span class="sw over"></span>Över kapaciteten</span></div>';
-    h += '<div class="pchart" role="img" aria-label="' + esc(data.map(function (d) { return d.p.label + ': ' + U.fmtH(d.loaded) + ' av ' + U.fmtH(d.cap); }).join(', ')) + '">';
-    data.forEach(function (d) {
-      var pct = d.cap ? (d.loaded / d.cap) * 100 : 0;
-      var tone = pct > 100.5 ? ' crit' : pct >= 90 ? ' warn' : '';
-      var over = Math.max(0, d.loaded - d.cap);
-      var tip = d.p.label + '\nEpiken: ' + U.fmtH(d.mine) + '\nAnnat arbete: ' + U.fmtH(d.other) + '\nKapacitet: ' + U.fmtH(d.cap) + ' (' + U.fmtPct(pct) + ' belagt)';
-      var mon = U.MONTHS[U.parseDate(d.p.start).getUTCMonth()];
-      h += '<div class="pcol' + (d.current ? ' current' : '') + '" data-tip="' + esc(tip) + '" tabindex="0" aria-label="' + esc(tip.replace(/\n/g, ', ')) + '">' +
-        '<span class="pval' + tone + '">' + U.fmtPct(pct) + '</span>' +
-        '<div class="pplot">' +
-        '<div class="col-bar pstack" style="height:' + ((d.loaded / max) * 100).toFixed(2) + '%">' +
-        (d.mine > 0.5 ? '<span class="pmine' + (counts ? '' : ' proposal') + '" style="flex-grow:' + d.mine.toFixed(1) + '"></span>' : '') +
-        (d.other > 0.5 ? '<span class="pother" style="flex-grow:' + d.other.toFixed(1) + '"></span>' : '') +
-        (over > 0.5 ? '<span class="pover" style="height:' + ((over / d.loaded) * 100).toFixed(2) + '%"></span>' : '') +
-        '</div><span class="pcap" style="bottom:' + ((d.cap / max) * 100).toFixed(2) + '%"></span></div>' +
-        '<span class="plabel">' + esc(mon) + '</span></div>';
-    });
-    return h + '</div>';
+  /*
+   * En stapel per period i tabellen: längden är teamets kapacitet, mörk del epiken, grå del annat
+   * arbete och randig röd del det som går över. Ett förslag ritas streckat, som det skulle bli.
+   */
+  function periodBar(mine, other, cap, max, proposal, key, label) {
+    var total = Math.max(cap, mine + other);
+    var width = max ? (total / max) * 100 : 0;
+    return '<span class="pbar" role="img" aria-label="' + esc(label) + '" style="width:' + width.toFixed(2) + '%">' + loadBar(mine, other, cap, key, { proposal: proposal }) + '</span>';
   }
 
-  OOS.epicViz = { gantt: gantt, flow: flow, chain: chain, periodChart: periodChart };
+  function periodLegend(proposal) {
+    return '<div class="legend-line chart-legend" aria-hidden="true"><span><span class="' + (proposal ? 'sw-k proposal' : 'sw loaded') + '"></span>Epiken' + (proposal ? ' om den beslutas' : '') + '</span>' +
+      '<span><span class="sw other"></span>Annat arbete i teamet</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw over"></span>Över kapaciteten</span></div>';
+  }
 
-  /* ---------- Rörelse när man pekar ---------- */
+  OOS.epicViz = { timeline: timeline, links: links, chain: chain, periodBar: periodBar, periodLegend: periodLegend };
+
+  /* ---------- Pekare och fokus ---------- */
 
   /*
    * I tidslinjen lyser epikens hela kedja upp när man pekar på den eller ger den fokus: allt den
    * väntar på, bakåt i flera led, och allt som väntar på den, framåt. Resten tonas ned.
-   * Det sker utan omritning, så att det känns direkt.
    */
   function chainOf(edges, start, from, to) {
     var ids = new Set([start]);
@@ -510,51 +564,87 @@
   }
 
   function hot(target) {
-    var svg = target && target.closest ? target.closest('.gantt') : null;
-    document.querySelectorAll('.gantt.hot').forEach(function (g) {
-      if (g === svg) return;
+    var box = target && target.closest ? target.closest('.tl') : null;
+    document.querySelectorAll('.tl.hot').forEach(function (g) {
+      if (g === box) return;
       g.classList.remove('hot');
       g.querySelectorAll('.on').forEach(function (x) { x.classList.remove('on'); });
     });
-    if (!svg) return;
-    var bar = target.closest('.gbar');
-    var dep = target.closest('.dep');
-    svg.querySelectorAll('.on').forEach(function (x) { x.classList.remove('on'); });
-    if (!bar && !dep) { svg.classList.remove('hot'); return; }
-    var edges = Array.prototype.map.call(svg.querySelectorAll('.dep'), function (d) {
-      return { el: d, a: d.getAttribute('data-from'), b: d.getAttribute('data-to') };
+    if (!box) return;
+    var rowEl = target.closest('.tl-row');
+    box.querySelectorAll('.on').forEach(function (x) { x.classList.remove('on'); });
+    if (!rowEl) { box.classList.remove('hot'); return; }
+    var id = rowEl.getAttribute('data-epic');
+    var edges = Array.prototype.map.call(box.querySelectorAll('.tl-link'), function (g) {
+      return { el: g, a: g.getAttribute('data-a'), b: g.getAttribute('data-b') };
     });
-    var up = chainOf(edges, bar ? bar.getAttribute('data-epic') : dep.getAttribute('data-from'), 'b', 'a');
-    var down = chainOf(edges, bar ? bar.getAttribute('data-epic') : dep.getAttribute('data-to'), 'a', 'b');
+    var up = chainOf(edges, id, 'b', 'a');
+    var down = chainOf(edges, id, 'a', 'b');
+    if (up.on.size + down.on.size === 0) { box.classList.remove('hot'); return; }
     var ids = new Set(Array.from(up.ids).concat(Array.from(down.ids)));
     up.on.forEach(function (ed) { ed.el.classList.add('on'); });
     down.on.forEach(function (ed) { ed.el.classList.add('on'); });
-    if (dep) dep.classList.add('on');
-    svg.querySelectorAll('.gbar').forEach(function (b) { if (ids.has(b.getAttribute('data-epic'))) b.classList.add('on'); });
-    svg.classList.add('hot');
+    box.querySelectorAll('.tl-row').forEach(function (r) { if (ids.has(r.getAttribute('data-epic'))) r.classList.add('on'); });
+    box.classList.add('hot');
   }
+
   /* Bara när pekaren faktiskt rör sig: en rullning som fokus orsakar ska inte släppa kedjan. */
   var at = { x: -1, y: -1, el: null };
   document.addEventListener('mousemove', function (ev) {
     if (ev.clientX === at.x && ev.clientY === at.y) return;
     at.x = ev.clientX;
     at.y = ev.clientY;
-    var el = ev.target.closest ? ev.target.closest('.gbar, .dep, .gantt') : null;
+    var el = ev.target.closest ? ev.target.closest('.tl-row, .tl') : null;
     if (el === at.el) return;
     at.el = el;
     hot(ev.target);
   });
   document.addEventListener('focusin', function (ev) { at.el = null; hot(ev.target); });
 
-  /* Ett val i flödet ritas om. De flöden som hör till valet ritas ut på nytt, resten tonas ned. */
-  OOS.actions['flow-select'] = function (el) {
+  /* ---------- Handlingar ---------- */
+
+  /* En rad i tidslinjen fälls ut under sig själv. Fokus stannar på raden. */
+  OOS.actions['tl-open'] = function (el) {
     var id = el.getAttribute('data-id');
-    OOS.state.flowSel = OOS.state.flowSel === id ? null : id;
+    OOS.state.tlOpen = OOS.state.tlOpen === id ? null : id;
     OOS.motion('quiet');
     OOS.refresh();
-    var svg = document.querySelector('.flow');
-    if (svg) OOSMotion.focusFlow(svg);
-    var again = document.querySelector('.fnode[data-id="' + id.replace(/"/g, '') + '"]');
+    var panel = OOS.state.tlOpen ? document.getElementById('tl-panel-' + slug(id)) : null;
+    if (panel) OOSMotion.reveal(panel);
+    var btn = document.getElementById('tl-' + slug(id));
+    if (btn) btn.focus({ preventScroll: true });
+  };
+
+  /* Epikerna utan beroenden fälls ut under kedjorna och tonas fram. */
+  OOS.actions['tl-loose'] = function () {
+    OOS.state.tlLoose = !OOS.state.tlLoose;
+    OOS.motion('quiet');
+    OOS.refresh();
+    var btn = document.querySelector('[data-action="tl-loose"]');
+    if (btn) btn.focus({ preventScroll: true });
+    if (!OOS.state.tlLoose || !btn) return;
+    var rows = [];
+    var el = btn.closest('.tl-group').nextElementSibling;
+    while (el && el.classList.contains('tl-row')) { rows.push(el); el = el.nextElementSibling; }
+    OOSMotion.reveal(rows);
+  };
+
+  /* Ett val i kopplingarna: listorna filtreras, staplarna glider till valets del och linjerna ritas ut. */
+  OOS.actions['links-select'] = function (el) {
+    var key = el.getAttribute('data-key');
+    OOS.state.linkSel = OOS.state.linkSel === key ? null : key;
+    OOS.motion('update');
+    OOS.refresh();
+    var again = document.getElementById('lk-' + slug(key));
+    if (again) again.focus({ preventScroll: true });
+  };
+
+  OOS.actions['links-clear'] = function () {
+    var was = OOS.state.linkSel;
+    OOS.state.linkSel = null;
+    OOS.motion('update');
+    OOS.refresh();
+    var again = was && document.getElementById('lk-' + slug(was));
     if (again) again.focus({ preventScroll: true });
   };
 })();

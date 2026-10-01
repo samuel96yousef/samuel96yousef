@@ -541,19 +541,25 @@ var OOSEngine = (function () {
           (people[k] = people[k] || []).push({ worker: m.worker, tw: m.tw, hours: cap / comps.length });
         });
       });
+      /*
+       * Varje epiks timmar per kompetensområde: enligt behovet, eller som teamets sammansättning
+       * när behovet saknas. Områdenas efterfrågan är summan av epikernas delar, så att samma
+       * timmar kan följas från epik till område utan att räknas två gånger.
+       */
+      var totalSupply = U.sum(Object.keys(supply), function (k) { return supply[k]; });
       var demand = {};
       var unspecified = 0;
+      var split = [];
       teamDemand(teamId, period).epics.forEach(function (x) {
         if (!x.counts || x.load <= 0) return;
         var needs = normNeeds(x.epic.needs);
-        if (!needs) { unspecified += x.load; return; }
-        needs.forEach(function (n) { demand[n.category] = (demand[n.category] || 0) + x.load * n.share; });
+        var cats = {};
+        if (needs) needs.forEach(function (n) { cats[n.category] = x.load * n.share; });
+        else if (totalSupply) { unspecified += x.load; Object.keys(supply).forEach(function (k) { cats[k] = (x.load * supply[k]) / totalSupply; }); }
+        else { unspecified += x.load; cats.Ospecificerad = x.load; }
+        Object.keys(cats).forEach(function (k) { demand[k] = (demand[k] || 0) + cats[k]; });
+        split.push({ epic: x.epic, load: x.load, categories: cats });
       });
-      var totalSupply = U.sum(Object.keys(supply), function (k) { return supply[k]; });
-      if (unspecified) {
-        if (totalSupply) Object.keys(supply).forEach(function (k) { demand[k] = (demand[k] || 0) + (unspecified * supply[k]) / totalSupply; });
-        else demand.Ospecificerad = (demand.Ospecificerad || 0) + unspecified;
-      }
       var cats = Array.from(new Set(Object.keys(supply).concat(Object.keys(demand))));
       var ratio = {};
       var gap = 0;
@@ -565,7 +571,7 @@ var OOSEngine = (function () {
         ratio[k] = sup ? dem / sup : 0;
         return { category: k, supply: sup, demand: dem, free: sup - dem, loadPct: sup ? (dem / sup) * 100 : dem > 0.5 ? Infinity : 0, gap: isGap, people: people[k] || [] };
       }).sort(function (a, b) { return b.supply - a.supply || b.demand - a.demand; });
-      var res = { rows: rows, ratio: ratio, gap: gap, unspecified: unspecified };
+      var res = { rows: rows, ratio: ratio, gap: gap, unspecified: unspecified, epics: split };
       catCache.set(key, res);
       return res;
     }

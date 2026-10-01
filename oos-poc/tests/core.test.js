@@ -436,6 +436,15 @@ test('kompetensbehov: arbete som teamet saknar kompetens för är en lucka som b
   assert.ok(e.signals(OCT).some((s) => s.kind === 'gap' && s.ref.id === 't_integration'));
 });
 
+test('kompetensbehov: varje epiks del per område summerar till områdena och till epikens timmar', () => {
+  const e = E.create(Seed.build());
+  Seed.build().teams.forEach((t) => {
+    const cl = e.teamCategoryLoad(t.id, OCT);
+    cl.rows.forEach((r) => near(cl.epics.reduce((a, x) => a + (x.categories[r.category] || 0), 0), r.demand));
+    cl.epics.forEach((x) => near(Object.values(x.categories).reduce((a, v) => a + v, 0), x.load));
+  });
+});
+
 test('beroenden: risk när beroendet blir klart för sent, inte är beslutat eller ligger hos ett team med flaskhals', () => {
   const db = Seed.build();
   const e = E.create(db);

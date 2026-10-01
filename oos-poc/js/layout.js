@@ -269,13 +269,16 @@ var OOSLayout = (function () {
     });
   }
 
-  /* ---------- Pilar mellan rutor ---------- */
+  /* ---------- Linjer mellan rutor ---------- */
 
   /*
-   * En svg med data-connect ritar pilar mellan rutor i samma behållare, från rutornas
-   * faktiska läge efter layouten. Varje g[data-a][data-b] får en kurva från högerkanten av
-   * [data-node=a] till vänsterkanten av [data-node=b], och en pilspets. Görs om när bredden ändras.
-   * offsetLeft och offsetTop används, så att en pågående rörelse inte flyttar pilarna.
+   * En svg med data-connect ritar linjer mellan rutor i samma behållare, från rutornas faktiska
+   * läge efter layouten. Görs om när bredden ändras. offsetLeft och offsetTop används, så att en
+   * pågående rörelse inte flyttar linjerna. Varje g[data-a][data-b] är en linje:
+   *  - standard och "flow": kurva från högerkanten av [data-node=a] till vänsterkanten av
+   *    [data-node=b], med pilspets om det finns en .carrow.
+   *  - "drop" (tidslinjen): lodrät linje från stapeln på rad a till romben på rad b som visar
+   *    när a blir klar. Romben och stapelns slut står på samma datum, alltså samma x.
    */
   function offsetIn(el, box) {
     var x = 0;
@@ -288,21 +291,40 @@ var OOSLayout = (function () {
     scope.querySelectorAll('svg[data-connect]').forEach(function (svg) {
       if (!svg.getClientRects().length) return; /* dold i smal layout */
       var box = svg.parentNode;
+      var mode = svg.getAttribute('data-connect');
+      var r = function (v) { return Math.round(v * 10) / 10; };
       svg.setAttribute('viewBox', '0 0 ' + box.clientWidth + ' ' + box.clientHeight);
       svg.querySelectorAll('g[data-a]').forEach(function (g) {
-        var a = box.querySelector('[data-node="' + g.getAttribute('data-a') + '"]');
-        var b = box.querySelector('[data-node="' + g.getAttribute('data-b') + '"]');
-        if (!a || !b) return;
+        var line = g.querySelector('.cline');
+        var arrow = g.querySelector('.carrow');
+        var na = box.querySelector('[data-node="' + g.getAttribute('data-a') + '"]');
+        var nb = box.querySelector('[data-node="' + g.getAttribute('data-b') + '"]');
+        var a = na && mode === 'drop' ? na.querySelector('.tl-bar') : na;
+        var b = nb && mode === 'drop' ? nb.querySelector('.tl-mark[data-from="' + g.getAttribute('data-a') + '"]') : nb;
+        if (!a || !b || !a.offsetParent || !b.offsetParent) {
+          line.removeAttribute('d');
+          if (arrow) arrow.removeAttribute('d');
+          g.setAttribute('hidden', '');
+          return;
+        }
+        g.removeAttribute('hidden');
         var pa = offsetIn(a, box);
         var pb = offsetIn(b, box);
+        if (mode === 'drop') {
+          var x = pb.x + b.offsetWidth / 2;
+          var down = pa.y < pb.y;
+          var y0 = down ? pa.y + a.offsetHeight + 2 : pa.y - 2;
+          var y1 = down ? pb.y - 1 : pb.y + b.offsetHeight + 1;
+          line.setAttribute('d', 'M' + r(x) + ' ' + r(y0) + ' L' + r(x) + ' ' + r(y1));
+          return;
+        }
         var x0 = pa.x + a.offsetWidth;
-        var y0 = pa.y + a.offsetHeight / 2;
-        var x1 = pb.x - 7;
-        var y1 = pb.y + b.offsetHeight / 2;
+        var ya = pa.y + a.offsetHeight / 2;
+        var x1 = pb.x - (arrow ? 7 : 0);
+        var yb = pb.y + b.offsetHeight / 2;
         var mx = (x0 + x1) / 2;
-        var r = function (v) { return Math.round(v * 10) / 10; };
-        g.querySelector('.cline').setAttribute('d', 'M' + r(x0) + ' ' + r(y0) + ' C' + r(mx) + ' ' + r(y0) + ' ' + r(mx) + ' ' + r(y1) + ' ' + r(x1) + ' ' + r(y1));
-        g.querySelector('.carrow').setAttribute('d', 'M' + r(x1) + ' ' + r(y1 - 4) + ' L' + r(x1 + 7) + ' ' + r(y1) + ' L' + r(x1) + ' ' + r(y1 + 4) + ' Z');
+        line.setAttribute('d', 'M' + r(x0) + ' ' + r(ya) + ' C' + r(mx) + ' ' + r(ya) + ' ' + r(mx) + ' ' + r(yb) + ' ' + r(x1) + ' ' + r(yb));
+        if (arrow) arrow.setAttribute('d', 'M' + r(x1) + ' ' + r(yb - 4) + ' L' + r(x1 + 7) + ' ' + r(yb) + ' L' + r(x1) + ' ' + r(yb + 4) + ' Z');
       });
     });
   }
