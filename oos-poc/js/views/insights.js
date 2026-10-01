@@ -315,7 +315,8 @@
       var x2 = p2.x;
       var y2 = p2.y + NH / 2;
       var mx = (x1 + x2) / 2;
-      svg += '<path class="edge' + (ed.rel === 'primary' ? '' : ' support') + (focus ? ' on' : '') + '" d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"/>';
+      /* data-c är kolumnen linjen startar i. Rörelsen ritar ut linjerna i den ordningen. */
+      svg += '<path class="edge' + (ed.rel === 'primary' ? '' : ' support') + (focus ? ' on' : '') + '" data-c="' + Math.round(p1.x / (W + GAP)) + '" d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"/>';
     });
     svg += '</g>';
     nodes.forEach(function (n) {
@@ -337,7 +338,7 @@
     h += '<div class="graph-wrap">' + svg + '</div></section>';
 
     h += '<div class="grid-2">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">' + (sel ? esc(sel.name) : 'Ingen ruta vald') + '</div>' +
+    h += '<section class="card" id="graph-detail"><div class="card-head"><div class="card-title">' + (sel ? esc(sel.name) : 'Ingen ruta vald') + '</div>' +
       (sel ? C.link(sel.kind + ':' + sel.refId, 'Öppna') : '') + '</div>';
     h += sel ? selectionDetail(e, g, sel, byId) : '<p class="muted">Välj en ruta i kartan för att se alla dess kopplingar här.</p>';
     h += '</section>';
@@ -395,7 +396,7 @@
     return h || '<p class="muted">Inga kopplingar.</p>';
   }
 
-  /* Rutorna glider från sin gamla plats till den nya när valet ändras. */
+  /* Rutornas platser före omritningen, så att de kan glida till de nya (se OOSMotion.moveNodes). */
   function capturePositions() {
     var map = new Map();
     document.querySelectorAll('.gnode').forEach(function (el) {
@@ -408,24 +409,20 @@
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
   }
 
-  function animateFrom(old) {
+  /*
+   * Kartan ritas om helt. Rutorna glider till sina nya platser och linjerna ritas ut
+   * från den valda rutan och utåt, så att det syns vad som hör ihop.
+   */
+  function redraw(old) {
+    OOS.motion('quiet');
+    OOS.refresh();
     var svg = document.querySelector('.graph');
-    if (!svg || !old.size || reduceMotion()) return;
-    var moved = [];
-    svg.querySelectorAll('.gnode').forEach(function (el) {
-      var o = old.get(el.getAttribute('data-id'));
-      if (!o || (o.x === el.getAttribute('data-x') && o.y === el.getAttribute('data-y'))) return;
-      el.style.transition = 'none';
-      el.style.transform = 'translate(' + o.x + 'px,' + o.y + 'px)';
-      moved.push(el);
-    });
-    svg.getBoundingClientRect();
-    moved.forEach(function (el) {
-      el.style.transition = '';
-      el.style.transform = 'translate(' + el.getAttribute('data-x') + 'px,' + el.getAttribute('data-y') + 'px)';
-    });
-    var edges = svg.querySelector('.edges');
-    if (edges && moved.length) edges.classList.add('enter');
+    if (!svg) return;
+    var sel = OOS.state.graphSel && svg.querySelector('.gnode.sel');
+    var selCol = sel ? Math.round(+sel.getAttribute('data-x') / (W + GAP)) : null;
+    OOSMotion.moveNodes(svg, old);
+    OOSMotion.drawEdges(svg, selCol, 180);
+    OOSMotion.reveal(document.getElementById('graph-detail'));
   }
 
   function focusNode(id, scroll) {
@@ -445,16 +442,14 @@
     var fromList = el.tagName === 'BUTTON';
     var old = capturePositions();
     OOS.state.graphSel = OOS.state.graphSel === id && !fromList ? null : id;
-    OOS.refresh();
-    animateFrom(old);
+    redraw(old);
     focusNode(id, true);
   };
   A['graph-clear'] = function () {
     var old = capturePositions();
     var prev = OOS.state.graphSel;
     OOS.state.graphSel = null;
-    OOS.refresh();
-    animateFrom(old);
+    redraw(old);
     if (prev) focusNode(prev, false);
   };
   A['kpi-targets'] = function () {

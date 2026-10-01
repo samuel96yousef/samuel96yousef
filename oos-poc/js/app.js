@@ -71,8 +71,24 @@
     document.getElementById('topbar-title').textContent = PAGES[st.page] ? PAGES[st.page].label : '';
   }
 
+  /*
+   * Vilken sorts rörelse nästa omritning ska få, se js/motion.js.
+   * Sätts av den som orsakar omritningen. Utan angivelse tolkas den som en dataändring.
+   */
+  OOS.motion = function (hint, tablist) {
+    motionHint = hint;
+    motionTabs = tablist || null;
+  };
+  var motionHint = 'nav';
+  var motionTabs = null;
+
   function render() {
     var main = document.getElementById('main-inner');
+    var hint = motionHint || 'update';
+    var tabsId = motionTabs;
+    motionHint = null;
+    motionTabs = null;
+    var snap = hint === 'update' || hint === 'detail' ? OOSMotion.snapshot(main) : null;
     var active = document.activeElement;
     var focusId = active && active.id && main.contains(active) ? active.id : null;
     var caret = focusId && typeof active.selectionStart === 'number' ? active.selectionStart : null;
@@ -89,6 +105,8 @@
     OOSSelect.enhance(main);
     renderNav();
     markScrollableTables();
+    var tablist = tabsId && main.querySelector('[data-tabs="' + tabsId + '"]');
+    OOSMotion.play(main, snap, hint, tablist ? tablist.closest('[role="tablist"]') : null);
     document.title = (PAGES[st.page] ? PAGES[st.page].label + ' · ' : '') + 'Fabriken';
     if (focusId) {
       var el = document.getElementById(focusId);
@@ -151,6 +169,9 @@
     st.id = parts[1] || null;
     st.navOpen = false;
     UI.hideTip();
+    if (!changed) motionHint = 'quiet';
+    else if (samePage && LIST_DETAIL[page]) motionHint = 'detail';
+    else motionHint = 'nav';
     render();
     if (changed && !opts.fromHistory) remember(currentTarget());
     if (samePage && LIST_DETAIL[page] && st.id) {
@@ -183,7 +204,9 @@
     var ds = el.dataset;
     switch (name) {
       case 'tab':
+        if (st.tabs[ds.tabs] === ds.key) return;
         st.tabs[ds.tabs] = ds.key;
+        OOS.motion('tab', ds.tabs);
         render();
         return;
       case 'seg':
@@ -201,6 +224,7 @@
       }
       case 'tbl-page':
         UI.tstate(ds.table).page = Number(ds.page);
+        OOS.motion('quiet');
         render();
         return;
       case 'go':
@@ -283,6 +307,7 @@
       var t = UI.tstate(el.dataset.table);
       t.q = el.value;
       t.page = 1;
+      OOS.motion('quiet');
       render();
       return;
     }

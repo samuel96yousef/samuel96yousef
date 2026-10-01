@@ -272,6 +272,7 @@ var OOSUI = (function () {
     rememberFocus();
     root().innerHTML = h;
     OOSSelect.enhance(root());
+    OOSMotion.dialogIn(root().querySelector('.modal'));
     activeForm = cfg;
     var form = root().querySelector('form');
     form.addEventListener('submit', function (ev) {
@@ -383,6 +384,7 @@ var OOSUI = (function () {
         '<button type="button" class="btn ' + (cfg.danger ? 'btn-danger-solid' : 'btn-primary') + '" data-confirm="yes">' + esc(cfg.confirmLabel || 'Bekräfta') + '</button></div></div></div>';
       rememberFocus();
       root().innerHTML = h;
+      OOSMotion.dialogIn(root().querySelector('.modal'));
       activeForm = null;
       pendingConfirm = resolve;
       root().querySelector('[data-confirm="no"]').focus();
@@ -418,8 +420,9 @@ var OOSUI = (function () {
     t.setAttribute('role', 'status');
     t.textContent = msg;
     box.appendChild(t);
+    OOSMotion.toastIn(t);
     setTimeout(function () {
-      t.remove();
+      OOSMotion.toastOut(t, function () { t.remove(); });
     }, 3200);
   }
 

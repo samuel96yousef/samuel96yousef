@@ -19,7 +19,7 @@ Timmar är den gemensamma valutan. Varje vy börjar med det viktigaste. Översik
 Bara personer har initialer. Domäner, team och system visas med sina namn. Det finns inga färgkodade klossar att lära sig.
 
 **5. Stillhet.**
-Övergångarna är korta och diskreta. Inget blinkar, studsar eller animeras för sakens skull. Systemet följer användarens val av ljust eller mörkt läge.
+Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar eller animeras för sakens skull. Systemet följer användarens val av ljust eller mörkt läge och av minskad rörelse.
 
 ## Grundelement
 
@@ -34,6 +34,28 @@ Bara personer har initialer. Domäner, team och system visas med sina namn. Det 
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
+## Rörelse
+
+Rörelsen ska få appen att kännas levande när man gör något, inte när man tittar på den. Den bygger på [anime.js](https://animejs.com) (MIT) i `js/vendor/` och samlas i `js/motion.js`.
+
+| Händelse | Rörelse | Tid |
+|---|---|---|
+| Ny sida | Sektionerna tonas fram uppifrån och ned. Staplar växer från noll och nyckeltal räknas upp. | 360–650 ms |
+| Ny flik | Samma sak, men bara för flikens innehåll. Sidhuvudet står still. | 360–650 ms |
+| Ny post i en lista | Bara detaljvyn tonas fram. Listan står still. | 300 ms |
+| Ändrad data | Staplar, ringar och siffror glider från det gamla värdet till det nya. Tabellrader som byter plats glider dit. | 420–600 ms |
+| Kopplingskartan | Rutorna glider till sina nya platser med en lätt fjäder. Linjerna ritas ut från den valda rutan och utåt. Streckade linjer tonas in. | cirka 500 ms |
+| Dialog och notis | Tonas in och glider upp några pixlar. | 240–260 ms |
+| Sökning och bläddring | Ingen rörelse. Man skriver och läser samtidigt. | – |
+
+Regler:
+
+- Inget längre än 0,8 sekunder. Inga loopar. Ingen studs utöver fjädern i kartan.
+- Rörelse visar varifrån något kommer: ett tal räknas från sitt gamla värde, en ruta glider från sin gamla plats.
+- Den som valt minskad rörelse i operativsystemet får inga animationer alls.
+- Animationen städar efter sig. När den är klar finns inga kvarvarande stilar i sidan.
+- Om biblioteket inte laddas fungerar allt som förut, utan rörelse.
+
 ## Tillgänglighet
 
 Lugn får inte betyda svårläst. Kraven är:
@@ -43,6 +65,7 @@ Lugn får inte betyda svårläst. Kraven är:
 - Dialoger håller kvar fokus medan de är öppna och lämnar tillbaka det när de stängs. Esc stänger dem.
 - Vid sidbyte flyttas fokus till sidans rubrik och webbläsarens bakåtknapp fungerar.
 - Färg är aldrig enda bäraren av information. Avvikelser har också text, till exempel "118 %" eller "minskad".
+- Inställningen för minskad rörelse respekteras helt.
 
 Kontrollera med axe eller webbläsarens tillgänglighetsverktyg innan något nytt läggs till.
 

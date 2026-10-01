@@ -4,7 +4,7 @@ Klickbar POC av **Prototyp 1: bottenplattan** i OOS. Den hanterar leveransdomän
 
 All data är påhittad demodata för organisationen "Nordpension".
 
-Utseendet följer designfilosofin *Lugn yta, sann bild*. Se [DESIGN.md](DESIGN.md).
+Utseendet följer designfilosofin *Lugn yta, sann bild*. Se [DESIGN.md](DESIGN.md). Rörelsen bygger på [anime.js](https://animejs.com) (MIT), som ligger med i `js/vendor/` så att POC:n fungerar utan nätverk.
 
 ## Kom igång
 
@@ -103,6 +103,8 @@ js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Nod
 js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
 js/select.js          rullistor och förslagslistor som ersätter webbläsarens
+js/motion.js          rörelse vid sidbyte, ändrad data och i kopplingskartan
+js/vendor/            anime.js 4.5.0 (MIT), animationsbiblioteket som motion.js bygger på
 js/views/*.js         vyerna (insights.js: KPI:er, mätvärden och kopplingar)
 js/app.js             navigation och händelser
 tests/core.test.js    tester för beräkningar och lagring

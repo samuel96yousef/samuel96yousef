@@ -291,18 +291,6 @@ th.num {
   display: flex;
   flex-direction: column;
   gap: 48px;
-  animation: enter 0.18s ease-out;
-}
-
-@keyframes enter {
-  from {
-    opacity: 0.4;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* ---------- Sidhuvud ---------- */
@@ -1879,7 +1867,6 @@ table.tbl {
   box-shadow: var(--shadow-lg);
   font-size: 13.5px;
   max-width: 420px;
-  animation: fade 0.16s ease-out;
 }
 
 /* ---------- Sidopanel ---------- */
@@ -2308,26 +2295,12 @@ table.tbl {
 .gnode {
   cursor: pointer;
   outline: none;
-  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.25s;
+  transition: opacity 0.25s;
 }
 
 .graph-divider {
   stroke: var(--line-strong);
   stroke-dasharray: 2 4;
-}
-
-.graph .edges.enter {
-  animation: edges-in 0.6s ease both;
-}
-
-@keyframes edges-in {
-  0%,
-  45% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
 }
 
 .gnode rect {
@@ -2535,15 +2508,26 @@ table.tbl {
   }
 }
 
+/* Staplar växer från sin bas när de animeras (js/motion.js). */
+.bar-fill,
+.loadbar-fill,
+.hbar-loaded,
+.hbar-free,
+.stack100-seg,
+.depth-seg {
+  transform-origin: left center;
+}
+
+.col-bar {
+  transform-origin: center bottom;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sel-panel,
   .sel-chev,
   .gnode,
-  .graph .edges.enter,
   .nav,
-  .main-inner,
-  .modal-back,
-  .toast {
+  .modal-back {
     transition: none;
     animation: none;
   }
