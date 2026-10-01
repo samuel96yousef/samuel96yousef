@@ -415,6 +415,57 @@ var OOSSeed = (function () {
     ['t_test', 'Införande av nytt testverktyg', 'maintenance', null, 'active', 'total', 65, '2026-10-01', '2026-10-31', 'Konfiguration och flytt av testfall till det nya verktyget.']
   ];
 
+  /*
+   * Kompetensbehov per epik: hur epikens timmar fördelas på kompetensområden, i procent.
+   * En epik utan behov fördelas som teamets sammansättning. Behoven gör flaskhalsar synliga:
+   * ett team kan ha tid hos utvecklarna men inte i test eller krav.
+   */
+  var NEEDS = {
+    'Självservice: byta förmånstagare': [['Utveckling', 45], ['Test & QA', 20], ['Analys', 15], ['Design', 10], ['Ledning', 10]],
+    'Förvaltning av kundportalen': [['Utveckling', 40], ['Test & QA', 20], ['Drift & Infrastruktur', 25], ['Ledning', 10], ['Arkitektur', 5]],
+    'Chattbot för vanliga frågor': [['Utveckling', 50], ['Test & QA', 20], ['Analys', 20], ['Design', 10]],
+    'Digitalt rådgivningsmöte': [['Utveckling', 55], ['Test & QA', 20], ['Analys', 15], ['Ledning', 10]],
+    'Förvaltning av rådgivarstödet': [['Utveckling', 60], ['Test & QA', 25], ['Ledning', 15]],
+    'Utredning: AI-stöd i rådgivning': [['Analys', 50], ['Utveckling', 30], ['Ledning', 20]],
+    'Kampanj: Pensionsveckan 2026': [['Utveckling', 60], ['Design', 30], ['Ledning', 10]],
+    'Förvaltning av publika webben': [['Utveckling', 80], ['Design', 10], ['Ledning', 10]],
+    'ITP 1: regelmotor för utbetalning': [['Utveckling', 55], ['Analys', 20], ['Test & QA', 15], ['Ledning', 10]],
+    'Förvaltning av NPPension Core': [['Utveckling', 60], ['Test & QA', 20], ['Analys', 10], ['Ledning', 10]],
+    'Utredning: avveckling av nattbatchen': [['Analys', 40], ['Utveckling', 40], ['Ledning', 20]],
+    'ITP 1: ny utbetalningsmotor': [['Utveckling', 55], ['Test & QA', 25], ['Analys', 10], ['Ledning', 10]],
+    'Förvaltning av utbetalningsmotorn': [['Utveckling', 60], ['Test & QA', 25], ['Ledning', 15]],
+    'Nya produktvillkor ITP 2 2027': [['Analys', 30], ['Utveckling', 40], ['Data & Analys', 20], ['Ledning', 10]],
+    'Förvaltning av produktregelmotorn': [['Utveckling', 60], ['Data & Analys', 25], ['Ledning', 15]],
+    'Avtalsregistret: ny version': [['Utveckling', 60], ['Test & QA', 20], ['Analys', 10], ['Ledning', 10]],
+    'Förvaltning av SAP CRM': [['Utveckling', 65], ['Test & QA', 20], ['Ledning', 15]],
+    'Förstudie: uppgradering till S/4': [['Analys', 25], ['Utveckling', 45], ['Ledning', 30]],
+    'Digital anslutning: nytt onboardingflöde': [['Utveckling', 55], ['Test & QA', 20], ['Design', 15], ['Ledning', 10]],
+    'Förvaltning av arbetsgivarportalen': [['Utveckling', 65], ['Test & QA', 25], ['Ledning', 10]],
+    'Rapportering via API för lönesystem': [['Integration', 85], ['Test & QA', 15]],
+    'Förvaltning av Arbetsgivar-API': [['Integration', 80], ['Test & QA', 20]],
+    'Förvaltning av integrationsplattformen': [['Integration', 60], ['Drift & Infrastruktur', 20], ['Utveckling', 20]],
+    'Integrationer för ITP 1': [['Integration', 70], ['Utveckling', 20], ['Test & QA', 10]],
+    'Integrationer för digital anslutning': [['Integration', 70], ['Utveckling', 30]],
+    'Dataplattform: migrering av datalagret': [['Data & Analys', 80], ['Analys', 10], ['Ledning', 10]],
+    'Förvaltning av BI och datalager': [['Data & Analys', 85], ['Ledning', 15]],
+    'Kolbot: automatiserade avtalsändringar': [['Automation', 70], ['Analys', 20], ['Ledning', 10]],
+    'Förvaltning av Kolbot RPA': [['Automation', 85], ['Ledning', 15]],
+    'Utredning: AI-agenter i Kolbot': [['Automation', 50], ['Analys', 30], ['Ledning', 20]],
+    'Kolbot: robotar för ITP 1-utbetalningar': [['Automation', 70], ['Analys', 20], ['Ledning', 10]]
+  };
+
+  /* Beroenden: [epik, epik som måste leverera först]. */
+  var DEPENDENCIES = [
+    ['ITP 1: ny utbetalningsmotor', 'ITP 1: regelmotor för utbetalning'],
+    ['Integrationer för ITP 1', 'ITP 1: ny utbetalningsmotor'],
+    ['Testautomation för ITP 1', 'Integrationer för ITP 1'],
+    ['Kolbot: robotar för ITP 1-utbetalningar', 'ITP 1: ny utbetalningsmotor'],
+    ['Digital anslutning: nytt onboardingflöde', 'Integrationer för digital anslutning'],
+    ['Dataplattform: migrering av datalagret', 'Dataplattform: landningszon i molnet'],
+    ['Chattbot för vanliga frågor', 'Självservice: byta förmånstagare'],
+    ['DORA: incidentrapportering', 'DORA: register över tredjepartsleverantörer']
+  ];
+
   function build() {
     var rnd = U.prng(20260904);
     function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -570,8 +621,15 @@ var OOSSeed = (function () {
     EPICS.forEach(function (x, i) {
       db.epics.push({
         id: 'ep_' + (i + 1), teamId: x[0], name: x[1], type: x[2], initiativeId: x[3], status: x[4],
-        effort: x[5], hours: x[6], from: x[7], to: x[8], description: x[9]
+        effort: x[5], hours: x[6], from: x[7], to: x[8], description: x[9],
+        needs: (NEEDS[x[1]] || []).map(function (n) { return { category: n[0], share: n[1] }; }),
+        dependsOn: []
       });
+    });
+    var byName = {};
+    db.epics.forEach(function (ep) { byName[ep.name] = ep; });
+    DEPENDENCIES.forEach(function (d) {
+      if (byName[d[0]] && byName[d[1]]) byName[d[0]].dependsOn.push(byName[d[1]].id);
     });
 
     return db;

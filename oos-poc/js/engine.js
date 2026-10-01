@@ -516,14 +516,155 @@ var OOSEngine = (function () {
       return teamDemand(teamId, period).hours / supply;
     }
 
-    /* En medlems planerade timmar i teamet. Manuellt läge använder procentsatsen på medlemskapet. */
+    /*
+     * En medlems planerade timmar i teamet. Med epiker fördelas arbetet efter kompetens: medlemmens
+     * tid på varje kompetens gånger beläggningen för kompetensområdet i teamet. En testare blir alltså
+     * fullbelagd när teamets testarbete är det, även om utvecklarna har tid över.
+     * Manuellt läge använder procentsatsen på medlemskapet.
+     */
     function memberLoaded(tw, cap, period) {
       if (!epicMode) return (cap * (tw.plannedLoad || 0)) / 100;
-      return cap * teamLoadRatio(tw.teamId, period);
+      return cap * memberRatio(tw, period);
+    }
+
+    function memberRatio(tw, period) {
+      var cl = teamCategoryLoad(tw.teamId, period);
+      var comps = attributionCompetences(tw.workerId);
+      return U.sum(comps, function (c) { return cl.ratio[catOf(c)] || 0; }) / comps.length;
     }
 
     function memberLoadPct(tw, period) {
-      return epicMode ? teamLoadRatio(tw.teamId, period) * 100 : tw.plannedLoad || 0;
+      return epicMode ? memberRatio(tw, period) * 100 : tw.plannedLoad || 0;
+    }
+
+    function catOf(c) {
+      return (c && c.category) || 'Ospecificerad';
+    }
+
+    var catCache = new Map();
+
+    /*
+     * Teamets kapacitet och beslutade arbete per kompetensområde. Epikens kompetensbehov styr var
+     * timmarna hamnar. En epik utan angivet behov fördelas som teamets sammansättning. Arbete inom ett
+     * område som teamet saknar är en lucka: det belastar teamet men kan inte bäras av någon i det.
+     */
+    function teamCategoryLoad(teamId, period) {
+      var key = teamId + '|' + period.start + '|' + period.end;
+      if (catCache.has(key)) return catCache.get(key);
+      var red = teamReductionShare(teamId, period);
+      var supply = {};
+      var people = {};
+      teamMembers(teamId).forEach(function (m) {
+        var wh = workerHours(m.worker.id, period);
+        var cap = ((wh.available * m.tw.allocation) / 100) * wh.scale * (1 - red.share);
+        var comps = attributionCompetences(m.worker.id);
+        comps.forEach(function (c) {
+          var k = catOf(c);
+          supply[k] = (supply[k] || 0) + cap / comps.length;
+          (people[k] = people[k] || []).push({ worker: m.worker, tw: m.tw, hours: cap / comps.length });
+        });
+      });
+      var demand = {};
+      var unspecified = 0;
+      teamDemand(teamId, period).epics.forEach(function (x) {
+        if (!x.counts || x.load <= 0) return;
+        var needs = normNeeds(x.epic.needs);
+        if (!needs) { unspecified += x.load; return; }
+        needs.forEach(function (n) { demand[n.category] = (demand[n.category] || 0) + x.load * n.share; });
+      });
+      var totalSupply = U.sum(Object.keys(supply), function (k) { return supply[k]; });
+      if (unspecified) {
+        if (totalSupply) Object.keys(supply).forEach(function (k) { demand[k] = (demand[k] || 0) + (unspecified * supply[k]) / totalSupply; });
+        else demand.Ospecificerad = (demand.Ospecificerad || 0) + unspecified;
+      }
+      var cats = Array.from(new Set(Object.keys(supply).concat(Object.keys(demand))));
+      var ratio = {};
+      var gap = 0;
+      var rows = cats.map(function (k) {
+        var sup = supply[k] || 0;
+        var dem = demand[k] || 0;
+        var isGap = sup < 0.5 && dem > 0.5;
+        if (isGap) gap += dem;
+        ratio[k] = sup ? dem / sup : 0;
+        return { category: k, supply: sup, demand: dem, free: sup - dem, loadPct: sup ? (dem / sup) * 100 : dem > 0.5 ? Infinity : 0, gap: isGap, people: people[k] || [] };
+      }).sort(function (a, b) { return b.supply - a.supply || b.demand - a.demand; });
+      var res = { rows: rows, ratio: ratio, gap: gap, unspecified: unspecified };
+      catCache.set(key, res);
+      return res;
+    }
+
+    /* Var samma kompetensområde har ledig tid i andra team, som text till en signal. */
+    function freeElsewhere(category, exceptTeamId, period) {
+      var spots = [];
+      db.teams.forEach(function (t) {
+        if (t.id === exceptTeamId) return;
+        teamCategoryLoad(t.id, period).rows.forEach(function (r) {
+          if (r.category === category && !r.gap && r.free > 20) spots.push({ team: t, free: r.free });
+        });
+      });
+      spots.sort(function (a, b) { return b.free - a.free; });
+      if (!spots.length) return ' Inget annat team har ledig tid inom ' + category + '.';
+      return ' Ledigt i andra team: ' + spots.slice(0, 2).map(function (x) { return x.team.name + ' ' + U.fmtH(x.free); }).join(', ') + '.';
+    }
+
+    /* Organisationens kompetensområden: kapacitet, beslutat arbete och ledigt, summerat över teamen. */
+    function orgCategoryLoad(period) {
+      var map = {};
+      db.teams.forEach(function (t) {
+        teamCategoryLoad(t.id, period).rows.forEach(function (r) {
+          var m = map[r.category] = map[r.category] || { category: r.category, supply: 0, demand: 0, teams: [] };
+          m.supply += r.supply;
+          m.demand += r.demand;
+          m.teams.push({ team: t, row: r });
+        });
+      });
+      return Object.keys(map).map(function (k) {
+        var m = map[k];
+        m.free = m.supply - m.demand;
+        m.loadPct = m.supply ? (m.demand / m.supply) * 100 : 0;
+        return m;
+      }).sort(function (a, b) { return b.supply - a.supply; });
+    }
+
+    /*
+     * Epikens beroenden: andra epiker som måste leverera först. Risker: beroendet blir klart efter
+     * epiken, är bara ett förslag, eller ligger hos ett team som är överplanerat i det området.
+     */
+    function epicDependencies(epicId, period) {
+      var ep = get('epics', epicId);
+      if (!ep) return [];
+      return (ep.dependsOn || []).map(function (id) { return get('epics', id); }).filter(Boolean).map(function (dep) {
+        return { epic: dep, risks: dependencyRisks(ep, dep, period) };
+      });
+    }
+
+    function epicDependents(epicId, period) {
+      return (db.epics || []).filter(function (x) { return (x.dependsOn || []).indexOf(epicId) >= 0; }).map(function (x) {
+        var dep = get('epics', epicId);
+        return { epic: x, risks: dep ? dependencyRisks(x, dep, period) : [] };
+      });
+    }
+
+    function dependencyRisks(ep, dep, period) {
+      var risks = [];
+      if (dep.to > ep.to) risks.push({ kind: 'late', text: 'Blir klar efter att epiken ska vara klar' });
+      if (COUNTS[ep.status] && !COUNTS[dep.status]) risks.push({ kind: 'undecided', text: 'Är bara ett förslag' });
+      if (COUNTS[dep.status] && dep.status !== 'done' && epicHoursInPeriod(dep, period) > 0) {
+        var cl = teamCategoryLoad(dep.teamId, period);
+        var needs = normNeeds(dep.needs);
+        var cats = needs ? needs.map(function (n) { return n.category; }) : cl.rows.map(function (r) { return r.category; });
+        var tight = cl.rows.filter(function (r) { return cats.indexOf(r.category) >= 0 && (r.gap || r.loadPct > 100.5); });
+        if (tight.length) {
+          var t = get('teams', dep.teamId);
+          var over = tight.filter(function (r) { return !r.gap; }).map(function (r) { return r.category; });
+          var missing = tight.filter(function (r) { return r.gap; }).map(function (r) { return r.category; });
+          risks.push({
+            kind: 'capacity',
+            text: (t ? t.name : 'Teamet') + (over.length ? ' är överplanerat i ' + over.join(' och ') : '') + (over.length && missing.length ? ' och' : '') + (missing.length ? ' saknar ' + missing.join(' och ') : '')
+          });
+        }
+      }
+      return risks;
     }
 
     function initiativeEpics(initiativeId) {
@@ -606,7 +747,7 @@ var OOSEngine = (function () {
         var hours = (available * x.tw.allocation) / 100;
         /* Med epiker: personens tid i teamet (efter nedskalning och teamavdrag) gånger teamets beläggning. */
         var loaded = epicMode
-          ? hours * wh.scale * (1 - teamReductionShare(x.team.id, period).share) * teamLoadRatio(x.team.id, period)
+          ? memberLoaded(x.tw, hours * wh.scale * (1 - teamReductionShare(x.team.id, period).share), period)
           : (hours * (x.tw.plannedLoad || 0)) / 100;
         return { tw: x.tw, team: x.team, hours: hours, loaded: loaded };
       });
@@ -650,7 +791,7 @@ var OOSEngine = (function () {
       var groups = U.groupBy(facts, keyFn);
       return Array.from(groups.entries()).map(function (entry) {
         var s = summarize(entry[1]);
-        var people = new Set(entry[1].map(function (f) { return f.workerId; }));
+        var people = new Set(entry[1].map(function (f) { return f.workerId; }).filter(Boolean));
         return Object.assign({ key: entry[0], people: people.size }, metaFn(entry[1][0]), s);
       });
     }
@@ -663,6 +804,7 @@ var OOSEngine = (function () {
       var it = teamPrimaryDomain(teamId, 'it');
       var dd = teamDeliveryDomain(teamId);
       var facts = [];
+      var cl = epicMode ? teamCategoryLoad(teamId, period) : null;
       teamMembers(teamId).forEach(function (m) {
         var wc = workerCapacity(m.worker.id, period);
         var gross = ((wc.available * m.tw.allocation) / 100) * wc.scale;
@@ -670,6 +812,8 @@ var OOSEngine = (function () {
         var loaded = memberLoaded(m.tw, cap, period);
         var comps = attributionCompetences(m.worker.id);
         comps.forEach(function (c) {
+          /* Med epiker får varje kompetens beläggningen för sitt område, inte ett snitt för personen. */
+          var compLoaded = cl ? (cap / comps.length) * (cl.ratio[catOf(c)] || 0) : loaded / comps.length;
           facts.push({
             source: 'team',
             teamId: teamId,
@@ -681,10 +825,24 @@ var OOSEngine = (function () {
             competenceId: c.id,
             competence: c,
             capacity: cap / comps.length,
-            loaded: loaded / comps.length
+            loaded: compLoaded
           });
         });
       });
+      /* Arbete inom ett område som teamet saknar: ingen kapacitet, men belastningen finns. */
+      if (cl) {
+        cl.rows.filter(function (r) { return r.gap; }).forEach(function (r) {
+          facts.push({
+            source: 'team', teamId: teamId, teamName: team ? team.name : '',
+            deliveryDomainId: dd ? dd.id : null, businessDomainId: bd ? bd.id : null, itDomainId: it ? it.id : null,
+            workerId: null,
+            competenceId: '_gap_' + r.category,
+            competence: { id: '_gap_' + r.category, name: r.category + ' (saknas i teamet)', category: r.category, type: 'it' },
+            capacity: 0,
+            loaded: r.demand
+          });
+        });
+      }
       return facts;
     }
 
@@ -784,9 +942,18 @@ var OOSEngine = (function () {
         return f.teamId === teamId;
       });
       var s = summarize(members);
+      var cl = epicMode ? teamCategoryLoad(teamId, period) : null;
+      /* Arbete inom områden som teamet saknar belastar teamet, även om ingen medlem kan bära det. */
+      if (cl && cl.gap) {
+        s.loaded += cl.gap;
+        s.free = s.capacity - s.loaded;
+        s.loadPct = s.capacity ? (s.loaded / s.capacity) * 100 : 0;
+      }
       return Object.assign(s, {
         period: period,
         reduction: red,
+        categories: cl ? cl.rows : [],
+        gap: cl ? cl.gap : 0,
         demand: teamDemand(teamId, period),
         loadSource: epicMode ? 'epics' : 'manual',
         members: members,
@@ -924,12 +1091,12 @@ var OOSEngine = (function () {
           var s = slot(f);
           s.capacity += f.capacity;
           s.loaded += f.loaded;
-          s.people.add(f.workerId);
+          if (f.workerId) s.people.add(f.workerId);
         });
         nxtFacts.forEach(function (f) {
           var s = slot(f);
           s.nextCapacity += f.capacity;
-          s.people.add(f.workerId);
+          if (f.workerId) s.people.add(f.workerId);
         });
         return Array.from(map.values()).map(finishRow);
       }
@@ -1026,6 +1193,31 @@ var OOSEngine = (function () {
             ref: { page: 'teams', id: t.id }
           });
         }
+        /* Flaskhalsar: ett kompetensområde kan vara fullt även när teamet som helhet har tid. */
+        if (epicMode && tc.capacity > 0) {
+          tc.categories.forEach(function (r) {
+            if (r.gap) {
+              out.push({
+                kind: 'gap',
+                severity: 'critical',
+                title: t.name + ' saknar ' + r.category,
+                detail: U.fmtH(r.demand) + ' beslutat arbete kräver ' + r.category + ', men ingen i teamet har det som primär kompetens.' + freeElsewhere(r.category, t.id, period),
+                ref: { page: 'teams', id: t.id }
+              });
+            } else if (r.loadPct > 100.5) {
+              var room = tc.categories.filter(function (x) { return !x.gap && x.free > 10; }).slice(0, 2);
+              out.push({
+                kind: 'bottleneck',
+                severity: 'critical',
+                title: r.category + ' är en flaskhals i ' + t.name + ': ' + Math.round(r.loadPct) + ' %',
+                detail: 'Arbetet kräver ' + U.fmtH(-r.free) + ' mer än teamet har inom ' + r.category + '.' +
+                  (room.length ? ' Teamet har ledigt i ' + room.map(function (x) { return x.category + ' ' + U.fmtH(x.free); }).join(' och ') + '.' : '') +
+                  freeElsewhere(r.category, t.id, period),
+                ref: { page: 'teams', id: t.id }
+              });
+            }
+          });
+        }
         if (!teamPrimaryDomain(t.id, 'business') || !teamPrimaryDomain(t.id, 'it')) {
           out.push({
             kind: 'structure',
@@ -1053,6 +1245,20 @@ var OOSEngine = (function () {
           });
         });
       }
+      /* Beroenden med risk, för beslutat arbete som pågår nu eller senare. */
+      (db.epics || []).forEach(function (ep) {
+        if (!COUNTS[ep.status] || ep.status === 'done' || ep.to < period.start || !(ep.dependsOn || []).length) return;
+        var risky = epicDependencies(ep.id, period).filter(function (d) { return d.risks.length; });
+        if (!risky.length) return;
+        var first = risky[0];
+        out.push({
+          kind: 'dependency',
+          severity: 'warning',
+          title: ep.name + ' väntar på ' + first.epic.name + (risky.length > 1 ? ' och ' + (risky.length - 1) + ' till' : ''),
+          detail: first.risks.map(function (r) { return r.text; }).join('. ') + '.',
+          ref: { page: 'epics', id: ep.id }
+        });
+      });
       (db.epics || []).forEach(function (ep) {
         if (ep.type !== 'development' || ep.initiativeId || !COUNTS[ep.status] || !epicHoursInPeriod(ep, period)) return;
         var t = get('teams', ep.teamId);
@@ -1384,6 +1590,10 @@ var OOSEngine = (function () {
       teamCapacity: teamCapacity,
       teamDemand: teamDemand,
       trainingPool: trainingPool,
+      teamCategoryLoad: teamCategoryLoad,
+      orgCategoryLoad: orgCategoryLoad,
+      epicDependencies: epicDependencies,
+      epicDependents: epicDependents,
       teamSupply: teamSupply,
       initiativeEpics: initiativeEpics,
       initiativeSummary: initiativeSummary,
@@ -1467,6 +1677,17 @@ var OOSEngine = (function () {
     return WORK_REDUCTION.test(type || '');
   }
 
+  /*
+   * Epikens kompetensbehov som andelar som summerar till 1, till exempel Utveckling 0,6, Test 0,25 och
+   * Analys 0,15. null betyder att behovet inte är angivet.
+   */
+  function normNeeds(needs) {
+    var list = (needs || []).filter(function (n) { return n && n.category && n.share > 0; });
+    var sum = list.reduce(function (a, n) { return a + Number(n.share); }, 0);
+    if (!sum) return null;
+    return list.map(function (n) { return { category: n.category, share: Number(n.share) / sum }; });
+  }
+
   /* Epikens timmar i en period. Månadsram räknas per månad, totalram fördelas jämnt på arbetsdagarna. */
   function epicHoursInPeriod(epic, period) {
     if (!epic || !epic.hours || !epic.from || !epic.to) return 0;
@@ -1490,6 +1711,7 @@ var OOSEngine = (function () {
     EPIC_STATUS: EPIC_STATUS,
     epicCounts: function (status) { return !!COUNTS[status]; },
     isWorkReduction: isWorkReduction,
+    normNeeds: normNeeds,
     epicHoursInPeriod: epicHoursInPeriod,
     epicFrame: epicFrame,
     workdays: workdays,

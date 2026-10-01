@@ -83,6 +83,26 @@ var OOSStore = (function () {
       if (d[k] === undefined) d[k] = Array.isArray(fresh[k]) ? [] : fresh[k];
     });
     if (d.settings && d.settings.loadSource === undefined) d.settings.loadSource = 'epics';
+    /*
+     * Epiker från före kompetensbehov och beroenden får demodatans värden när de finns, matchade på
+     * team och namn. Andra epiker får tomma listor: arbetet fördelas då som teamets sammansättning.
+     */
+    if (Array.isArray(d.epics) && d.epics.some(function (ep) { return ep.needs === undefined || ep.dependsOn === undefined; })) {
+      var keyOf = function (ep) { return ep.teamId + '|' + ep.name; };
+      var freshBy = {};
+      fresh.epics.forEach(function (ep) { freshBy[keyOf(ep)] = ep; });
+      var freshById = {};
+      fresh.epics.forEach(function (ep) { freshById[ep.id] = ep; });
+      var storedBy = {};
+      d.epics.forEach(function (ep) { storedBy[keyOf(ep)] = ep; });
+      d.epics.forEach(function (ep) {
+        var f = freshBy[keyOf(ep)];
+        if (ep.needs === undefined) ep.needs = f ? f.needs.map(function (n) { return Object.assign({}, n); }) : [];
+        if (ep.dependsOn === undefined) {
+          ep.dependsOn = f ? f.dependsOn.map(function (id) { var t = storedBy[keyOf(freshById[id])]; return t ? t.id : null; }).filter(Boolean) : [];
+        }
+      });
+    }
     /* Grundavdraget för kompetensutveckling är den tid som utbildningsepiker räknas mot först. */
     (d.overheadReductions || []).forEach(function (o) {
       if (o.coversTraining === undefined) o.coversTraining = o.id === 'oh_kompetens' || /kompetensutveckling/i.test(o.name || '');
@@ -215,6 +235,13 @@ var OOSStore = (function () {
         db[r[0]].forEach(function (x) {
           if (x[r[1]] === id) x[r[1]] = null;
         });
+      });
+    }
+    /* Epiker som berodde på en borttagen epik (eller ett borttaget teams epiker) tappar beroendet. */
+    if (coll === 'epics' || coll === 'teams') {
+      var alive = new Set(db.epics.map(function (x) { return x.id; }));
+      db.epics.forEach(function (x) {
+        if (x.dependsOn && x.dependsOn.some(function (d) { return !alive.has(d); })) x.dependsOn = x.dependsOn.filter(function (d) { return alive.has(d); });
       });
     }
     touch();

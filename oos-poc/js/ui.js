@@ -323,6 +323,15 @@ var OOSUI = (function () {
 
   function fieldHtml(f, value) {
     var id = 'f-' + f.key;
+    /*
+     * Eget fält: vyn ritar innehållet (render) och läser värdet (read). Används för listor som
+     * kompetensbehov och beroenden, där ett vanligt fält inte räcker.
+     */
+    if (f.type === 'custom') {
+      return '<div class="fld full custom" data-field="' + esc(f.key) + '" role="group" aria-labelledby="' + id + '-label">' +
+        '<span id="' + id + '-label">' + esc(f.label) + '</span><div class="custom-body" id="' + id + '">' + f.render(value) + '</div>' +
+        (f.help ? '<span class="help">' + esc(f.help) + '</span>' : '') + '<span class="err" hidden></span></div>';
+    }
     var cls = 'fld' + (f.full || f.type === 'textarea' ? ' full' : '') + (f.type === 'checkbox' ? ' check' : '');
     var req = f.required ? ' required' : '';
     var h = '<label class="' + cls + '" data-field="' + esc(f.key) + '">';
@@ -375,6 +384,9 @@ var OOSUI = (function () {
       ev.preventDefault();
       submitForm(form);
     });
+    cfg.fields.forEach(function (f) {
+      if (f.type === 'custom' && f.bind) f.bind(form.querySelector('[data-field="' + f.key + '"] .custom-body'), form);
+    });
     /*
      * Förhandsvisning: formuläret kan visa konsekvensen av det man skriver innan man sparar,
      * till exempel hur teamets beläggning ändras av en ny epik.
@@ -398,6 +410,11 @@ var OOSUI = (function () {
   function readForm(form) {
     var out = {};
     activeForm.fields.forEach(function (f) {
+      if (f.type === 'custom') {
+        var box = form.querySelector('[data-field="' + f.key + '"] .custom-body');
+        if (box) out[f.key] = f.read(box);
+        return;
+      }
       var el = form.querySelector('[name="' + f.key + '"]');
       if (!el) return;
       if (f.type === 'checkbox') out[f.key] = el.checked;

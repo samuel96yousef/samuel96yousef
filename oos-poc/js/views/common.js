@@ -105,7 +105,15 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       if (p.end >= cand.from) {
         var b = before.teamCapacity(cand.teamId, p);
         var a = after.teamCapacity(cand.teamId, p);
-        rows.push({ period: p, hours: OOSEngine.epicHoursInPeriod(cand, p), before: b.loadPct, after: a.loadPct, capacity: a.capacity, loaded: a.loaded });
+        /* Per kompetensområde: ett område kan bli fullt även när teamet som helhet har plats. */
+        var bc = {};
+        before.teamCategoryLoad(cand.teamId, p).rows.forEach(function (r) { bc[r.category] = r; });
+        var cats = after.teamCategoryLoad(cand.teamId, p).rows.map(function (r) {
+          var o = bc[r.category];
+          return { category: r.category, before: o ? o.loadPct : 0, after: r.loadPct, gap: r.gap, over: r.gap ? r.demand : -r.free, changed: !o || Math.abs((o.demand || 0) - r.demand) > 0.5 };
+        });
+        var worstCat = cats.filter(function (c) { return c.changed; }).sort(function (x, y) { return y.after - x.after; })[0] || null;
+        rows.push({ period: p, hours: OOSEngine.epicHoursInPeriod(cand, p), before: b.loadPct, after: a.loadPct, capacity: a.capacity, loaded: a.loaded, cats: cats, worstCat: worstCat });
       }
       p = OOSEngine.nextPeriod(p);
     }
@@ -122,15 +130,166 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     if (!imp.rows.length) return '<div class="note">Epiken ligger utanför de närmaste perioderna och påverkar inte beläggningen nu.</div>';
     var worst = imp.rows.reduce(function (m, r) { return r.after > m.after ? r : m; }, imp.rows[0]);
     var over = worst.after > 100.5;
-    var h = '<div class="impact' + (over ? ' crit' : '') + '"><div class="impact-head"><strong>' + (imp.decided ? 'Konsekvens för ' : 'Om förslaget beslutas: ') + esc(imp.team.name) + '</strong>';
-    h += over
-      ? '<span>Överplanerat i ' + esc(worst.period.inText) + ': ' + U.fmtH(worst.loaded - worst.capacity) + ' mer än kapaciteten. Något annat arbete behöver flyttas, minskas eller få mer kapacitet.</span>'
-      : '<span>Teamet har plats för arbetet. Högst ' + U.fmtPct(worst.after) + ' beläggning, i ' + esc(worst.period.inText) + '.</span>';
+    /* Den period där ett berört kompetensområde blir mest belagt. */
+    var tight = imp.rows.filter(function (r) { return r.worstCat; }).reduce(function (m, r) { return !m || r.worstCat.after > m.worstCat.after ? r : m; }, null);
+    var bottleneck = !over && tight && (tight.worstCat.gap || tight.worstCat.after > 100.5) ? tight : null;
+    var h = '<div class="impact' + (over || bottleneck ? ' crit' : '') + '"><div class="impact-head"><strong>' + (imp.decided ? 'Konsekvens för ' : 'Om förslaget beslutas: ') + esc(imp.team.name) + '</strong>';
+    if (over) {
+      h += '<span>Överplanerat i ' + esc(worst.period.inText) + ': ' + U.fmtH(worst.loaded - worst.capacity) + ' mer än kapaciteten. Något annat arbete behöver flyttas, minskas eller få mer kapacitet.</span>';
+    } else if (bottleneck) {
+      var c = bottleneck.worstCat;
+      h += '<span>Teamet har plats totalt, men ' + esc(c.category) + (c.gap ? ' finns inte i teamet' : ' blir en flaskhals: ' + U.fmtPct(c.after)) + ' i ' + esc(bottleneck.period.inText) + '. ' + U.fmtH(c.over) + ' behöver någon annanstans ifrån, eller så flyttas arbete.</span>';
+    } else {
+      h += '<span>Teamet har plats för arbetet. Högst ' + U.fmtPct(worst.after) + ' beläggning, i ' + esc(worst.period.inText) + '.</span>';
+    }
     h += '</div><table class="impact-tbl"><thead><tr><th>Period</th><th class="num">Epiken</th><th class="num">Före</th><th class="num">Efter</th></tr></thead><tbody>';
     imp.rows.forEach(function (r) {
       h += '<tr><td>' + esc(r.period.label) + '</td><td class="num">' + U.fmtH(r.hours) + '</td><td class="num">' + pctCell(r.before) + '</td><td class="num"><strong>' + pctCell(r.after) + '</strong></td></tr>';
     });
-    return h + '</tbody></table></div>';
+    h += '</tbody></table>';
+    if (tight) {
+      var shown = tight.cats.filter(function (c) { return c.changed; });
+      h += '<table class="impact-tbl impact-cats"><caption>Kompetensområden som epiken använder, ' + esc(tight.period.inText) + '</caption><thead><tr><th>Område</th><th class="num">Före</th><th class="num">Efter</th></tr></thead><tbody>';
+      shown.forEach(function (c) {
+        h += '<tr><td>' + esc(c.category) + '</td><td class="num">' + (c.gap ? '–' : pctCell(c.before)) + '</td><td class="num"><strong>' + (c.gap ? '<span class="crit">Saknas</span>' : pctCell(c.after)) + '</strong></td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    return h + '</div>';
+  };
+
+  /* ---------- Kompetensbehov och beroenden i epikformuläret ---------- */
+
+  /* Raderna i behovsredigeraren: teamets områden först, sedan andra områden som epiken behöver. */
+  function needsHtml(teamId, needs, focusCat) {
+    var e = S.engine();
+    var p = OOS.period();
+    var rows = teamId ? e.teamCategoryLoad(teamId, p).rows.filter(function (r) { return r.supply > 0.5; }) : [];
+    var byCat = {};
+    rows.forEach(function (r) { byCat[r.category] = r; });
+    var share = {};
+    (needs || []).forEach(function (n) { share[n.category] = n.share; });
+    var cats = rows.map(function (r) { return r.category; });
+    (needs || []).forEach(function (n) { if (cats.indexOf(n.category) < 0) cats.push(n.category); });
+    var sum = U.sum(needs || [], function (n) { return Number(n.share) || 0; });
+    var h = '<div class="needs">';
+    cats.forEach(function (cat) {
+      var r = byCat[cat];
+      var id = 'need-' + cat.replace(/[^a-zA-Z0-9]+/g, '-');
+      h += '<div class="need-row"><label class="need-cat" for="' + id + '">' + esc(cat) + '</label>' +
+        '<span class="need-in"><input type="number" id="' + id + '" min="0" max="100" step="5" inputmode="numeric" data-cat="' + esc(cat) + '" value="' + (share[cat] ? esc(share[cat]) : '') + '"' + (cat === focusCat ? ' data-focus="1"' : '') + '><span aria-hidden="true">%</span></span>' +
+        '<span class="need-free">' + (r ? (r.free >= 0 ? U.fmtH(r.free) + ' ledigt' : '<span class="crit-text">' + U.fmtH(-r.free) + ' över</span>') : '<span class="crit-text">Saknas i teamet</span>') + '</span></div>';
+    });
+    var others = C.categories().filter(function (c) { return cats.indexOf(c) < 0; }).map(function (c) { return { value: c, label: c }; });
+    h += '<div class="need-foot"><span class="need-sum" data-need-sum>' + needSumText(sum) + '</span>' +
+      (others.length ? '<label class="need-add"><span class="sr-only">Lägg till kompetensområde</span><select data-need-add>' + OOSSelect.optionsHtml(others, '', 'Lägg till område …') + '</select></label>' : '') + '</div>';
+    return h + '</div>';
+  }
+
+  function needSumText(sum) {
+    if (!sum) return 'Tomt: fördelas som teamets sammansättning';
+    return 'Summa ' + U.fmtNum(sum) + ' %' + (Math.abs(sum - 100) > 0.5 ? ' (ska vara 100 %)' : '');
+  }
+
+  function readNeeds(box, keepZero) {
+    return Array.prototype.map.call(box.querySelectorAll('input[data-cat]'), function (i) {
+      return { category: i.getAttribute('data-cat'), share: Number(i.value) || 0 };
+    }).filter(function (n) { return keepZero || n.share > 0; });
+  }
+
+  C.needsField = function () {
+    return {
+      key: 'needs', label: 'Kompetensbehov', type: 'custom',
+      help: 'Hur epikens timmar fördelas på kompetensområden, i procent. Ledigt visar vad teamet har kvar i perioden.',
+      render: function (value) { return needsHtml(null, value || []); },
+      read: function (box) { return readNeeds(box, false); },
+      bind: function (box, form) {
+        var teamSel = form.querySelector('[name="teamId"]');
+        function redraw(focusCat, list) {
+          box.innerHTML = needsHtml(teamSel.value, list || readNeeds(box, true), focusCat);
+          OOSSelect.enhance(box);
+          var f = box.querySelector('[data-focus]');
+          if (f) f.focus();
+        }
+        /* Första ritningen saknar team. Rita om med teamets områden och de värden som redan finns. */
+        box.innerHTML = needsHtml(teamSel.value, readNeeds(box, true));
+        OOSSelect.enhance(box);
+        teamSel.addEventListener('change', function () { redraw(); });
+        box.addEventListener('change', function (ev) {
+          if (ev.target.matches('[data-need-add]') && ev.target.value) {
+            var list = readNeeds(box, true);
+            list.push({ category: ev.target.value, share: 0 });
+            redraw(ev.target.value, list);
+          }
+        });
+        box.addEventListener('input', function () {
+          var el = box.querySelector('[data-need-sum]');
+          if (el) el.textContent = needSumText(U.sum(readNeeds(box, false), function (n) { return n.share; }));
+        });
+      }
+    };
+  };
+
+  /* Epiker som direkt eller indirekt beror på den här. De kan inte bli dess beroenden, då blir det en cirkel. */
+  function dependentsOf(id) {
+    var out = new Set();
+    var queue = [id];
+    while (queue.length) {
+      var cur = queue.shift();
+      S.db.epics.forEach(function (x) {
+        if ((x.dependsOn || []).indexOf(cur) >= 0 && !out.has(x.id)) { out.add(x.id); queue.push(x.id); }
+      });
+    }
+    return out;
+  }
+
+  function depsHtml(ids, selfId) {
+    var e = S.engine();
+    var h = '<ul class="dep-list">';
+    ids.forEach(function (id) {
+      var ep = e.get('epics', id);
+      if (!ep) return;
+      var t = e.get('teams', ep.teamId);
+      h += '<li class="dep-item" data-dep-id="' + esc(id) + '"><span class="grow"><span class="dep-name">' + esc(ep.name) + '</span><span class="muted small">' + (t ? esc(t.name) + ' · ' : '') + 'klar ' + U.fmtDate(ep.to) + '</span></span>' +
+        '<button type="button" class="btn-icon" data-dep-remove="' + esc(id) + '" aria-label="Ta bort beroendet ' + esc(ep.name) + '">' + UI.icon('x') + '</button></li>';
+    });
+    h += '</ul>';
+    var blocked = selfId ? dependentsOf(selfId) : new Set();
+    var opts = S.db.epics.filter(function (x) { return x.id !== selfId && ids.indexOf(x.id) < 0 && !blocked.has(x.id) && x.status !== 'done'; })
+      .map(function (x) { var t = e.get('teams', x.teamId); return { value: x.id, label: x.name, group: t ? t.name : 'Utan team', sub: 'Klar ' + U.fmtDate(x.to) }; })
+      .sort(function (a, b) { return a.group.localeCompare(b.group, 'sv') || a.label.localeCompare(b.label, 'sv'); });
+    h += '<label class="dep-add"><span class="sr-only">Lägg till beroende</span><select data-dep-add>' + OOSSelect.optionsHtml(opts, '', 'Lägg till en epik som måste leverera först …') + '</select></label>';
+    return h;
+  }
+
+  function readDeps(box) {
+    return Array.prototype.map.call(box.querySelectorAll('[data-dep-id]'), function (li) { return li.getAttribute('data-dep-id'); });
+  }
+
+  C.depsField = function (selfId) {
+    return {
+      key: 'dependsOn', label: 'Beror på', type: 'custom',
+      help: 'Andra epiker som måste leverera innan den här kan bli klar. Risker visas på epiken och som signal.',
+      render: function (value) { return depsHtml(value || [], selfId); },
+      read: readDeps,
+      bind: function (box, form) {
+        function redraw(list, focusSel) {
+          box.innerHTML = depsHtml(list, selfId);
+          OOSSelect.enhance(box);
+          var target = focusSel ? box.querySelector(focusSel) : null;
+          if (target) target.focus();
+          form.dispatchEvent(new Event('change'));
+        }
+        box.addEventListener('click', function (ev) {
+          var btn = ev.target.closest('[data-dep-remove]');
+          if (!btn) return;
+          redraw(readDeps(box).filter(function (id) { return id !== btn.getAttribute('data-dep-remove'); }), '.sel-btn');
+        });
+        box.addEventListener('change', function (ev) {
+          if (ev.target.matches('[data-dep-add]') && ev.target.value) redraw(readDeps(box).concat([ev.target.value]), '.sel-btn');
+        });
+      }
+    };
   };
 
   /*
@@ -816,7 +975,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     UI.openForm({
       title: opts.title || (isNew ? 'Lägg till epik' : 'Ändra ' + r.name),
       intro: opts.intro || 'En epik är ett avgränsat eller löpande arbete som ett team gör. Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
-      values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end }, defaults || {}),
+      values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end, needs: [], dependsOn: [] }, defaults || {}),
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
@@ -827,11 +986,15 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
         { key: 'hours', label: 'Timmar', type: 'number', min: 1, max: 100000, required: true },
         { key: 'from', label: 'Från', type: 'date', required: true },
         { key: 'to', label: 'Till', type: 'date', required: true },
+        C.needsField(),
+        C.depsField(r ? r.id : null),
         { key: 'description', label: 'Beskrivning', type: 'textarea' }
       ],
       preview: function (v) { return C.impactHtml(C.epicImpact(v, r, opts.patch)); },
       validate: function (v) {
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
+        var sum = U.sum(v.needs || [], function (n) { return n.share; });
+        if (sum && Math.abs(sum - 100) > 0.5) return { needs: 'Andelarna ska bli 100 %. Nu är de ' + U.fmtNum(sum) + ' %.' };
       },
       onSubmit: function (v) {
         v.initiativeId = v.initiativeId || null;

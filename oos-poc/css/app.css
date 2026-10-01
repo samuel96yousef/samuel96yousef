@@ -3996,3 +3996,281 @@ p,
   color: var(--fg-3);
   margin-top: -2px;
 }
+
+/* ---------- Kompetensbehov och beroenden i formuläret ---------- */
+
+.fld.custom {
+  container-type: inline-size;
+}
+
+.fld.custom > span:first-child {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.needs {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.need-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 150px);
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.need-cat {
+  font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.need-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-3);
+}
+
+.fld .need-in input {
+  height: 32px;
+  width: 64px;
+  text-align: right;
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.need-free {
+  font-size: 13px;
+  color: var(--fg-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.need-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 8px 12px;
+}
+
+.need-sum {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.need-add,
+.dep-add {
+  display: block;
+  min-width: 200px;
+}
+
+.need-add .sel-btn {
+  height: 32px;
+}
+
+.dep-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.dep-list:empty {
+  display: none;
+}
+
+.dep-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dep-item .grow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dep-name {
+  overflow-wrap: anywhere;
+}
+
+.impact-cats {
+  margin-top: 12px;
+}
+
+.impact-cats caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--fg-3);
+  padding-bottom: 4px;
+}
+
+@container (max-width: 420px) {
+  .need-row {
+    grid-template-columns: minmax(0, 1fr) 88px;
+  }
+  .need-free {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin-top: -4px;
+  }
+}
+
+/* ---------- Vem gör jobbet och beroenden på epiken ---------- */
+
+.need-block {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.need-block:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.need-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.need-block-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.need-block-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 10px 0 4px;
+}
+
+.need-block p {
+  margin: 6px 0 0;
+}
+
+.need-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 10px;
+}
+
+.need-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dep-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 32px;
+}
+
+@container main (max-width: 720px) {
+  .dep-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dep-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-2);
+  margin-bottom: 4px;
+}
+
+.dep-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dep-row .grow {
+  min-width: 0;
+  flex: 1;
+}
+
+.risk-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--warn);
+}
+
+/* ---------- Flaskhalsar ---------- */
+
+.spot {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.card-head + .spot {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.spot-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.spot-head > span:first-child {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.spot-bar {
+  margin: 10px 0 6px;
+  max-width: 560px;
+}
+
+.spot p {
+  margin: 6px 0 0;
+}
+
+.lmx th.heat-col {
+  max-width: 112px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.lmx td.heat-cell {
+  color: var(--fg-2);
+}
+
+.lmx td.lx-warn {
+  background: var(--warn-soft);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.lmx td.lx-crit {
+  background: var(--crit-soft);
+  color: var(--crit);
+  font-weight: 600;
+}

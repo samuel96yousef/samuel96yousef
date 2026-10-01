@@ -99,6 +99,14 @@
         'Deras tid i teamet räknas ned så att kapaciteten inte blir större än den tid som finns.</div>';
     }
     if (!lead) h += '<div class="note warn"><strong>Teamet saknar teamledare.</strong> Välj en under Redigera.</div>';
+    /* Flaskhals: ett kompetensområde är fullt, ofta medan andra i teamet har tid. */
+    var tight = (tc.categories || []).filter(function (r) { return r.gap || r.loadPct > 100.5; });
+    if (tight.length) {
+      var room = (tc.categories || []).filter(function (r) { return !r.gap && r.free > 10; }).slice(0, 2);
+      h += '<div class="note crit"><strong>' + tight.map(function (r) { return esc(r.category) + (r.gap ? ' saknas' : ' ' + U.fmtPct(r.loadPct)); }).join(', ') + ' i ' + esc(ctx.period.inText) + '.</strong> ' +
+        (tight.length > 1 ? 'Områdena behöver' : 'Området behöver') + ' ' + U.fmtH(U.sum(tight, function (r) { return r.gap ? r.demand : -r.free; })) + ' mer än teamet har' +
+        (room.length ? ', medan ' + room.map(function (r) { return esc(r.category) + ' har ' + U.fmtH(r.free) + ' ledigt'; }).join(' och ') : '') + '. ' + C.link('bottlenecks', 'Se var kompetensen finns ledig') + '</div>';
+    }
 
     var diff = nx.capacity - tc.capacity;
     h += UI.facts([
@@ -110,33 +118,45 @@
 
     var epicMode = tc.loadSource === 'epics';
     var main = OOS.teamWork(t, ctx);
+
+    /*
+     * Kompetensområden: kapacitet och arbete per område. Ett område kan vara fullt även när teamet
+     * totalt har plats, till exempel test eller krav. Arbete i ett område som teamet saknar är en lucka.
+     */
+    var compMode = OOS.segVal('team-comp', 'category');
+    var rows = compMode === 'category' ? tc.byCategory : tc.byCompetence;
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">' + (compMode === 'category' ? 'Kompetensområden' : 'Kompetenser') + '</div><div class="card-sub">' +
+      (epicMode ? 'Kapacitet och beslutat arbete i ' + esc(ctx.period.inText) + ', fördelat efter epikernas kompetensbehov. Ett område kan vara fullt även när teamet totalt har plats.' : 'Fördelad på varje medlems primära kompetenser, ' + esc(ctx.period.inText) + '.') + '</div></div>' +
+      UI.seg('team-comp', [{ key: 'category', label: 'Område' }, { key: 'competence', label: 'Kompetens' }], compMode) + '</div>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Arbete</th><th class="num">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var gap = r.capacity < 0.5 && r.loaded > 0.5;
+      var gapComp = compMode !== 'category' && String(r.key).indexOf('_gap_') === 0;
+      var name = compMode === 'category' ? esc(r.name) : gapComp ? esc(r.name) : C.compRef(r.competence);
+      var state = gap ? ' ' + UI.badge('Saknas i teamet', 'crit') : epicMode && r.loadPct > 100.5 ? ' ' + UI.badge('Flaskhals', 'crit') : '';
+      main += '<tr><td>' + name + state + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.loaded) + '</td>' +
+        '<td class="num">' + (r.free < -0.5 ? '<span class="crit-text">' + U.fmtSigned(r.free, ' h') + '</span>' : U.fmtH(r.free)) + '</td>' +
+        '<td>' + (gap ? '<span class="crit-text small">Ingen i teamet</span>' : UI.bar(r.loadPct)) + '</td></tr>';
+    });
+    if (!rows.length) main += '<tr><td colspan="5"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';
+    main += '</tbody></table></div></section>';
+
     main += '<section class="card"><div class="card-head"><div><div class="card-title">Medlemmar</div>' +
       '<div class="card-sub">' + (epicMode
-        ? 'Allokering är hur stor del av sin tid personen ger teamet. Arbetet fördelas inom teamet, därför visas beläggningen för hela teamet ovan.'
+        ? 'Allokering är hur stor del av sin tid personen ger teamet. Beläggning är hur mycket av den tiden som går till beslutat arbete, utifrån personens kompetens.'
         : 'Allokering är hur stor del av sin tid personen ger teamet. Belastning är hur mycket av den tiden som är planerad.') + '</div></div>' +
       UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div>';
     main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn och roll</th><th class="num">Allokering</th>' +
-      '<th class="num">Kapacitet</th>' + (epicMode ? '' : '<th>Belastning</th>') + '<th data-opt="1">Allokering totalt</th><th data-opt="2">Primära kompetenser</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+      '<th class="num">Kapacitet</th><th>' + (epicMode ? 'Beläggning' : 'Belastning') + '</th><th data-opt="1">Allokering totalt</th><th data-opt="2">Primära kompetenser</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     tc.members.sort(function (a, b) { return b.tw.allocation - a.tw.allocation || U.byName(a.worker, b.worker); }).forEach(function (m) {
       var who = [m.tw.role, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : ''].filter(Boolean).join(' · ');
       main += '<tr><td>' + C.workerRef(m.worker, who) + '</td>' +
         '<td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
-        (epicMode ? '' : '<td>' + UI.bar(m.loadPct) + '</td>') + '<td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
+        '<td>' + UI.bar(m.loadPct) + '</td><td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
         '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td>' +
         '<td class="actions">' + UI.iconBtn('edit', 'member-edit', { id: m.tw.id }, 'Ändra ' + m.worker.name) + '</td></tr>';
     });
-    if (!tc.members.length) main += '<tr><td colspan="' + (epicMode ? 6 : 7) + '"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
-    main += '</tbody></table></div></section>';
-
-    var compMode = OOS.segVal('team-comp', 'category');
-    var rows = compMode === 'category' ? tc.byCategory : tc.byCompetence;
-    main += '<section class="card"><div class="card-head"><div><div class="card-title">Kapacitet per ' + (compMode === 'category' ? 'kompetensområde' : 'kompetens') + '</div><div class="card-sub">Fördelad på varje medlems primära kompetenser, ' + esc(ctx.period.inText) + '.</div></div>' +
-      UI.seg('team-comp', [{ key: 'category', label: 'Område' }, { key: 'competence', label: 'Kompetens' }], compMode) + '</div>';
-    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Planerat</th><th>Beläggning</th></tr></thead><tbody>';
-    rows.forEach(function (r) {
-      main += '<tr><td>' + (compMode === 'category' ? esc(r.name) : C.compRef(r.competence)) + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.loaded) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
-    });
-    if (!rows.length) main += '<tr><td colspan="4"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';
+    if (!tc.members.length) main += '<tr><td colspan="7"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
     main += '</tbody></table></div></section>';
 
     /* Högerspalten */

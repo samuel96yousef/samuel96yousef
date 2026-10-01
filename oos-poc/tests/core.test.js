@@ -385,3 +385,74 @@ test('sparad data: avdrag som är arbete ersätts av epiker, utan dubbletter', (
   assert.equal(db.overheadReductions.find((o) => o.id === 'oh_kompetens').coversTraining, true);
   Store.reset();
 });
+
+test('kompetensbehov: arbetet fördelas per område, och ett område kan vara fullt när teamet har plats', () => {
+  const e = E.create(Seed.build());
+  const cl = e.teamCategoryLoad('t_utbetalning', OCT);
+  const test = cl.rows.find((r) => r.category === 'Test & QA');
+  const dev = cl.rows.find((r) => r.category === 'Utveckling');
+  assert.ok(test.loadPct > 100, 'test ' + test.loadPct);
+  assert.ok(dev.loadPct < 90, 'dev ' + dev.loadPct);
+  /* Summan av områdena är teamets arbete, inget tappas och inget räknas två gånger. */
+  near(cl.rows.reduce((a, r) => a + r.demand, 0), e.teamDemand('t_utbetalning', OCT).hours);
+  const tc = e.teamCapacity('t_utbetalning', OCT);
+  near(tc.members.reduce((a, m) => a + m.loaded, 0), tc.loaded);
+  /* Testaren får testområdets beläggning, utvecklaren utvecklingens. */
+  const tester = tc.members.find((m) => m.tw.role === 'Testare');
+  near(tester.loadPct, test.loadPct, 0.5);
+  assert.ok(e.signals(OCT).some((s) => s.kind === 'bottleneck' && s.title.includes('Test & QA') && s.title.includes('Utbetalning')));
+});
+
+test('kompetensbehov: utan angivet behov fördelas arbetet som teamets sammansättning', () => {
+  const db = Seed.build();
+  db.epics.forEach((ep) => { ep.needs = []; });
+  const e = E.create(db);
+  const cl = e.teamCategoryLoad('t_utbetalning', OCT);
+  const tc = e.teamCapacity('t_utbetalning', OCT);
+  cl.rows.forEach((r) => near(r.loadPct, tc.loadPct, 0.01));
+});
+
+test('kompetensbehov: arbete som teamet saknar kompetens för är en lucka som belastar teamet', () => {
+  const e = E.create(Seed.build());
+  const cl = e.teamCategoryLoad('t_integration', OCT);
+  const gap = cl.rows.find((r) => r.gap);
+  assert.equal(gap.category, 'Test & QA');
+  const tc = e.teamCapacity('t_integration', OCT);
+  near(tc.loaded, tc.demand.hours);
+  near(tc.gap, gap.demand);
+  /* Rapporten tappar inte luckan: totalen stämmer med teamets arbete. */
+  const rep = e.report({ period: OCT, level: 'team' });
+  near(rep.groups.find((g) => g.key === 't_integration').total.loaded, tc.loaded, 0.5);
+  assert.ok(e.signals(OCT).some((s) => s.kind === 'gap' && s.ref.id === 't_integration'));
+});
+
+test('beroenden: risk när beroendet blir klart för sent, inte är beslutat eller ligger hos ett team med flaskhals', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const byName = (n) => db.epics.find((x) => x.name === n);
+  const integ = byName('Integrationer för ITP 1');
+  const deps = e.epicDependencies(integ.id, OCT);
+  assert.equal(deps[0].epic.name, 'ITP 1: ny utbetalningsmotor');
+  const kinds = deps[0].risks.map((r) => r.kind);
+  assert.ok(kinds.includes('late'));
+  assert.ok(kinds.includes('capacity'));
+  const motor = byName('ITP 1: ny utbetalningsmotor');
+  assert.ok(e.epicDependents(motor.id, OCT).some((x) => x.epic.id === integ.id));
+  /* Ett beslutat arbete som väntar på ett förslag har en risk. */
+  const chat = byName('Chattbot för vanliga frågor');
+  chat.status = 'planned';
+  byName('Självservice: byta förmånstagare').status = 'proposed';
+  const e2 = E.create(db);
+  assert.ok(e2.epicDependencies(chat.id, OCT)[0].risks.some((r) => r.kind === 'undecided'));
+});
+
+test('sparad data utan kompetensbehov får demodatans behov och beroenden', () => {
+  const Store = require('../js/store.js');
+  const old = Seed.build();
+  old.epics.forEach((ep) => { delete ep.needs; delete ep.dependsOn; });
+  Store.importJSON(JSON.stringify(old));
+  const motor = Store.db.epics.find((x) => x.name === 'ITP 1: ny utbetalningsmotor');
+  assert.ok(motor.needs.length > 0);
+  assert.equal(Store.db.epics.find((x) => x.id === motor.dependsOn[0]).name, 'ITP 1: regelmotor för utbetalning');
+  Store.reset();
+});

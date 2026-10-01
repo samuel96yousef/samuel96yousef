@@ -41,6 +41,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Kapacitetsstaplar | Stapelns längd är kapaciteten. Mörk del är belastat, ljus del ledigt och randig röd del det som är planerat utöver kapaciteten. Talen står i klartext med rubrik bredvid stapeln. Det finns inga markeringar som man måste gissa betydelsen av. |
 | Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. |
 | Arbetstyper | Utveckling, förvaltning, utredning och utbildning skiljs åt med fyra gråtoner, inte med färg. Färgen är reserverad för det som är över kapaciteten. |
+| Flaskhalsmatris | Team × kompetensområde med beläggning i procent. Neutral som standard, gul ruta från 90 % och röd över 100 % eller där teamet saknar kompetensen. Matrisen är till för att hitta avvikelser, inte för att läsa varje tal. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
 ## Sökning
@@ -97,6 +98,8 @@ Ett team har samma tidsbudget, men för arbete: teamets epiker mot teamets kapac
 Den som lägger till eller ändrar en epik ser konsekvensen innan den sparas (problem 17). Formuläret visar teamets beläggning före och efter, period för period, och säger med en mening om teamet har plats. Går det över kapaciteten blir rutan röd och texten säger vad som behöver hända: flytta, minska eller skaffa mer kapacitet.
 
 Ett förslag belastar inte teamet. Dess detaljsida visar ändå vad beläggningen blir om det beslutas, så att beslutet kan fattas med siffrorna framför sig.
+
+Konsekvensen visas också per kompetensområde. Har teamet plats totalt men inte i test eller krav, säger rutan det: "Teamet har plats totalt, men Test & QA blir en flaskhals". En flaskhals ska synas där beslutet fattas, inte först när arbetet har kört fast.
 
 ## Layout
 
