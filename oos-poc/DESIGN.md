@@ -6,8 +6,10 @@ Filosofin kommer från problembeskrivningarna. Där står att ett arbetssätt sk
 
 ## Fem principer
 
-**1. Innehållet är gränssnittet.**
-Struktur skapas med luft, typografi och hårfina linjer. Det finns inga rutor runt allt, inga skuggor och inga ikoner som dekoration. En ikon används bara när den är själva knappen, till exempel stäng, sök eller ändra.
+**1. Varje block har en tydlig yta.**
+Innehållet ligger i vita kort med hårfin kant på en ljusgrå botten. Då syns det var ett block börjar och var det slutar. Inuti korten skapas struktur med luft, typografi och hårfina linjer. Det finns inga skuggor och inga ikoner som dekoration. En ikon används bara när den är själva knappen, till exempel stäng, sök eller ändra.
+
+*Ändrat efter användartest:* den första versionen hade inga rutor alls. Det blev svårt att se var informationen började och slutade, särskilt på detaljsidorna.
 
 **2. Färg betyder avvikelse.**
 Ytan är svartvit. Gult betyder nära gränsen och rött betyder över gränsen. Allt som är som det ska vara är neutralt. Om allt har färg sticker ingenting ut.
@@ -31,8 +33,10 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Avvikelser | Ljust tonad ruta med gul eller röd kant, överst på sidan. Texten säger vad som är fel och vad man kan göra. |
 | Färger | Bläcksvart på vitt. Grå i tre nivåer för sekundär text. Gult och rött bara för avvikelser. |
 | Primär knapp | Svart, en per vy. Övriga knappar är neutrala. |
-| Sektioner | Rubrik och luft. Ingen ram. |
-| Tabeller | Hårfina linjer, ingen bakgrund i rubrikraden. Texten linjerar med rubrikerna. |
+| Ytor | Ljusgrå botten. Varje sektion är ett vitt kort med 1 px kant och rundade hörn, 24 px luft inuti. I mörkt läge är botten mörkare än korten. |
+| Nyckeltal | Egna små kort i ett rutnät som bryts efter bredden. Etikett, tal och förklaring hör synligt ihop. |
+| Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
+| Tabeller | Går kant i kant i kortet. Hårfina linjer mellan raderna, ingen bakgrund i rubrikraden. Texten linjerar med kortets rubrik. |
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |

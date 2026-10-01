@@ -146,7 +146,7 @@ var OOSUI = (function () {
       '<div class="page-top">' +
       (opts.crumbs ? '<nav class="crumbs" aria-label="Brödsmulor">' + opts.crumbs + '</nav>' : '') +
       '<header class="page-head"><div class="page-head-text"><h1 class="page-title">' + opts.title + '</h1>' +
-      (opts.meta && opts.meta.length ? '<p class="page-meta">' + opts.meta.filter(Boolean).map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</p>' : '') +
+      (opts.meta && opts.meta.length ? '<p class="page-meta">' + opts.meta.filter(Boolean).map(function (m) { return '<span><span>' + m + '</span></span>'; }).join('') + '</p>' : '') +
       (opts.sub ? '<p class="page-sub">' + opts.sub + '</p>' : '') +
       '</div>' + (opts.actions ? '<div class="page-actions">' + opts.actions + '</div>' : '') + '</header></div>'
     );

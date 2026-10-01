@@ -402,7 +402,9 @@
       UI.kpi('Luckor', gaps.length, gaps.length ? 'Saknar en koppling' : 'Allt är kopplat', { crit: gaps.length > 0 }) +
       '</div>';
 
-    var avail = OOS.measure() - 2;
+    /* Kartan står i ett kort: dra av kortets kant och innermarginal (se .card i app.css). */
+    var cardPad = Math.min(24, Math.max(16, 0.022 * window.innerWidth));
+    var avail = OOS.measure() - 2 * cardPad - 4;
     var asMap = avail >= MAP_MIN;
     var drawing = asMap ? mapSvg(g, nodes, focus, sel, geometry(avail, g.columns.length)) : tiersHtml(g, focus, sel);
 
