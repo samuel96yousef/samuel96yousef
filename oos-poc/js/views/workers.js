@@ -74,86 +74,97 @@
     return h;
   }
 
+  /*
+   * Detaljsida för en arbetare. Överst det viktigaste: hur mycket tid personen har och hur
+   * mycket som redan är lovat bort. Sedan var tiden går, kompetenserna och till sist uppgifterna.
+   */
   function detail(w, ctx) {
     var e = ctx.e;
     var wc = e.workerCapacity(w.id, ctx.period);
     var pd = e.workerPrimaryDomains(w.id);
     var comps = e.workerCompetences(w.id);
-    var roles = e.workerDomainRoles(w.id);
+    var over = wc.allocationPct > 100.5;
+    var isAi = w.type === 'ai';
+    var employment = isAi ? 'AI-arbetare' : w.consultant ? 'Konsult' : 'Anställd';
+
     var h = UI.pageHead({
       crumbs: C.link('workers', 'Arbetare') + '<span>›</span><span>' + esc(w.name) + '</span>',
       title: esc(w.name) + ' ' + UI.statusFlag(w.status),
+      meta: [esc(w.title || ''), employment, pd.team ? esc(pd.team.name) : ''],
       sub: esc(w.description || ''),
       actions: UI.btn('Redigera', 'worker-edit', { data: { id: w.id } }) + UI.btn('Ta bort', 'worker-delete', { cls: 'btn-danger', data: { id: w.id } })
     });
 
-    if (wc.allocationPct > 100.5) {
-      h += '<div class="note crit"><div><strong>' + esc(w.name) + ' är allokerad till ' + U.fmtPct(wc.allocationPct) + '.</strong> Team och domänroller kräver ' + U.fmtH(wc.committed) + ' men tillgänglig kapacitet är ' + U.fmtH(wc.available) + ' i perioden. Minska allokeringen i något team eller korta en domänroll.</div></div>';
+    if (over) {
+      h += '<div class="note crit"><strong>' + esc(w.name) + ' har lovats bort ' + U.fmtH(wc.committed - wc.available) + ' mer än det finns tid till i ' + esc(ctx.period.inText) + '.</strong> ' +
+        'Minska allokeringen i ett team eller korta en domänroll. Till dess räknas alla åtaganden ned i samma proportion.</div>';
     }
 
-    h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">Grundinformation</div></div><div class="card-body"><dl class="kv">' +
-      '<dt>Namn</dt><dd>' + esc(w.name) + '</dd>' +
-      '<dt>Typ</dt><dd>' + (w.type === 'ai' ? 'AI' : 'Människa') + '</dd>' +
-      '<dt>Anställningsform</dt><dd>' + (w.type === 'ai' ? '–' : w.consultant ? 'Konsult' : 'Anställd') + '</dd>' +
-      '<dt>Roll</dt><dd>' + esc(w.title || '–') + '</dd>' +
-      '<dt>Beskrivning</dt><dd>' + esc(w.description || '–') + '</dd></dl></div></section>';
+    var cost = wc.committed * (w.costPerHour || 0);
+    h += UI.facts([
+      { label: 'Tillgänglig tid i ' + ctx.period.inText, value: U.fmtH(wc.available), note: U.fmtNum(U.round(wc.availableWeek, 1)) + ' h i veckan efter grundavdrag' },
+      { label: 'Lovat bort', value: U.fmtH(wc.committed), note: U.fmtPct(wc.allocationPct) + ' av tillgänglig tid', tone: over ? 'crit' : null },
+      { label: 'Planerat arbete', value: U.fmtPct(wc.loadPct), note: U.fmtH(wc.loaded) + ' av tillgänglig tid', tone: wc.loadPct > 100.5 ? 'crit' : wc.loadPct >= 90 ? 'warn' : null },
+      w.costPerHour ? { label: 'Kostnad i perioden', value: U.fmtNum(cost) + ' kr', note: U.fmtNum(w.costPerHour) + ' kr per timme' } : null
+    ]);
 
-    h += '<section class="card"><div class="card-head"><div class="card-title">Domäner</div>' + UI.iconBtn('plus', 'worker-role-add', { id: w.id }, 'Lägg till domänroll') + '</div><div class="card-body stack">' +
-      '<dl class="kv"><dt>Primär leveransdomän</dt><dd>' + C.ddRef(pd.deliveryDomain) + '</dd><dt>Verksamhetsdomän</dt><dd>' + C.domainRef(pd.business) + '</dd><dt>IT-domän</dt><dd>' + C.domainRef(pd.it) + '</dd></dl>' +
-      '<div class="stack" style="gap:4px"><span class="label">Domänroller</span>';
-    if (!roles.length) h += '<span class="muted small">Inga roller i domänmoln eller leveransdomän.</span>';
-    roles.forEach(function (r) {
-      var hrs = OOSEngine.monthlyHoursInPeriod(r.ext.hoursPerMonth, r.ext.from, r.ext.to, ctx.period);
-      h += '<div class="list-item"><div class="grow"><strong>' + esc(r.ext.role) + '</strong> i ' + (r.kind === 'delivery' ? C.ddRef(r.target) : C.domainRef(r.target)) +
-        '<div class="muted small">' + r.ext.hoursPerMonth + ' h/mån · ' + U.fmtH(hrs) + ' i perioden · ' + U.fmtDate(r.ext.from) + ' – ' + U.fmtDate(r.ext.to) + '</div></div>' +
-        UI.iconBtn('edit', 'expert-edit', { kind: r.kind, id: r.ext.id }, 'Ändra') + '</div>';
-    });
-    h += '</div></div></section>';
-
-    h += '<section class="card"><div class="card-head"><div class="card-title">Kompetenser</div>' + UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th data-opt="1">Vikt</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
-    comps.forEach(function (x) {
-      h += '<tr><td>' + C.compRef(x.competence) + '</td><td>' + UI.level(x.wc.level) + '<br><span class="small muted">' + UI.LEVELS[x.wc.level] + '</span></td><td>' + (x.wc.weight === 'primary' ? UI.badge('Primär', 'accent') : '<span class="muted small">Sekundär</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'wc-edit', { id: x.wc.id }, 'Ändra') + '</td></tr>';
-    });
-    if (!comps.length) h += '<tr><td colspan="4"><div class="empty">Inga kompetenser registrerade.</div></td></tr>';
-    h += '</tbody></table></div></section>';
-    h += '</div>';
-
-    h += '<div class="grid-3">';
-    h += '<section class="card"><div class="card-head"><div class="card-title">Kapacitet <span class="card-sub">(' + esc(ctx.period.inText) + ', ' + ctx.period.workdays + ' arbetsdagar)</span></div></div><div class="card-body stack">' +
-      '<div class="formula">' +
-      '<div class="step"><span>Grundkapacitet</span><span>' + U.fmtH(wc.baseWeek) + ' / vecka</span></div>' +
-      '<div class="step"><span>Grundavdrag' + (w.type === 'ai' ? ' (gäller ej AI)' : '') + '</span><span>− ' + U.fmtNum(U.round(wc.overheadWeek, 1)) + ' h / vecka</span></div>' +
-      '<div class="step"><span>Tillgänglig per vecka</span><span>' + U.fmtNum(U.round(wc.availableWeek, 1)) + ' h</span></div>' +
-      '<div class="step"><span>Tillgänglig kapacitet i perioden</span><span>' + U.fmtH(wc.available) + '</span></div></div>' +
-      '<div class="field-block"><span class="label">Allokering</span>' + UI.bar(wc.allocationPct, { warnAt: 1000, soft: true }) + '<span class="muted small">' + U.fmtH(wc.teamHours) + ' i team, ' + U.fmtH(wc.domainHours) + ' i domänroller, ' + U.fmtH(wc.unallocated) + ' oallokerat</span></div>' +
-      '<div class="field-block"><span class="label">Belastning</span>' + UI.bar(wc.loadPct) + '</div>' +
-      '<dl class="kv"><dt>Kostnad per timme</dt><dd>' + U.fmtNum(w.costPerHour) + ' kr</dd></dl>' +
-      '<div class="note"><span>Tillgänglig kapacitet är grundkapacitet minus grundavdrag (semester, kompetensutveckling, interna möten och administration).</span></div>' +
-      '</div></section>';
-
-    h += '<section class="card"><div class="card-head"><div class="card-title">Team</div>' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
-    h += '<div class="card-body"><div class="list">';
+    /* Var tiden går: team och domänroller mot tillgänglig tid. */
+    var parts = wc.teams.map(function (t) { return { label: t.team.name, hours: t.hours, kind: 'team' }; })
+      .concat(wc.roles.map(function (r) { return { label: r.role.ext.role + ' i ' + r.role.target.name, hours: r.hours, kind: 'role' }; }));
+    var main = '<section class="card"><div class="card-head"><div><div class="card-title">Så används tiden</div>' +
+      '<div class="card-sub">Team och domänroller i ' + esc(ctx.period.inText) + ' jämfört med den tid som finns.</div></div>' +
+      '<div class="row">' + UI.btn('Lägg till i team', 'worker-team-add', { cls: 'btn-sm', data: { id: w.id } }) + UI.btn('Lägg till domänroll', 'worker-role-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div></div>';
+    main += UI.budget(parts, wc.available);
+    main += '<div class="commit-list">';
     wc.teams.forEach(function (t) {
-      h += '<div class="list-item"><div class="grow">' + C.teamRef(t.team) + '<div class="muted small">' + esc(t.tw.role) + ' · ' + U.fmtH(t.hours) + ' i perioden</div></div>' +
-        '<strong class="num">' + U.fmtPct(t.tw.allocation) + '</strong>' + UI.iconBtn('edit', 'member-edit', { id: t.tw.id }, 'Ändra') + '</div>';
+      main += '<div class="commit"><span class="sw-team" aria-hidden="true"></span><div>' + C.teamRef(t.team) + '<div class="commit-sub">' + esc(t.tw.role || 'Medlem') + ' · ' + U.fmtPct(t.tw.allocation) + ' av tiden</div></div>' +
+        '<span class="commit-hours">' + U.fmtH(t.hours) + '</span>' + UI.iconBtn('edit', 'member-edit', { id: t.tw.id }, 'Ändra ' + t.team.name) + '</div>';
     });
-    if (!wc.teams.length) h += '<div class="empty">Ingår inte i något team.</div>';
-    h += '</div></div></section>';
+    wc.roles.forEach(function (r) {
+      var x = r.role;
+      main += '<div class="commit"><span class="sw-role" aria-hidden="true"></span><div>' + esc(x.ext.role) + ' i ' + (x.kind === 'delivery' ? C.ddRef(x.target) : C.domainRef(x.target)) +
+        '<div class="commit-sub">' + (x.kind === 'delivery' ? 'Nyckelroll' : 'Domänmoln') + ' · ' + x.ext.hoursPerMonth + ' h/mån · ' + U.fmtDate(x.ext.from) + ' – ' + U.fmtDate(x.ext.to) + '</div></div>' +
+        '<span class="commit-hours">' + U.fmtH(r.hours) + '</span>' + UI.iconBtn('edit', 'expert-edit', { kind: x.kind, id: x.ext.id }, 'Ändra ' + x.ext.role) + '</div>';
+    });
+    if (!parts.length) main += '<div class="empty">Inga åtaganden ännu. All tillgänglig tid är oallokerad.</div>';
+    if (over) {
+      main += '<div class="commit total crit"><span></span><span class="commit-label">Mer än tillgänglig tid</span><span class="commit-hours">' + U.fmtH(wc.committed - wc.available) + '</span><span></span></div>';
+    } else {
+      main += '<div class="commit total"><span class="sw-free" aria-hidden="true"></span><span class="commit-label">Oallokerat</span><span class="commit-hours">' + U.fmtH(wc.unallocated) + '</span><span></span></div>';
+    }
+    main += '</div>';
+    main += UI.explain('Så räknas den tillgängliga tiden',
+      '<div class="formula">' +
+      '<div class="step"><span>Grundkapacitet</span><span>' + U.fmtH(wc.baseWeek) + ' i veckan</span></div>' +
+      '<div class="step"><span>Grundavdrag' + (isAi ? ' (gäller inte AI)' : ': semester, kompetensutveckling, möten, administration') + '</span><span>− ' + U.fmtNum(U.round(wc.overheadWeek, 1)) + ' h</span></div>' +
+      '<div class="step"><span>Tillgänglig per vecka</span><span>' + U.fmtNum(U.round(wc.availableWeek, 1)) + ' h</span></div>' +
+      '<div class="step"><span>× ' + ctx.period.workdays + ' arbetsdagar i ' + esc(ctx.period.inText) + ' / 5</span><span>' + U.fmtH(wc.available) + '</span></div></div>');
+    main += '</section>';
 
-    var costPeriod = wc.committed * (w.costPerHour || 0);
-    h += '<section class="card"><div class="card-head"><div class="card-title">Sammanfattning</div></div><div class="card-body"><dl class="kv">' +
-      '<dt>Antal team</dt><dd>' + wc.teams.length + '</dd>' +
-      '<dt>Antal domänroller</dt><dd>' + roles.length + '</dd>' +
-      '<dt>Total allokering</dt><dd>' + U.fmtPct(wc.allocationPct) + '</dd>' +
-      '<dt>Tillgänglig kapacitet</dt><dd>' + U.fmtH(wc.available) + '</dd>' +
-      '<dt>Belastning</dt><dd>' + U.fmtPct(wc.loadPct) + '</dd>' +
-      '<dt>Allokerad kostnad</dt><dd>' + U.fmtNum(costPeriod) + ' kr</dd>' +
-      '<dt>Antal kompetenser</dt><dd>' + comps.length + '</dd>' +
-      '<dt>Primär verksamhetsdomän</dt><dd>' + (pd.business ? esc(pd.business.name) : '–') + '</dd>' +
-      '<dt>Primär IT-domän</dt><dd>' + (pd.it ? esc(pd.it.name) : '–') + '</dd></dl></div></section>';
-    h += '</div>';
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">Kompetenser</div><div class="card-sub">Kapaciteten räknas på de primära kompetenserna.</div></div>' +
+      UI.btn('Lägg till', 'wc-add', { cls: 'btn-sm', data: { id: w.id } }) + '</div>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetens</th><th>Nivå</th><th data-opt="1">Vikt</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    comps.sort(function (a, b) { return (a.wc.weight === 'primary' ? 0 : 1) - (b.wc.weight === 'primary' ? 0 : 1) || b.wc.level - a.wc.level; }).forEach(function (x) {
+      main += '<tr><td>' + C.compRef(x.competence) + '<div class="muted small">' + esc(x.competence.category) + '</div></td><td><span class="level-cell">' + UI.level(x.wc.level) + '<span>' + UI.LEVELS[x.wc.level] + '</span></span></td>' +
+        '<td>' + (x.wc.weight === 'primary' ? 'Primär' : '<span class="muted">Sekundär</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'wc-edit', { id: x.wc.id }, 'Ändra ' + x.competence.name) + '</td></tr>';
+    });
+    if (!comps.length) main += '<tr><td colspan="4"><div class="empty">Inga kompetenser registrerade.</div></td></tr>';
+    main += '</tbody></table></div></section>';
+
+    var aside = UI.asideBlock('Uppgifter', UI.props([
+      ['Roll', esc(w.title || '')],
+      ['Typ', isAi ? 'AI' : 'Människa'],
+      ['Anställningsform', isAi ? '' : w.consultant ? 'Konsult' : 'Anställd'],
+      ['Grundkapacitet', U.fmtH(w.baseHoursPerWeek) + ' i veckan'],
+      ['Kostnad per timme', w.costPerHour ? U.fmtNum(w.costPerHour) + ' kr' : '']
+    ]));
+    aside += UI.asideBlock('Hör hemma i', UI.props([
+      ['Leveransdomän', C.ddRef(pd.deliveryDomain)],
+      ['Verksamhetsdomän', C.domainRef(pd.business)],
+      ['IT-domän', C.domainRef(pd.it)]
+    ]) + '<p class="muted small" style="margin:6px 0 0">Härleds från arbetarens primära team.</p>');
+
+    h += UI.detailLayout(main, aside);
     return h;
   }
 

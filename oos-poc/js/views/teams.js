@@ -53,6 +53,17 @@
     return h;
   }
 
+  /* Ett avdrag i förhållande till perioden: pågår, kommande eller avslutat. */
+  function reductionState(r, period) {
+    if (r.to < period.start) return 'Avslutat';
+    if (r.from > period.end) return 'Kommande';
+    return 'Pågår';
+  }
+
+  /*
+   * Detaljsida för ett team. Överst kapaciteten i perioden, sedan medlemmarna och var
+   * kompetensen finns. Syfte, ledare, domäner, system och avdrag står i högerspalten.
+   */
   function detail(t, ctx) {
     var e = ctx.e;
     var tc = e.teamCapacity(t.id, ctx.period);
@@ -62,86 +73,99 @@
     var bd = e.teamPrimaryDomain(t.id, 'business');
     var it = e.teamPrimaryDomain(t.id, 'it');
     var supportive = e.teamDomains(t.id).filter(function (x) { return x.relationship === 'supportive'; });
+    var scaled = tc.members.filter(function (m) { return m.scaled; });
+
     var h = UI.pageHead({
       crumbs: C.link('teams', 'Team') + '<span>›</span><span>' + esc(t.name) + '</span>',
       title: esc(t.name) + ' ' + UI.statusFlag(t.status),
+      meta: [C.categoryLabel(t.category) + ' team', dd ? esc(dd.name) : '', bd ? esc(bd.name) : ''],
       sub: esc(t.description || ''),
       actions: UI.btn('Redigera', 'team-edit', { data: { id: t.id } }) + UI.btn('Ta bort', 'team-delete', { cls: 'btn-danger', data: { id: t.id } })
     });
 
-    h += '<div class="grid-4 facts">';
-    h += '<section class="stack"><div class="label">Syfte</div><p>' + esc(t.purpose || 'Inget syfte angivet.') + '</p></section>';
-    h += '<section class="stack"><div class="label">Teamledare</div>' +
-      (lead ? C.workerRef(lead, lead.title) : '<div>' + UI.badge('Ej utsedd', 'warn') + '</div><p class="muted small">Välj teamledare under Redigera.</p>') + '</section>';
-    h += '<section class="stack"><div class="label">Tillhör</div><div class="stack-tight">' +
-      '<div class="field-block"><span class="label">Leveransdomän</span>' + C.ddRef(dd) + '</div>' +
-      '<div class="field-block"><span class="label">Verksamhetsdomän (primär)</span>' + (bd ? C.domainRef(bd) : UI.badge('Saknas', 'warn')) + '</div>' +
-      '<div class="field-block"><span class="label">IT-domän (primär)</span>' + (it ? C.domainRef(it) : UI.badge('Saknas', 'warn')) + '</div></div></section>';
-    h += '<section class="stack"><div class="row-between nowrap"><div class="label">Relaterade domäner</div>' + UI.iconBtn('plus', 'team-domain-add', { id: t.id }, 'Koppla domän') + '</div>';
-    ['business', 'it'].forEach(function (type) {
-      var items = supportive.filter(function (x) { return x.domain.type === type; });
-      h += '<div class="field-block"><span class="label">' + (type === 'it' ? 'IT-domäner' : 'Verksamhetsdomäner') + '</span>';
-      if (!items.length) h += '<span class="muted small">Inga</span>';
-      items.forEach(function (x) {
-        h += '<div class="list-item" style="padding:4px 0;border:0"><div class="grow">' + C.domainRef(x.domain) + '</div>' + UI.iconBtn('x', 'link-remove', { coll: 'teamDomains', id: x.link.id, msg: x.domain.name + ' kopplas bort från ' + t.name + '.' }, 'Koppla bort', 'danger') + '</div>';
-      });
-      h += '</div>';
-    });
-    h += '</section></div>';
+    if (scaled.length) {
+      h += '<div class="note warn"><strong>' + (scaled.length === 1 ? esc(scaled[0].worker.name) + ' är överallokerad.' : scaled.length + ' medlemmar är överallokerade.') + '</strong> ' +
+        'Deras tid i teamet räknas ned så att kapaciteten inte blir större än den tid som finns.</div>';
+    }
+    if (!lead) h += '<div class="note warn"><strong>Teamet saknar teamledare.</strong> Välj en under Redigera.</div>';
 
-    var sys = e.teamSystems(t.id);
-    h += '<section class="card"><div class="card-head"><div class="card-title">System och tjänster</div><div class="chips">';
-    sys.forEach(function (x) {
-      /* Namnet och borttagningen är två separata knappar, så att de inte hamnar i varandra. */
-      h += '<span class="chip">' + C.link('systems:' + x.system.id, x.system.name) + (x.link.objective === 'owner' ? ' <span class="owner">ansvar</span>' : '') +
-        '<button type="button" class="btn-icon x" style="width:20px;height:20px" data-action="link-remove" data-coll="teamSystems" data-id="' + esc(x.link.id) + '" data-msg="' + esc(x.system.name + ' kopplas bort från ' + t.name + '.') + '" aria-label="Koppla bort ' + esc(x.system.name) + '">' + UI.icon('x') + '</button></span>';
-    });
-    h += UI.btn('Lägg till system', 'team-system-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div></div></section>';
+    var diff = nx.capacity - tc.capacity;
+    h += UI.facts([
+      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: tc.headcount + ' medlemmar, efter avdrag' },
+      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + ' är planerat', tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
+      { label: 'Ledigt', value: U.fmtH(tc.free), note: 'Kan planeras i ' + ctx.period.inText },
+      { label: ctx.next.label, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }
+    ]);
 
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Teammedlemmar (' + tc.headcount + ')</div>' +
-      '<div class="card-sub">Allokering är andel av arbetarens tid. Belastning är hur mycket av den tiden som är planerad.</div></div>' +
+    var main = '<section class="card"><div class="card-head"><div><div class="card-title">Medlemmar</div>' +
+      '<div class="card-sub">Allokering är hur stor del av sin tid personen ger teamet. Belastning är hur mycket av den tiden som är planerad.</div></div>' +
       UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn</th><th data-opt="1">Roll i teamet</th><th data-opt="2">Primära kompetenser</th><th class="num">Allokering i teamet</th>' +
-      '<th class="num">Tillgänglig kapacitet<br><span class="muted small">(denna period)</span></th><th>Belastning<br><span class="muted small">(denna period)</span></th><th data-opt="1">Total allokering<br><span class="muted small">(alla team och roller)</span></th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn och roll</th><th class="num">Allokering</th>' +
+      '<th class="num">Kapacitet</th><th>Belastning</th><th data-opt="1">Allokering totalt</th><th data-opt="2">Primära kompetenser</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     tc.members.sort(function (a, b) { return b.tw.allocation - a.tw.allocation || U.byName(a.worker, b.worker); }).forEach(function (m) {
-      h += '<tr><td>' + C.workerRef(m.worker, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : '') + '</td><td>' + esc(m.tw.role) + '</td>' +
-        '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td><td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
+      var who = [m.tw.role, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : ''].filter(Boolean).join(' · ');
+      main += '<tr><td>' + C.workerRef(m.worker, who) + '</td>' +
+        '<td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
         '<td>' + UI.bar(m.loadPct) + '</td><td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
-        '<td class="actions">' + UI.iconBtn('edit', 'member-edit', { id: m.tw.id }, 'Ändra') + '</td></tr>';
+        '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td>' +
+        '<td class="actions">' + UI.iconBtn('edit', 'member-edit', { id: m.tw.id }, 'Ändra ' + m.worker.name) + '</td></tr>';
     });
-    if (!tc.members.length) h += '<tr><td colspan="8"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
-    h += '</tbody></table></div></section>';
+    if (!tc.members.length) main += '<tr><td colspan="7"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
+    main += '</tbody></table></div></section>';
 
     var compMode = OOS.segVal('team-comp', 'category');
     var rows = compMode === 'category' ? tc.byCategory : tc.byCompetence;
-    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Kapacitet per ' + (compMode === 'category' ? 'kompetensområde' : 'kompetens') + '</div><div class="card-sub">' + esc(ctx.period.label) + '</div></div>' +
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">Kapacitet per ' + (compMode === 'category' ? 'kompetensområde' : 'kompetens') + '</div><div class="card-sub">Fördelad på varje medlems primära kompetenser, ' + esc(ctx.period.inText) + '.</div></div>' +
       UI.seg('team-comp', [{ key: 'category', label: 'Område' }, { key: 'competence', label: 'Kompetens' }], compMode) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Tillgänglig kapacitet</th><th class="num" data-opt="1">Belastning</th><th>Beläggningsgrad</th></tr></thead><tbody>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (compMode === 'category' ? 'Kompetensområde' : 'Kompetens') + '</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Planerat</th><th>Beläggning</th></tr></thead><tbody>';
     rows.forEach(function (r) {
-      h += '<tr><td>' + (compMode === 'category' ? esc(r.name) : C.compRef(r.competence)) + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.loaded) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
+      main += '<tr><td>' + (compMode === 'category' ? esc(r.name) : C.compRef(r.competence)) + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.loaded) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
     });
-    if (!rows.length) h += '<tr><td colspan="4"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';
-    h += '</tbody></table></div><div class="card-body"><p class="muted small">Kapaciteten fördelas på varje medlems primära kompetenser.</p></div></section>';
+    if (!rows.length) main += '<tr><td colspan="4"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';
+    main += '</tbody></table></div></section>';
 
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Total kapacitet och belastning</div><div class="card-sub">' + esc(ctx.period.label) + '</div></div></div><div class="card-body stack">';
-    h += '<div class="donut-wrap">' + UI.donut(tc.loadPct, { label: 'Beläggningsgrad ' + U.fmtPct(tc.loadPct) }) +
-      '<div class="legend"><div class="legend-row"><span class="sw loaded"></span><span>Belastad kapacitet</span><strong class="num">' + U.fmtH(tc.loaded) + '</strong></div>' +
-      '<div class="legend-row"><span class="sw free"></span><span>Ledig kapacitet</span><strong class="num">' + U.fmtH(tc.free) + '</strong></div>' +
-      '<div class="legend-row"><span></span><span>Total kapacitet</span><strong class="num">' + U.fmtH(tc.capacity) + '</strong></div></div></div>';
-    h += '<dl class="kv"><dt>Antal teammedlemmar</dt><dd>' + tc.headcount + '</dd><dt>Genomsnittlig allokering</dt><dd>' + U.fmtPct(tc.avgAllocation) + '</dd>' +
-      '<dt>' + esc(ctx.next.label) + '</dt><dd>' + U.fmtH(nx.capacity) + ' <span class="muted">(' + U.fmtSigned(nx.capacity - tc.capacity, ' h') + ')</span></dd></dl>';
-    var reds = S.db.teamReductions.filter(function (r) { return r.teamId === t.id; });
-    h += '<div class="stack" style="gap:6px"><div class="row-between"><span class="label">Särskilda avdrag</span>' + UI.btn('Lägg till', 'reduction-add', { cls: 'btn-sm', data: { team: t.id } }) + '</div>';
-    if (!reds.length) h += '<span class="muted small">Inga avdrag registrerade.</span>';
-    reds.forEach(function (r) {
-      var active = tc.reduction.active.some(function (a) { return a.reduction.id === r.id; });
-      h += '<div class="list-item"><div class="grow"><strong>' + esc(r.type) + ' ' + U.fmtPct(r.percent) + '</strong>' + (active ? ' <span class="muted small">· gäller i perioden</span>' : '') +
-        '<div class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + (r.comment ? ' · ' + esc(r.comment) : '') + '</div></div>' +
-        UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra') + '</div>';
+    /* Högerspalten */
+    var aside = UI.asideBlock('Syfte', '<p class="aside-text">' + esc(t.purpose || 'Inget syfte angivet.') + '</p>');
+    aside += UI.asideBlock('Teamledare', lead ? C.workerRef(lead, lead.title) : '<div>' + UI.badge('Ej utsedd', 'warn') + '</div>');
+    aside += UI.asideBlock('Tillhör', UI.props([
+      ['Leveransdomän', C.ddRef(dd)],
+      ['Verksamhetsdomän', bd ? C.domainRef(bd) : UI.badge('Saknas', 'warn')],
+      ['IT-domän', it ? C.domainRef(it) : UI.badge('Saknas', 'warn')]
+    ]));
+
+    var sup = '<div class="aside-list">';
+    supportive.forEach(function (x) {
+      sup += '<div class="list-item"><div class="grow">' + C.domainRef(x.domain) + '<div class="muted small">' + (x.domain.type === 'it' ? 'IT-domän' : 'Verksamhetsdomän') + '</div></div>' +
+        UI.iconBtn('x', 'link-remove', { coll: 'teamDomains', id: x.link.id, msg: x.domain.name + ' kopplas bort från ' + t.name + '.' }, 'Koppla bort ' + x.domain.name, 'danger') + '</div>';
     });
-    h += '</div></div></section></div>';
+    if (!supportive.length) sup += '<span class="muted small">Inga stödjande domäner.</span>';
+    aside += UI.asideBlock('Stödjande domäner', sup + '</div>', UI.iconBtn('plus', 'team-domain-add', { id: t.id }, 'Koppla domän'));
+
+    var sys = e.teamSystems(t.id);
+    var sl = '<div class="aside-list">';
+    sys.forEach(function (x) {
+      sl += '<div class="list-item"><div class="grow">' + C.link('systems:' + x.system.id, x.system.name) + '<div class="muted small">' + (x.link.objective === 'owner' ? 'Ansvarar' : 'Bidrar') + '</div></div>' +
+        UI.iconBtn('x', 'link-remove', { coll: 'teamSystems', id: x.link.id, msg: x.system.name + ' kopplas bort från ' + t.name + '.' }, 'Koppla bort ' + x.system.name, 'danger') + '</div>';
+    });
+    if (!sys.length) sl += '<span class="muted small">Inga system kopplade.</span>';
+    aside += UI.asideBlock('System och tjänster', sl + '</div>', UI.iconBtn('plus', 'team-system-add', { id: t.id }, 'Koppla system'));
+
+    var reds = S.db.teamReductions.filter(function (r) { return r.teamId === t.id; }).sort(function (a, b) { return a.from.localeCompare(b.from); });
+    var rl = '<div class="aside-list">';
+    reds.forEach(function (r) {
+      var state = reductionState(r, ctx.period);
+      rl += '<div class="list-item' + (state === 'Avslutat' ? ' is-past' : '') + '"><div class="grow">' + esc(r.type) + ' ' + U.fmtPct(r.percent) +
+        '<div class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + ' · ' + state + '</div>' + (r.comment ? '<div class="muted small">' + esc(r.comment) + '</div>' : '') + '</div>' +
+        UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra avdrag') + '</div>';
+    });
+    if (!reds.length) rl += '<span class="muted small">Inga särskilda avdrag.</span>';
+    aside += UI.asideBlock('Särskilda avdrag', rl + '</div>', UI.iconBtn('plus', 'reduction-add', { team: t.id }, 'Lägg till avdrag'));
+
+    h += UI.detailLayout(main, aside);
     return h;
   }
+
+  OOS.teamReductionState = reductionState;
 
   OOS.views.teams = function (ctx) {
     var t = ctx.id ? ctx.e.get('teams', ctx.id) : null;

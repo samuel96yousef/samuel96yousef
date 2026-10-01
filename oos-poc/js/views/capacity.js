@@ -23,9 +23,13 @@
     h += '<section class="card"><div class="card-head"><div class="card-title">Rapporteringsperiod</div></div><div class="card-body stack">' +
       '<p class="muted small">Styr vilken period som används för planering och uppföljning i hela OOS.</p>' +
       '<label class="fld"><span>Periodtyp</span><select id="period-type" data-change="period-type"><option value="month"' + (st.periodType === 'month' ? ' selected' : '') + '>Månad</option><option value="quarter"' + (st.periodType === 'quarter' ? ' selected' : '') + '>Kvartal</option></select></label>' +
-      '<div class="row-between"><span class="muted">Aktuell period</span><span class="row">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') + '<strong>' + U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</span></div>' +
-      '<div class="row-between"><span class="muted">Nästa period</span><span>' + U.fmtDate(ctx.next.start) + ' – ' + U.fmtDate(ctx.next.end) + '</span></div>' +
-      '<div class="row-between"><span class="muted">Arbetsdagar</span><span>' + ctx.period.workdays + ' / ' + ctx.next.workdays + '</span></div>' +
+      '<div class="field-block"><span class="label">Aktuell period</span><div class="row" style="gap:6px;flex-wrap:nowrap">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') +
+      '<strong class="period-now">' + esc(ctx.period.label) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</div></div>' +
+      UI.props([
+        ['Datum', U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end)],
+        ['Arbetsdagar', ctx.period.workdays + ' <span class="muted">(måndag–fredag)</span>'],
+        ['Nästa period', esc(ctx.next.label) + ', ' + ctx.next.workdays + ' arbetsdagar']
+      ]) +
       (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm' }) : '') +
       '</div></section>';
 
@@ -46,12 +50,13 @@
       rows: reds,
       defaultSort: 'from',
       noun: 'avdrag',
+      rowClass: function (r) { return r.to < ctx.period.start ? 'is-past' : ''; },
       columns: [
         { key: 'team', label: 'Teamnamn', sort: function (r) { var t = e.get('teams', r.teamId); return t ? t.name : ''; }, render: function (r) { return C.teamRef(e.get('teams', r.teamId)); } },
         { key: 'type', label: 'Avdragstyp', opt: 1, sort: function (r) { return r.type; }, render: function (r) { return esc(r.type); } },
         { key: 'pct', label: 'Värde', cls: 'num', sort: function (r) { return r.percent; }, render: function (r) { return U.fmtPct(r.percent); } },
-        { key: 'from', label: 'Gäller från', sort: function (r) { return r.from; }, render: function (r) { return esc(r.from); } },
-        { key: 'to', label: 'Gäller till', sort: function (r) { return r.to; }, render: function (r) { return esc(r.to); } },
+        { key: 'from', label: 'Gäller', sort: function (r) { return r.from; }, render: function (r) { return '<span class="nowrap">' + U.fmtDate(r.from) + ' –</span> <span class="nowrap">' + U.fmtDate(r.to) + '</span>'; } },
+        { key: 'state', label: 'Läge', opt: 1, sort: function (r) { return r.from; }, render: function (r) { return OOS.teamReductionState(r, ctx.period); } },
         {
           key: 'eff', label: 'Effekt i perioden', cls: 'num', sort: function (r) { return effect(e, r, ctx.period); },
           render: function (r) { var v = effect(e, r, ctx.period); return v ? '− ' + U.fmtH(v) : '<span class="muted">–</span>'; }

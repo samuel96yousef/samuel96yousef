@@ -25,7 +25,10 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
-| Typsnitt | Geist, med systemets typsnitt som reserv. Tabellsiffror överallt där siffror står i kolumner. |
+| Typsnitt | Geist, med systemets typsnitt som reserv. Brödtext 15 px med radavstånd 1,55, tabeller 14,5 px, etiketter minst 13 px. Tabellsiffror överallt där siffror står i kolumner. |
+| Datum | Alltid skrivna som "1 sep 2026", aldrig som 2026-09-01. Perioder som "oktober 2026". |
+| Uppgifter | Etikett och värde på en rad med hårfin linje emellan. I smala spalter står etiketten ovanför värdet. |
+| Avvikelser | Ljust tonad ruta med gul eller röd kant, överst på sidan. Texten säger vad som är fel och vad man kan göra. |
 | Färger | Bläcksvart på vitt. Grå i tre nivåer för sekundär text. Gult och rött bara för avvikelser. |
 | Primär knapp | Svart, en per vy. Övriga knappar är neutrala. |
 | Sektioner | Rubrik och luft. Ingen ram. |
@@ -33,6 +36,22 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
+
+## Detaljsidor
+
+Alla detaljsidor har samma ordning, så att man vet var man ska titta:
+
+1. **Rubrik.** Namnet, och under det en rad om vad det är och var det hör hemma, till exempel "Tech Lead · Anställd · Kundportal Team".
+2. **Avvikelse.** Bara om något är fel, till exempel överallokering eller saknad teamledare. Texten säger vad man kan göra åt det.
+3. **Faktarad.** De tre eller fyra viktigaste talen för just den här saken, med en kort förklaring under varje tal. Rött eller gult bara om talet avviker.
+4. **Huvudinnehåll** till vänster: det man arbetar med, till exempel var tiden går, medlemmar eller kompetenser.
+5. **Uppgifter** i en smalare spalt till höger: egenskaper, kopplingar och ägare. Under 900 px hamnar spalten under huvudinnehållet.
+
+Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den tillgängliga tiden" och fälls ut när någon vill veta.
+
+Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan.
+
+För en arbetare visar en **tidsbudget** hur den tillgängliga tiden fördelas på team och domänroller. Ett streck markerar den tid som finns. Det som går utöver är randigt rött. Under stapeln står varje åtagande med timmar och en knapp för att ändra det.
 
 ## Layout
 

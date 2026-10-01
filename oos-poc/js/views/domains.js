@@ -105,7 +105,7 @@
       actions: UI.btn(k.addLabel, 'domain-add', { cls: 'btn-primary', data: { kind: kind } })
     });
     h += '<div class="kpis">' +
-      UI.kpi(k.icon, k.title, rows.length) +
+      UI.kpi('Antal ' + k.title.toLowerCase(), rows.length) +
       UI.kpi(isDd(kind) ? 'Totalt antal team' : 'Team med primär koppling', totalTeams) +
       UI.kpi('Kapacitet ' + ctx.period.inText, U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
       '</div>';
@@ -137,8 +137,10 @@
       { key: 'experts', label: isDd(kind) ? 'Nyckelroller' : 'Domänmoln' },
       { key: 'capacity', label: 'Kapacitet' }
     ];
-    var h = '<section class="card" id="detail">';
-    h += '<div class="card-head"><div class="card-title">' + UI.avatar(d.name, d.id, isDd(kind) ? { text: d.name[0] } : {}) + 'Detaljer: ' + esc(d.name) + '</div><div class="row">' +
+    var k = KINDS[kind];
+    var h = '<section class="card" id="detail" aria-labelledby="detail-title">';
+    h += '<div class="detail-head"><div><div class="eyebrow">' + esc(k.singular.charAt(0).toUpperCase() + k.singular.slice(1)) + '</div>' +
+      '<h2 class="detail-title" id="detail-title">' + esc(d.name) + ' ' + UI.statusFlag(d.status) + '</h2></div><div class="row">' +
       UI.btn('Redigera', 'domain-edit', { data: { kind: kind, id: d.id } }) + UI.btn('Ta bort', 'domain-delete', { cls: 'btn-danger', data: { kind: kind, id: d.id } }) + '</div></div>';
     h += UI.tabs(kind + '-detail', tabsList, tab);
     h += '<div class="card-body">';
@@ -152,30 +154,32 @@
     return h;
   }
 
+  /* Översikten: de viktigaste talen, sedan vad domänen är till för och vem som äger den. */
   function overview(kind, d, ctx) {
     var e = ctx.e;
     var owner = d.ownerId ? e.get('workers', d.ownerId) : null;
     var cap = capOf(kind, d.id, ctx.period);
     var t = teamsOf(kind, d.id).filter(function (x) { return x.relationship !== 'supportive'; });
     var ownerLabel = isDd(kind) ? 'Leveransdomänägare' : kind === 'itDomains' ? 'Domänansvarig' : 'Verksamhetsdomänansvarig';
-    var h = '<div class="grid-3">';
-    h += '<div class="stack"><div class="field-block"><span class="label">Namn</span><span class="value">' + esc(d.name) + '</span></div>' +
-      '<div class="field-block"><span class="label">Beskrivning</span><span>' + esc(d.description || '–') + '</span></div>' +
-      '<div class="grid-2"><div class="field-block"><span class="label">Antal team</span><span class="big">' + t.length + '</span></div>' +
-      '<div class="field-block"><span class="label">Antal arbetare</span><span class="big">' + headcount(kind, d.id) + '</span></div></div></div>';
-    h += '<div class="stack"><div class="field-block"><span class="label">Syfte</span><span>' + esc(d.purpose || '–') + '</span></div>';
-    if (!isDd(kind)) {
+    var h = UI.facts([
+      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(cap.capacity), note: 'Team och domänmoln, efter avdrag' },
+      { label: 'Beläggning', value: cap.capacity ? U.fmtPct(cap.loadPct) : '–', note: U.fmtH(cap.loaded) + ' planerat, ' + U.fmtH(cap.free) + ' ledigt', tone: cap.loadPct > 100.5 ? 'crit' : cap.loadPct >= 90 ? 'warn' : null },
+      { label: 'Team', value: t.length, note: 'Med domänen som primär' },
+      { label: 'Arbetare', value: headcount(kind, d.id), note: 'I teamen och domänmolnet' }
+    ]);
+    h += '<div class="detail-cols" style="margin-top:28px">';
+    h += '<div class="prose">' +
+      '<div class="field-block"><span class="label">Syfte</span><p>' + esc(d.purpose || 'Inget syfte angivet.') + '</p></div>' +
+      '<div class="field-block"><span class="label">Beskrivning</span><p>' + esc(d.description || '–') + '</p></div></div>';
+    var rows = [[ownerLabel, owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')]];
+    if (isDd(kind)) rows.push(['Primärt uppdrag', d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans']);
+    else {
       var dd = e.deliveryDomainOfDomain(d.id);
-      h += '<div class="field-block"><span class="label">Tillhör leveransdomän</span>' + (dd ? C.ddRef(dd) : '<span class="badge badge-warn">Saknas</span>') + '</div>';
-    } else {
-      h += '<div class="field-block"><span class="label">Primärt uppdrag</span><span>' + (d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans') + '</span></div>';
+      rows.push(['Leveransdomän', dd ? C.ddRef(dd) : UI.badge('Saknas', 'warn')]);
     }
-    h += '<div class="field-block"><span class="label">' + ownerLabel + '</span>' + (owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')) + '</div>' +
-      '<div class="field-block"><span class="label">Status</span><span>' + UI.statusBadge(d.status) + '</span></div></div>';
-    h += '<div class="stack"><div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.inText) + '</span><span class="big">' + U.fmtH(cap.capacity) + '</span>' +
-      '<span class="muted small">' + U.fmtH(cap.loaded) + ' belastat, ' + U.fmtH(cap.free) + ' ledigt</span></div>' +
-      '<div class="field-block"><span class="label">Beläggningsgrad</span>' + UI.bar(cap.loadPct) + '</div>' +
-      '<div class="field-block"><span class="label">Senast uppdaterad</span><span>' + esc(d.updated || '–') + '</span></div></div>';
+    rows.push(['Status', d.status === 'inactive' ? UI.statusBadge(d.status) : 'Aktiv']);
+    rows.push(['Senast ändrad', d.updated ? U.fmtDate(d.updated) : '']);
+    h += '<div>' + UI.props(rows) + '</div>';
     h += '</div>';
     return h;
   }

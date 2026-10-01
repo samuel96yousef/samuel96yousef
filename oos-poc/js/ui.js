@@ -81,7 +81,64 @@ var OOSUI = (function () {
 
   function kpi(label, value, note, opts) {
     opts = opts || {};
-    return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value' + (opts.crit ? ' crit' : '') + '">' + value + '</div>' + (note ? '<div class="kpi-note">' + note + '</div>' : '') + '</div>';
+    var tone = opts.crit ? ' crit' : opts.warn ? ' warn' : '';
+    return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value' + tone + '">' + value + '</div>' + (note ? '<div class="kpi-note">' + note + '</div>' : '') + '</div>';
+  }
+
+  /* ---------- Detaljsidor ---------- */
+
+  /* De viktigaste talen för en enskild sak. items: [{ label, value, note, tone: 'crit' | 'warn' }] */
+  function facts(items) {
+    return '<div class="kpis">' + items.filter(Boolean).map(function (x) {
+      return kpi(x.label, x.value, x.note, { crit: x.tone === 'crit', warn: x.tone === 'warn' });
+    }).join('') + '</div>';
+  }
+
+  /* Uppgifter som etikett och värde. rows: [[etikett, html], ...]. Tomma rader hoppas över. */
+  function props(rows) {
+    return '<dl class="kv">' + rows.filter(Boolean).map(function (r) {
+      var v = r[1] === '' || r[1] === null || r[1] === undefined ? '<span class="muted">–</span>' : r[1];
+      return '<dt>' + esc(r[0]) + '</dt><dd>' + v + '</dd>';
+    }).join('') + '</dl>';
+  }
+
+  /* Ett block i detaljsidans högerspalt, med rubrik och eventuell knapp. */
+  function asideBlock(title, body, action) {
+    return '<section class="aside-block"><div class="aside-head"><div class="aside-title">' + esc(title) + '</div>' + (action || '') + '</div>' + body + '</section>';
+  }
+
+  /* Huvudinnehåll till vänster, uppgifter till höger. Under 900 px hamnar uppgifterna under. */
+  function detailLayout(main, aside) {
+    return '<div class="detail"><div class="detail-main">' + main + '</div><div class="detail-aside">' + aside + '</div></div>';
+  }
+
+  /* Förklaring som är stängd från början: hur ett tal räknas fram. */
+  function explain(summary, body) {
+    return '<details class="explain"><summary>' + esc(summary) + '</summary><div class="explain-body">' + body + '</div></details>';
+  }
+
+  /*
+   * Tidsbudget: åtaganden i ordning mot den tid som finns. parts: [{ label, hours, kind: 'team' | 'role' }].
+   * Skalan är det största av tillgänglig tid och åtagandena, så att överallokering syns som det som sticker ut.
+   */
+  function budget(parts, available) {
+    var committed = U.sum(parts, function (p) { return p.hours; });
+    var scale = Math.max(available, committed) || 1;
+    var pct = function (h) { return (h / scale) * 100; };
+    var capAt = pct(available);
+    var desc = 'Tillgänglig tid ' + U.fmtH(available) + ', åtaganden ' + U.fmtH(committed) + ': ' +
+      parts.map(function (p) { return p.label + ' ' + U.fmtH(p.hours); }).join(', ');
+    var h = '<div class="budget"><div class="budget-bar" role="img" aria-label="' + esc(desc) + '">';
+    parts.forEach(function (p) {
+      if (p.hours > 0) h += '<span class="budget-seg ' + p.kind + '" style="width:' + pct(p.hours) + '%" data-tip="' + esc(p.label + '\n' + U.fmtH(p.hours)) + '"></span>';
+    });
+    if (committed < available) h += '<span class="budget-seg free" style="width:' + pct(available - committed) + '%" data-tip="' + esc('Oallokerat\n' + U.fmtH(available - committed)) + '"></span>';
+    if (committed > available) h += '<span class="budget-over" style="left:' + capAt + '%" data-tip="' + esc('Mer än tillgänglig tid\n' + U.fmtH(committed - available)) + '"></span>';
+    h += '<span class="budget-cap" style="left:' + capAt + '%"></span></div>';
+    var near = capAt > 70;
+    h += '<div class="budget-axis" aria-hidden="true"><span style="left:0">0 h</span>' +
+      '<span style="' + (near ? 'right:' + (100 - capAt) + '%' : 'left:' + capAt + '%;transform:translateX(-50%)') + '">Tillgänglig tid ' + U.fmtH(available) + '</span></div>';
+    return h + '</div>';
   }
 
   function pageHead(opts) {
@@ -89,10 +146,12 @@ var OOSUI = (function () {
       '<div class="page-top">' +
       (opts.crumbs ? '<nav class="crumbs" aria-label="Brödsmulor">' + opts.crumbs + '</nav>' : '') +
       '<header class="page-head"><div class="page-head-text"><h1 class="page-title">' + opts.title + '</h1>' +
+      (opts.meta && opts.meta.length ? '<p class="page-meta">' + opts.meta.filter(Boolean).map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</p>' : '') +
       (opts.sub ? '<p class="page-sub">' + opts.sub + '</p>' : '') +
       '</div>' + (opts.actions ? '<div class="page-actions">' + opts.actions + '</div>' : '') + '</header></div>'
     );
   }
+
 
   function btn(label, action, opts) {
     opts = opts || {};
@@ -213,7 +272,7 @@ var OOSUI = (function () {
     shown.forEach(function (r) {
       var click = cfg.rowGo ? cfg.rowGo(r) : null;
       var sel = cfg.selectedId && r.id === cfg.selectedId;
-      h += '<tr class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + '"' + (click ? ' data-go="' + esc(click) + '" tabindex="0"' : '') + (sel ? ' aria-current="true"' : '') + '>';
+      h += '<tr class="' + (click ? 'clickable' : '') + (sel ? ' selected' : '') + (cfg.rowClass ? ' ' + cfg.rowClass(r) : '') + '"' + (click ? ' data-go="' + esc(click) + '" tabindex="0"' : '') + (sel ? ' aria-current="true"' : '') + '>';
       cfg.columns.forEach(function (c) {
         h += '<td class="' + (c.cls || '') + '">' + c.render(r) + '</td>';
       });
@@ -484,6 +543,12 @@ var OOSUI = (function () {
     LEVELS: LEVELS,
     donut: donut,
     kpi: kpi,
+    facts: facts,
+    props: props,
+    asideBlock: asideBlock,
+    detailLayout: detailLayout,
+    explain: explain,
+    budget: budget,
     pageHead: pageHead,
     btn: btn,
     iconBtn: iconBtn,
