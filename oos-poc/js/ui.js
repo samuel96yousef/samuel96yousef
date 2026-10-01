@@ -121,12 +121,13 @@ var OOSUI = (function () {
    * Tidsbudget: åtaganden i ordning mot den tid som finns. parts: [{ label, hours, kind: 'team' | 'role' }].
    * Skalan är det största av tillgänglig tid och åtagandena, så att överallokering syns som det som sticker ut.
    */
-  function budget(parts, available) {
+  function budget(parts, available, opts) {
+    var capLabel = (opts && opts.capLabel) || 'Tillgänglig tid';
     var committed = U.sum(parts, function (p) { return p.hours; });
     var scale = Math.max(available, committed) || 1;
     var pct = function (h) { return (h / scale) * 100; };
     var capAt = pct(available);
-    var desc = 'Tillgänglig tid ' + U.fmtH(available) + ', åtaganden ' + U.fmtH(committed) + ': ' +
+    var desc = capLabel + ' ' + U.fmtH(available) + ', åtaganden ' + U.fmtH(committed) + ': ' +
       parts.map(function (p) { return p.label + ' ' + U.fmtH(p.hours); }).join(', ');
     var h = '<div class="budget"><div class="budget-bar" role="img" aria-label="' + esc(desc) + '">';
     parts.forEach(function (p) {
@@ -137,7 +138,7 @@ var OOSUI = (function () {
     h += '<span class="budget-cap" style="left:' + capAt + '%"></span></div>';
     var near = capAt > 70;
     h += '<div class="budget-axis" aria-hidden="true"><span style="left:0">0 h</span>' +
-      '<span style="' + (near ? 'right:' + (100 - capAt) + '%' : 'left:' + capAt + '%;transform:translateX(-50%)') + '">Tillgänglig tid ' + U.fmtH(available) + '</span></div>';
+      '<span style="' + (near ? 'right:' + (100 - capAt) + '%' : 'left:' + capAt + '%;transform:translateX(-50%)') + '">' + esc(capLabel) + ' ' + U.fmtH(available) + '</span></div>';
     return h + '</div>';
   }
 
@@ -374,6 +375,22 @@ var OOSUI = (function () {
       ev.preventDefault();
       submitForm(form);
     });
+    /*
+     * Förhandsvisning: formuläret kan visa konsekvensen av det man skriver innan man sparar,
+     * till exempel hur teamets beläggning ändras av en ny epik.
+     */
+    if (cfg.preview) {
+      var box = document.createElement('div');
+      box.className = 'full form-preview';
+      box.setAttribute('aria-live', 'polite');
+      form.querySelector('.modal-body').appendChild(box);
+      var update = function () {
+        try { box.innerHTML = cfg.preview(readForm(form)) || ''; } catch (e) { box.innerHTML = ''; }
+      };
+      form.addEventListener('input', update);
+      form.addEventListener('change', update);
+      update();
+    }
     var first = form.querySelector('input:not([type=checkbox]), .sel-btn, textarea');
     if (first) first.focus();
   }

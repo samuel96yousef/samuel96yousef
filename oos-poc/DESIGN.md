@@ -38,7 +38,8 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
 | Tabeller | Går kant i kant i kortet. Hårfina linjer mellan raderna, ingen bakgrund i rubrikraden. Texten linjerar med kortets rubrik. |
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
-| Sidomeny | Vit yta mot den grå sidan. Tre namngivna grupper: Uppföljning, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. |
+| Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. |
+| Arbetstyper | Utveckling, förvaltning, utredning och utbildning skiljs åt med fyra gråtoner, inte med färg. Färgen är reserverad för det som är över kapaciteten. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
 ## Sökning
@@ -54,7 +55,7 @@ Samma sökregler gäller överallt: i tabellerna, i den globala sökningen och i
 | Träffarna markeras | Gul markering i tabellen och i sökresultatet, det enda stället där gult inte betyder avvikelse |
 | Antal träffar visas, och sökningen går att rensa | "3 träffar bland 20 system · Rensa". Esc tömmer sökfältet. |
 
-**Global sökning** öppnas med Ctrl+K (⌘K på Mac), med / när man inte skriver i ett fält, med Sök i menyn eller med förstoringsglaset i toppfältet på mobil. Den hittar sidor, arbetare, team, leveransdomäner, verksamhets- och IT-domäner, system och kompetenser. Träffar i namnet rankas före träffar i beskrivningar och kopplingar, och gruppen med den bästa träffen visas först. Piltangenterna väljer och Enter öppnar.
+**Global sökning** öppnas med Ctrl+K (⌘K på Mac), med / när man inte skriver i ett fält, med Sök i menyn eller med förstoringsglaset i toppfältet på mobil. Den hittar sidor, arbetare, team, leveransdomäner, verksamhets- och IT-domäner, system, initiativ, epiker och kompetenser. Träffar i namnet rankas före träffar i beskrivningar och kopplingar, och gruppen med den bästa träffen visas först. Piltangenterna väljer och Enter öppnar.
 
 ## Text
 
@@ -65,7 +66,7 @@ Texten ska få plats och läsas lätt, oavsett hur lång den är eller hur smal 
 | Storlek efter yta | Sidrubrik, inledning och stora tal skalar med den yta de står i (container-enheter), inte med fönstret. Ett nyckeltal i en smal ruta blir mindre än samma tal i en bred. |
 | Tal som inte får plats | Tal med hårt mellanslag, som "152 380 kr", krymps tills de får plats, ned till 60 % av normal storlek. |
 | Långa sammansatta ord | Etiketter och rubriker får mjuka bindestreck vid vanliga leder: "verksamhets-domän-ansvarig". Bindestrecket syns bara om ordet behöver brytas. Knappar, flikar och data (namn i tabeller) avstavas inte. |
-| Radbrytning | Rubriker bryts jämnt (text-wrap: balance). Stycken undviker ett ensamt ord på sista raden (text-wrap: pretty). Kolumnrubriker får bryta mellan ord. |
+| Radbrytning | Rubriker bryts jämnt (text-wrap: balance). Stycken undviker ett ensamt ord på sista raden (text-wrap: pretty). Kolumnrubriker får bryta mellan ord, utom över sifferkolumner. |
 | Metaraden | Punkterna mellan delarna syns aldrig först på en rad. |
 | Ord efter antal | "1 medlem", "3 medlemmar". Använd `OOSUtil.plural`. |
 | Perioder | "oktober 2026" och "Q4 2026". Inte "2026-Q4". |
@@ -87,6 +88,14 @@ Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den 
 Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan.
 
 För en arbetare visar en **tidsbudget** hur den tillgängliga tiden fördelas på team och domänroller. Ett streck markerar den tid som finns. Det som går utöver är randigt rött. Under stapeln står varje åtagande med timmar och en knapp för att ändra det.
+
+Ett team har samma tidsbudget, men för arbete: teamets epiker mot teamets kapacitet. Förslag står inom parentes och räknas inte.
+
+## Konsekvens innan beslut
+
+Den som lägger till eller ändrar en epik ser konsekvensen innan den sparas (problem 17). Formuläret visar teamets beläggning före och efter, period för period, och säger med en mening om teamet har plats. Går det över kapaciteten blir rutan röd och texten säger vad som behöver hända: flytta, minska eller skaffa mer kapacitet.
+
+Ett förslag belastar inte teamet. Dess detaljsida visar ändå vad beläggningen blir om det beslutas, så att beslutet kan fattas med siffrorna framför sig.
 
 ## Layout
 

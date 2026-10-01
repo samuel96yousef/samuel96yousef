@@ -336,6 +336,72 @@ var OOSSeed = (function () {
     ['t_test', 'Verktygsinförande', 15, '2026-10-01', '2026-10-31', 'Införande av nytt testverktyg']
   ];
 
+  /*
+   * Arbete. Initiativ är beslutade satsningar som en leveransdomän äger. Epiker är teamens arbete:
+   * utveckling (ofta nedbrutet från ett initiativ), förvaltning, utbildning och utredning.
+   * Timmarna är beslutade ramar, inte estimat (omvänd estimering, problem 17):
+   * monthly = timmar per månad så länge epiken pågår, total = timmar fördelade jämnt över arbetsdagarna.
+   */
+  var INITIATIVES = [
+    ['in_sjalvservice', 'Självservice för pensionssparare', 'dd_km', 'w_cecilia', 'active', '2026-09-01', '2027-03-31',
+      'Hälften av kundernas ärenden ska gå att lösa själv i kundportalen.'],
+    ['in_itp1', 'Ny utbetalningsmotor för ITP 1', 'dd_pu', 'w_thomas', 'active', '2026-08-01', '2027-03-31',
+      'Utbetalningar enligt ITP 1 ska hanteras i den nya motorn utan manuella steg.'],
+    ['in_kolbot', 'Automatiserad pensionsadministration', 'dd_pu', 'w_linnea', 'active', '2026-09-01', '2027-02-28',
+      'Minska den manuella hanteringen av avtalsändringar med 40 procent med hjälp av Kolbot.'],
+    ['in_anslutning', 'Digital anslutning av arbetsgivare', 'dd_ag', 'w_helena', 'active', '2026-08-01', '2027-03-31',
+      'Arbetsgivare ska kunna ansluta sig, teckna avtal och rapportera helt digitalt.'],
+    ['in_dora', 'DORA och digital motståndskraft', 'dd_ss', 'w_anders', 'active', '2026-06-01', '2026-12-31',
+      'Uppfylla kraven i DORA innan tillsynen i januari 2027.'],
+    ['in_dataplattform', 'Dataplattform i molnet', 'dd_uf', 'w_petra', 'active', '2026-09-01', '2027-04-30',
+      'Flytta datalager och BI till en gemensam plattform i molnet och avveckla den lokala miljön.']
+  ];
+
+  /* [team, namn, typ, initiativ, status, ram, timmar, från, till, beskrivning] */
+  var EPICS = [
+    ['t_kundportal', 'Förvaltning av kundportalen', 'maintenance', null, 'active', 'monthly', 200, '2026-01-01', '2027-12-31', 'Rättningar, mindre förbättringar och uppgraderingar av kundportalen och notifikationstjänsten.'],
+    ['t_kundportal', 'Självservice: byta förmånstagare', 'development', 'in_sjalvservice', 'active', 'total', 1100, '2026-09-01', '2026-12-31', 'Kunden ska kunna byta förmånstagare själv, med signering och kvittens.'],
+    ['t_kundportal', 'Utbildning i tillgänglighet (WCAG 2.2)', 'training', null, 'planned', 'total', 120, '2026-10-01', '2026-10-31', 'Hela teamet går kursen och gör en genomgång av kundportalen.'],
+    ['t_kundportal', 'Chattbot för vanliga frågor', 'development', 'in_sjalvservice', 'proposed', 'total', 600, '2026-11-01', '2027-01-31', 'Förslag: en chattbot som svarar på de tjugo vanligaste frågorna.'],
+    ['t_radgivning', 'Förvaltning av rådgivarstödet', 'maintenance', null, 'active', 'monthly', 180, '2026-01-01', '2027-12-31', 'Löpande förvaltning av verktygen som rådgivarna använder.'],
+    ['t_radgivning', 'Digitalt rådgivningsmöte', 'development', 'in_sjalvservice', 'active', 'total', 1500, '2026-09-01', '2027-02-28', 'Kunden ska kunna boka och genomföra rådgivning på distans med delad skärm.'],
+    ['t_radgivning', 'Utredning: AI-stöd i rådgivning', 'investigation', null, 'active', 'total', 240, '2026-09-14', '2026-11-30', 'Vad kan ett AI-stöd göra i kundmötet, och vilka risker finns?'],
+    ['t_webb', 'Förvaltning av publika webben', 'maintenance', null, 'active', 'monthly', 120, '2026-01-01', '2027-12-31', 'Innehåll, tillgänglighet och teknisk förvaltning av webben.'],
+    ['t_webb', 'Kampanj: Pensionsveckan 2026', 'development', null, 'active', 'total', 280, '2026-09-15', '2026-11-13', 'Kampanjsidor och mätning inför Pensionsveckan.'],
+    ['t_pensionbackend', 'Förvaltning av NPPension Core', 'maintenance', null, 'active', 'monthly', 300, '2026-01-01', '2027-12-31', 'Drift, rättningar och regeländringar i kärnsystemet.'],
+    ['t_pensionbackend', 'ITP 1: regelmotor för utbetalning', 'development', 'in_itp1', 'active', 'total', 2800, '2026-08-03', '2027-03-31', 'Utbetalningsreglerna för ITP 1 flyttas till den nya regelmotorn.'],
+    ['t_pensionbackend', 'Utredning: avveckling av nattbatchen', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan den gamla nattbatchen avvecklas när regelmotorn är på plats?'],
+    ['t_utbetalning', 'Förvaltning av utbetalningsmotorn', 'maintenance', null, 'active', 'monthly', 160, '2026-01-01', '2027-12-31', 'Löpande förvaltning av utbetalningsmotorn och betalfilerna.'],
+    ['t_utbetalning', 'ITP 1: ny utbetalningsmotor', 'development', 'in_itp1', 'active', 'total', 1300, '2026-09-01', '2027-03-31', 'Den nya motorn byggs och kopplas till regelmotorn och banken.'],
+    ['t_forsakring', 'Förvaltning av produktregelmotorn', 'maintenance', null, 'active', 'monthly', 150, '2026-01-01', '2027-12-31', 'Regeländringar och förvaltning av produktregelmotorn.'],
+    ['t_forsakring', 'Nya produktvillkor ITP 2 2027', 'development', null, 'active', 'total', 900, '2026-09-01', '2026-12-31', 'Villkoren som gäller från januari 2027 ska finnas i produktregelmotorn.'],
+    ['t_sapcrm', 'Förvaltning av SAP CRM', 'maintenance', null, 'active', 'monthly', 320, '2026-01-01', '2027-12-31', 'Rättningar, behörigheter och små förändringar i SAP CRM.'],
+    ['t_sapcrm', 'Avtalsregistret: ny version', 'development', 'in_anslutning', 'active', 'total', 2000, '2026-08-03', '2027-01-29', 'Nytt avtalsregister för kollektivavtal och anslutningar.'],
+    ['t_sapcrm', 'Förstudie: uppgradering till S/4', 'investigation', null, 'active', 'total', 300, '2026-09-14', '2026-11-30', 'Vad kostar en uppgradering till S/4HANA och när behöver den göras?'],
+    ['t_agportal', 'Förvaltning av arbetsgivarportalen', 'maintenance', null, 'active', 'monthly', 160, '2026-01-01', '2027-12-31', 'Löpande förvaltning av arbetsgivarportalen.'],
+    ['t_agportal', 'Digital anslutning: nytt onboardingflöde', 'development', 'in_anslutning', 'active', 'total', 2400, '2026-08-03', '2027-03-31', 'Arbetsgivaren ansluter sig och tecknar avtal i ett sammanhängande flöde.'],
+    ['t_agportal', 'Utbildning i tillgänglighet (WCAG 2.2)', 'training', null, 'planned', 'total', 80, '2026-10-01', '2026-10-31', 'Teamet går samma kurs som Kundportal Team.'],
+    ['t_api', 'Förvaltning av Arbetsgivar-API', 'maintenance', null, 'active', 'monthly', 120, '2026-01-01', '2027-12-31', 'Förvaltning och övervakning av API:et.'],
+    ['t_api', 'Rapportering via API för lönesystem', 'development', 'in_anslutning', 'active', 'total', 1350, '2026-09-01', '2027-01-29', 'Lönesystem ska kunna rapportera direkt utan filöverföring.'],
+    ['t_integration', 'Förvaltning av integrationsplattformen', 'maintenance', null, 'active', 'monthly', 260, '2026-01-01', '2027-12-31', 'Drift och förvaltning av integrationsplattformen.'],
+    ['t_integration', 'Integrationer för ITP 1', 'development', 'in_itp1', 'active', 'total', 1200, '2026-09-01', '2027-01-29', 'Flöden mellan regelmotor, utbetalningsmotor och bank.'],
+    ['t_integration', 'Integrationer för digital anslutning', 'development', 'in_anslutning', 'planned', 'total', 300, '2026-10-01', '2026-12-31', 'Flöden mellan arbetsgivarportalen, avtalsregistret och SAP CRM.'],
+    ['t_data', 'Förvaltning av BI och datalager', 'maintenance', null, 'active', 'monthly', 200, '2026-01-01', '2027-12-31', 'Rapporter, laddningar och datakvalitet.'],
+    ['t_data', 'Dataplattform: migrering av datalagret', 'development', 'in_dataplattform', 'active', 'total', 2200, '2026-09-01', '2027-04-30', 'Datalagret flyttas till den nya plattformen, ämnesområde för ämnesområde.'],
+    ['t_infra', 'Förvaltning av infrastrukturen', 'maintenance', null, 'active', 'monthly', 300, '2026-01-01', '2027-12-31', 'Drift, patchning och kapacitet i infrastrukturen.'],
+    ['t_infra', 'Dataplattform: landningszon i molnet', 'development', 'in_dataplattform', 'active', 'total', 900, '2026-09-01', '2026-12-31', 'Nätverk, behörigheter och övervakning för den nya plattformen.'],
+    ['t_sakerhet', 'Förvaltning av säkerhetstjänster', 'maintenance', null, 'active', 'monthly', 90, '2026-01-01', '2027-12-31', 'Identitetstjänst, loggning och sårbarhetshantering.'],
+    ['t_sakerhet', 'DORA: incidentrapportering', 'development', 'in_dora', 'active', 'total', 500, '2026-06-01', '2026-12-31', 'Rutin och stöd för att rapportera större incidenter till tillsynen.'],
+    ['t_sakerhet', 'DORA: register över tredjepartsleverantörer', 'investigation', 'in_dora', 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kartläggning av alla IT-leverantörer och deras kritikalitet.'],
+    ['t_test', 'Förvaltning av testmiljöerna', 'maintenance', null, 'active', 'monthly', 110, '2026-01-01', '2027-12-31', 'Testmiljöer, testdata och verktyg.'],
+    ['t_test', 'Testautomation för ITP 1', 'development', 'in_itp1', 'active', 'total', 700, '2026-09-01', '2027-01-29', 'Automatiserade regressionstester för hela utbetalningskedjan.'],
+    ['t_test', 'Utbildning i det nya testverktyget', 'training', null, 'planned', 'total', 60, '2026-10-01', '2026-10-31', 'Alla i teamet går grundkursen.'],
+    ['t_ipa', 'Förvaltning av Kolbot RPA', 'maintenance', null, 'active', 'monthly', 220, '2026-01-01', '2027-12-31', 'Övervakning, rättningar och nya versioner av robotarna.'],
+    ['t_ipa', 'Kolbot: automatiserade avtalsändringar', 'development', 'in_kolbot', 'active', 'total', 1600, '2026-09-01', '2027-02-26', 'Robotar som hanterar de vanligaste avtalsändringarna utan manuellt steg.'],
+    ['t_ipa', 'Kolbot: robotar för ITP 1-utbetalningar', 'development', 'in_itp1', 'planned', 'total', 500, '2026-11-02', '2027-03-31', 'Robotar för de undantag som den nya motorn inte hanterar.'],
+    ['t_ipa', 'Utredning: AI-agenter i Kolbot', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan AI-agenter ta över ärenden där robotarna i dag stannar?']
+  ];
+
   function build() {
     var rnd = U.prng(20260904);
     function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -343,7 +409,7 @@ var OOSSeed = (function () {
 
     var db = {
       meta: { version: 1, seededAt: '2026-09-04' },
-      settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'month', periodAnchor: null },
+      settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'month', periodAnchor: null, loadSource: 'epics' },
       overheadReductions: [
         { id: 'oh_semester', name: 'Semester', hoursPerWeek: 4, appliesToAI: false },
         { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false },
@@ -351,6 +417,8 @@ var OOSSeed = (function () {
         { id: 'oh_admin', name: 'Administration', hoursPerWeek: 1, appliesToAI: false }
       ],
       teamReductions: [],
+      initiatives: [],
+      epics: [],
       deliveryDomains: [],
       domains: [],
       domainClusters: [],
@@ -482,6 +550,15 @@ var OOSSeed = (function () {
     });
     TEAM_REDUCTIONS.forEach(function (r) {
       db.teamReductions.push({ id: id('tr'), teamId: r[0], type: r[1], percent: r[2], from: r[3], to: r[4], comment: r[5] });
+    });
+    INITIATIVES.forEach(function (x) {
+      db.initiatives.push({ id: x[0], name: x[1], deliveryDomainId: x[2], ownerId: x[3], status: x[4], from: x[5], to: x[6], goal: x[7] });
+    });
+    EPICS.forEach(function (x, i) {
+      db.epics.push({
+        id: 'ep_' + (i + 1), teamId: x[0], name: x[1], type: x[2], initiativeId: x[3], status: x[4],
+        effort: x[5], hours: x[6], from: x[7], to: x[8], description: x[9]
+      });
     });
 
     return db;

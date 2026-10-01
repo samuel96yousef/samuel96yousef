@@ -19,6 +19,13 @@
       ]
     },
     {
+      label: 'Arbete',
+      items: [
+        { page: 'initiatives', label: 'Initiativ', icon: 'flag', count: function () { return S.db.initiatives.length; } },
+        { page: 'epics', label: 'Epiker', icon: 'stack', count: function () { return S.db.epics.length; } }
+      ]
+    },
+    {
       label: 'Organisation',
       items: [
         { page: 'deliveryDomains', label: 'Leveransdomäner', icon: 'layers', count: function () { return S.db.deliveryDomains.length; } },
@@ -51,6 +58,8 @@
     user: '<circle cx="12" cy="8.5" r="3.75"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
     star: '<path d="M12 4l2.45 5 5.5.8-4 3.9.95 5.5L12 16.6l-4.9 2.6.95-5.5-4-3.9 5.5-.8z"/>',
     gauge: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
+    flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+    stack: '<rect x="4" y="4" width="16" height="4.5" rx="1.25"/><rect x="4" y="10" width="16" height="4.5" rx="1.25"/><rect x="4" y="16" width="10" height="4" rx="1.25"/>',
     sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.25"/><circle cx="10" cy="17" r="2.25"/>'
   };
 

@@ -168,6 +168,15 @@
       '<div class="note"><span>Datamodellen följer ER-skissen för Prototyp 1: leveransdomän, domän, domänkluster, team, arbetare, kompetens, system och deras kopplingstabeller. Kapacitetssammanställningen räknas fram och lagras inte.</span></div></div></section>';
     h += '</div>';
 
+    /* Var belastningen kommer ifrån. Epiker är standard; manuell belastning finns kvar för jämförelse. */
+    var src = st.loadSource === 'manual' ? 'manual' : 'epics';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Belastning</div>' +
+      '<div class="card-sub">Hur appen räknar ut hur mycket av kapaciteten som är planerad.</div></div>' +
+      UI.seg('load-source', [{ key: 'epics', label: 'Ur epiker' }, { key: 'manual', label: 'Manuellt per teammedlem' }], src) + '</div>' +
+      '<p class="aside-text">' + (src === 'epics'
+        ? 'Belastningen räknas fram ur teamens beslutade epiker: planerade och pågående epikers timmar i perioden delat med teamets kapacitet. Förslag och klara epiker räknas inte.'
+        : 'Belastningen anges som en procentsats på varje medlemskap i teamet. Epikerna visas men påverkar inte beläggningen.') + '</p></section>';
+
     var log = S.db.changeLog || [];
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Ändringslogg</div><div class="card-sub">Spårbarhet för prioriteringar, ansvar och struktur. Sparar de senaste 300 ändringarna.</div></div></div>';
     h += UI.table({
@@ -183,6 +192,12 @@
       ]
     }) + '</section>';
     return h;
+  };
+
+  OOS.segHandlers = OOS.segHandlers || {};
+  OOS.segHandlers['load-source'] = function (key) {
+    S.updateSettings({ loadSource: key === 'manual' ? 'manual' : 'epics' });
+    UI.toast(key === 'manual' ? 'Belastningen räknas nu från manuella procentsatser.' : 'Belastningen räknas nu ur epikerna.');
   };
 
   var A = OOS.actions;

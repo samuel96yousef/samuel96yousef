@@ -51,6 +51,87 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return C.link('competences:' + c.id, c.name);
   };
 
+  /* ---------- Arbete ---------- */
+
+  C.EPIC_TYPE = {};
+  OOSEngine.EPIC_TYPES.forEach(function (t) { C.EPIC_TYPE[t.value] = t.label; });
+  C.EPIC_STATUS = {};
+  OOSEngine.EPIC_STATUS.forEach(function (t) { C.EPIC_STATUS[t.value] = t.label; });
+
+  /* Status visas bara som märke när den avviker från normalläget: förslag och klar. */
+  C.epicStatus = function (status) {
+    var label = C.EPIC_STATUS[status] || status || '–';
+    return status === 'proposed' || status === 'done' ? UI.badge(label, 'muted') : esc(label);
+  };
+
+  /* Ramen i klartext: "200 h/mån" eller "1 100 h totalt". */
+  C.epicFrameText = function (ep) {
+    return ep.effort === 'monthly' ? U.fmtNum(ep.hours) + '\u00a0h/mån' : U.fmtH(ep.hours) + ' totalt';
+  };
+
+  C.epicRef = function (ep) {
+    if (!ep) return '<span class="muted">–</span>';
+    return C.link('epics:' + ep.id, ep.name);
+  };
+
+  C.initiativeRef = function (x) {
+    if (!x) return '<span class="muted">–</span>';
+    return C.link('initiatives:' + x.id, x.name);
+  };
+
+  /* Färgruta för arbetstyp. Gråskala, eftersom färg är reserverad för avvikelser. */
+  C.typeSwatch = function (type) {
+    return '<span class="sw-k ' + esc(type) + '" aria-hidden="true"></span>';
+  };
+
+  /*
+   * Konsekvensen av en epik för teamet, period för period (problem 17: konsekvenser ska synas direkt).
+   * Jämför teamets beläggning utan epiken (eller med dess gamla värden) med beläggningen med den.
+   * Ett förslag räknas som beslutat, så att man ser vad ett beslut skulle innebära.
+   */
+  C.epicImpact = function (v, original) {
+    if (!v.teamId || !v.hours || !v.from || !v.to || v.from > v.to) return null;
+    var db = S.db;
+    var others = db.epics.filter(function (x) { return !original || x.id !== original.id; });
+    var cand = Object.assign({}, original || {}, v, { id: original ? original.id : '_ny' });
+    if (!OOSEngine.epicCounts(cand.status)) cand.status = 'planned';
+    var before = OOSEngine.create(Object.assign({}, db, { epics: others }));
+    var after = OOSEngine.create(Object.assign({}, db, { epics: others.concat([cand]) }));
+    var rows = [];
+    var p = OOS.period();
+    for (var i = 0; i < 18 && rows.length < 6; i++) {
+      if (p.start > cand.to) break;
+      if (p.end >= cand.from) {
+        var b = before.teamCapacity(cand.teamId, p);
+        var a = after.teamCapacity(cand.teamId, p);
+        rows.push({ period: p, hours: OOSEngine.epicHoursInPeriod(cand, p), before: b.loadPct, after: a.loadPct, capacity: a.capacity, loaded: a.loaded });
+      }
+      p = OOSEngine.nextPeriod(p);
+    }
+    return { team: S.engine().get('teams', cand.teamId), rows: rows, decided: OOSEngine.epicCounts(v.status) };
+  };
+
+  function pctCell(v) {
+    var cls = v > 100.5 ? ' class="crit"' : v >= 90 ? ' class="warn"' : '';
+    return '<span' + cls + '>' + U.fmtPct(v) + '</span>';
+  }
+
+  C.impactHtml = function (imp) {
+    if (!imp || !imp.team) return '';
+    if (!imp.rows.length) return '<div class="note">Epiken ligger utanför de närmaste perioderna och påverkar inte beläggningen nu.</div>';
+    var worst = imp.rows.reduce(function (m, r) { return r.after > m.after ? r : m; }, imp.rows[0]);
+    var over = worst.after > 100.5;
+    var h = '<div class="impact' + (over ? ' crit' : '') + '"><div class="impact-head"><strong>' + (imp.decided ? 'Konsekvens för ' : 'Om förslaget beslutas: ') + esc(imp.team.name) + '</strong>';
+    h += over
+      ? '<span>Överplanerat i ' + esc(worst.period.inText) + ': ' + U.fmtH(worst.loaded - worst.capacity) + ' mer än kapaciteten. Något annat arbete behöver flyttas, minskas eller få mer kapacitet.</span>'
+      : '<span>Teamet har plats för arbetet. Högst ' + U.fmtPct(worst.after) + ' beläggning, i ' + esc(worst.period.inText) + '.</span>';
+    h += '</div><table class="impact-tbl"><thead><tr><th>Period</th><th class="num">Epiken</th><th class="num">Före</th><th class="num">Efter</th></tr></thead><tbody>';
+    imp.rows.forEach(function (r) {
+      h += '<tr><td>' + esc(r.period.label) + '</td><td class="num">' + U.fmtH(r.hours) + '</td><td class="num">' + pctCell(r.before) + '</td><td class="num"><strong>' + pctCell(r.after) + '</strong></td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  };
+
   C.relLabel = function (r) {
     return r === 'primary' ? 'Primär' : '<span class="quiet">Stödjande</span>';
   };
@@ -118,6 +199,16 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
         .sort(function (a, b) { return a.category.localeCompare(b.category, 'sv') || U.byName(a, b); })
         .map(function (c) { return { value: c.id, label: c.name, group: c.category }; });
     },
+    initiatives: function () {
+      var e = S.engine();
+      return S.db.initiatives.slice().sort(U.byName).map(function (x) {
+        var dd = e.get('deliveryDomains', x.deliveryDomainId);
+        return { value: x.id, label: x.name, sub: dd ? dd.name : '' };
+      });
+    },
+    epicTypes: OOSEngine.EPIC_TYPES,
+    epicStatus: OOSEngine.EPIC_STATUS,
+    effort: [{ value: 'monthly', label: 'Per månad (löpande)' }, { value: 'total', label: 'Totalt (avgränsat)' }],
     systems: function (exclude) {
       var ex = new Set(exclude || []);
       return S.db.systems.filter(function (s) { return !ex.has(s.id); }).sort(U.byName).map(function (s) { return { value: s.id, label: s.name }; });
@@ -666,6 +757,72 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     });
   };
 
+  /* Epik: teamets arbete. Formuläret visar direkt vad epiken gör med teamets beläggning. */
+  F.epic = function (r, defaults) {
+    var isNew = !r;
+    var p = OOS.period();
+    UI.openForm({
+      title: isNew ? 'Lägg till epik' : 'Ändra ' + r.name,
+      intro: 'En epik är ett avgränsat eller löpande arbete som ett team gör. Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
+      values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end }, defaults || {}),
+      fields: [
+        { key: 'name', label: 'Namn', required: true, full: true },
+        { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
+        { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes },
+        { key: 'initiativeId', label: 'Initiativ', type: 'select', placeholder: 'Inget initiativ', options: C.opts.initiatives(), help: 'Utvecklingsarbete bör höra till ett beslutat initiativ.' },
+        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: 'Förslag och klara epiker belastar inte teamet.' },
+        { key: 'effort', label: 'Ram', type: 'select', required: true, options: C.opts.effort },
+        { key: 'hours', label: 'Timmar', type: 'number', min: 1, max: 100000, required: true },
+        { key: 'from', label: 'Från', type: 'date', required: true },
+        { key: 'to', label: 'Till', type: 'date', required: true },
+        { key: 'description', label: 'Beskrivning', type: 'textarea' }
+      ],
+      preview: function (v) { return C.impactHtml(C.epicImpact(v, r)); },
+      validate: function (v) {
+        if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
+      },
+      onSubmit: function (v) {
+        v.initiativeId = v.initiativeId || null;
+        var rec = isNew ? S.insert('epics', v) : S.update('epics', r.id, v);
+        UI.toast(isNew ? 'Epiken lades till.' : 'Epiken sparades.');
+        if (isNew) OOS.go('epics:' + rec.id);
+        else OOS.refresh();
+      },
+      onDelete: isNew ? null : function () { C.removeEntity('epics', r.id, 'epics'); }
+    });
+  };
+
+  /* Initiativ: en beslutad satsning som en leveransdomän äger och som bryts ned i teamens epiker. */
+  F.initiative = function (r) {
+    var isNew = !r;
+    var p = OOS.period();
+    UI.openForm({
+      title: isNew ? 'Lägg till initiativ' : 'Ändra ' + r.name,
+      intro: 'Ett initiativ är en satsning som leveransdomänen har beslutat. Arbetet görs i teamens epiker, och initiativets ram är summan av dem.',
+      values: r || { status: 'planned', from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end },
+      fields: [
+        { key: 'name', label: 'Namn', required: true, full: true },
+        { key: 'deliveryDomainId', label: 'Leveransdomän', type: 'select', required: true, placeholder: 'Välj leveransdomän …', options: C.opts.deliveryDomains() },
+        { key: 'ownerId', label: 'Ägare', type: 'select', placeholder: 'Välj ägare …', options: C.opts.workers() },
+        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus },
+        { key: 'from', label: 'Från', type: 'date', required: true },
+        { key: 'to', label: 'Till', type: 'date', required: true },
+        { key: 'goal', label: 'Mål', type: 'textarea', help: 'Vad ska vara annorlunda när initiativet är klart?' }
+      ],
+      validate: function (v) {
+        if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
+      },
+      onSubmit: function (v) {
+        v.ownerId = v.ownerId || null;
+        var rec = isNew ? S.insert('initiatives', v) : S.update('initiatives', r.id, v);
+        UI.toast(isNew ? 'Initiativet lades till.' : 'Initiativet sparades.');
+        if (isNew) OOS.go('initiatives:' + rec.id);
+        else OOS.refresh();
+      },
+      onDelete: isNew ? null : function () { C.removeEntity('initiatives', r.id, 'initiatives'); }
+    });
+  };
+
   F.overhead = function (r) {
     var isNew = !r;
     UI.openForm({
@@ -706,7 +863,11 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     if (coll === 'workers') {
       msg = rec.name + ' tas bort ur ' + e.workerTeams(id).length + ' team, ' + U.plural(e.workerDomainRoles(id).length, 'domänroll', 'domänroller') + ' och ' + U.plural(e.workerCompetences(id).length, 'kompetens', 'kompetenser') + '.';
     } else if (coll === 'teams') {
-      msg = rec.name + ' tas bort med ' + e.teamMembers(id).length + ' medlemskap och ' + e.teamSystems(id).length + ' systemkopplingar. Arbetarna finns kvar.';
+      msg = rec.name + ' tas bort med ' + e.teamMembers(id).length + ' medlemskap, ' + e.teamSystems(id).length + ' systemkopplingar och ' + U.plural(e.where('epics', 'teamId', id).length, 'epik', 'epiker') + '. Arbetarna finns kvar.';
+    } else if (coll === 'initiatives') {
+      msg = rec.name + ' tas bort. ' + U.plural(e.initiativeEpics(id).length, 'epik', 'epiker') + ' finns kvar hos teamen men utan initiativ.';
+    } else if (coll === 'epics') {
+      msg = rec.name + ' tas bort och teamets beläggning räknas om.';
     } else if (coll === 'domains') {
       msg = rec.name + ' tas bort med ' + e.teamsOfDomain(id).length + ' teamkopplingar och ' + e.domainExperts(id).length + ' roller i domänmolnet. Teamen finns kvar.';
     } else if (coll === 'deliveryDomains') {

@@ -103,25 +103,29 @@
     var diff = nx.capacity - tc.capacity;
     h += UI.facts([
       { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: U.plural(tc.headcount, 'medlem', 'medlemmar') + ', efter avdrag' },
-      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + ' är planerat', tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
+      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + (tc.loadSource === 'epics' ? ' beslutat arbete' : ' är planerat'), tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
       { label: 'Ledigt', value: U.fmtH(tc.free), note: 'Kan planeras i ' + ctx.period.inText },
       { label: ctx.next.label, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }
     ]);
 
-    var main = '<section class="card"><div class="card-head"><div><div class="card-title">Medlemmar</div>' +
-      '<div class="card-sub">Allokering är hur stor del av sin tid personen ger teamet. Belastning är hur mycket av den tiden som är planerad.</div></div>' +
+    var epicMode = tc.loadSource === 'epics';
+    var main = OOS.teamWork(t, ctx);
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">Medlemmar</div>' +
+      '<div class="card-sub">' + (epicMode
+        ? 'Allokering är hur stor del av sin tid personen ger teamet. Arbetet fördelas inom teamet, därför visas beläggningen för hela teamet ovan.'
+        : 'Allokering är hur stor del av sin tid personen ger teamet. Belastning är hur mycket av den tiden som är planerad.') + '</div></div>' +
       UI.btn('Lägg till medlem', 'member-add', { cls: 'btn-sm', data: { id: t.id } }) + '</div>';
     main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Namn och roll</th><th class="num">Allokering</th>' +
-      '<th class="num">Kapacitet</th><th>Belastning</th><th data-opt="1">Allokering totalt</th><th data-opt="2">Primära kompetenser</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+      '<th class="num">Kapacitet</th>' + (epicMode ? '' : '<th>Belastning</th>') + '<th data-opt="1">Allokering totalt</th><th data-opt="2">Primära kompetenser</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
     tc.members.sort(function (a, b) { return b.tw.allocation - a.tw.allocation || U.byName(a.worker, b.worker); }).forEach(function (m) {
       var who = [m.tw.role, m.worker.consultant ? 'Konsult' : m.worker.type === 'ai' ? 'AI' : ''].filter(Boolean).join(' · ');
       main += '<tr><td>' + C.workerRef(m.worker, who) + '</td>' +
         '<td class="num">' + U.fmtPct(m.tw.allocation) + '</td><td class="num"' + (m.scaled ? ' title="Minskad eftersom arbetaren är överallokerad"' : '') + '>' + U.fmtH(m.capacity) + (m.scaled ? ' <span class="badge badge-crit">minskad</span>' : '') + '</td>' +
-        '<td>' + UI.bar(m.loadPct) + '</td><td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
+        (epicMode ? '' : '<td>' + UI.bar(m.loadPct) + '</td>') + '<td>' + UI.bar(m.workerCap.allocationPct, { warnAt: 1000, soft: true, title: 'Allokering över alla team och domänroller' }) + '</td>' +
         '<td class="small">' + m.competences.map(C.compRef).join(', ') + '</td>' +
         '<td class="actions">' + UI.iconBtn('edit', 'member-edit', { id: m.tw.id }, 'Ändra ' + m.worker.name) + '</td></tr>';
     });
-    if (!tc.members.length) main += '<tr><td colspan="7"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
+    if (!tc.members.length) main += '<tr><td colspan="' + (epicMode ? 6 : 7) + '"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
     main += '</tbody></table></div></section>';
 
     var compMode = OOS.segVal('team-comp', 'category');

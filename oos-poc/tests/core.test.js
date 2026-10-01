@@ -245,3 +245,86 @@ test('sökning: markering behåller textens längd och synlig text tas ur HTML',
   assert.equal(U.plural(1, 'medlem', 'medlemmar'), '1 medlem');
   assert.equal(U.plural(3, 'medlem', 'medlemmar'), '3 medlemmar');
 });
+
+/* ---------- Arbete: initiativ och epiker ---------- */
+
+const OCT = E.periodOf('2026-10-15', 'month');
+
+test('epikens timmar: månadsram per månad, totalram jämnt fördelad på arbetsdagar', () => {
+  const monthly = { effort: 'monthly', hours: 200, from: '2026-01-01', to: '2027-12-31' };
+  near(E.epicHoursInPeriod(monthly, OCT), 200);
+  const total = { effort: 'total', hours: 440, from: '2026-10-01', to: '2026-11-30' };
+  /* 22 + 21 arbetsdagar: oktober får 22/43 av ramen. */
+  near(E.epicHoursInPeriod(total, OCT), (440 * 22) / 43);
+  near(E.epicHoursInPeriod(total, E.periodOf('2026-12-15', 'month')), 0);
+  near(E.epicFrame(total), 440);
+  near(E.epicFrame({ effort: 'monthly', hours: 100, from: '2026-10-01', to: '2026-12-31' }), 300);
+});
+
+test('bara beslutat arbete belastar teamet, förslag redovisas för sig', () => {
+  const db = Seed.build();
+  db.epics = [
+    { id: 'a', teamId: 't_webb', type: 'maintenance', status: 'active', effort: 'monthly', hours: 100, from: '2026-01-01', to: '2026-12-31' },
+    { id: 'b', teamId: 't_webb', type: 'development', status: 'planned', effort: 'monthly', hours: 50, from: '2026-01-01', to: '2026-12-31' },
+    { id: 'c', teamId: 't_webb', type: 'development', status: 'proposed', effort: 'monthly', hours: 70, from: '2026-01-01', to: '2026-12-31' },
+    { id: 'd', teamId: 't_webb', type: 'training', status: 'done', effort: 'monthly', hours: 40, from: '2026-01-01', to: '2026-12-31' }
+  ];
+  const e = E.create(db);
+  const d = e.teamDemand('t_webb', OCT);
+  near(d.hours, 150);
+  near(d.proposed, 70);
+  near(d.byType.maintenance, 100);
+  near(d.byType.development, 50);
+  const tc = e.teamCapacity('t_webb', OCT);
+  near(tc.loaded, 150);
+  near(tc.loadPct, (150 / tc.capacity) * 100);
+});
+
+test('beläggningen räknas ur epikerna och kan bli över 100 procent', () => {
+  const db = Seed.build();
+  const e0 = E.create(db);
+  const cap = e0.teamCapacity('t_webb', OCT).capacity;
+  db.epics = [{ id: 'x', teamId: 't_webb', type: 'development', status: 'active', effort: 'monthly', hours: cap * 1.2, from: '2026-01-01', to: '2026-12-31' }];
+  const e = E.create(db);
+  const tc = e.teamCapacity('t_webb', OCT);
+  near(tc.loadPct, 120, 0.5);
+  assert.ok(e.signals(OCT).some((s) => s.kind === 'overplanned' && s.severity === 'critical'));
+  /* Medlemmarnas planerade timmar summerar till teamets. */
+  near(tc.members.reduce((a, m) => a + m.loaded, 0), tc.loaded);
+});
+
+test('manuell belastning finns kvar som val', () => {
+  const db = Seed.build();
+  db.settings.loadSource = 'manual';
+  const e = E.create(db);
+  const tc = e.teamCapacity('t_kundportal', OCT);
+  const manual = tc.members.reduce((a, m) => a + (m.capacity * m.tw.plannedLoad) / 100, 0);
+  near(tc.loaded, manual);
+});
+
+test('initiativet summerar ramen för sina beslutade epiker per team', () => {
+  const e = E.create(Seed.build());
+  const s = e.initiativeSummary('in_itp1', OCT);
+  near(s.frame, 2800 + 1300 + 1200 + 700 + 500);
+  assert.equal(s.teams[0].team.id, 't_pensionbackend');
+  assert.ok(s.hoursInPeriod > 0);
+});
+
+test('utvecklingsarbete utan initiativ flaggas för spårbarhet', () => {
+  const e = E.create(Seed.build());
+  const titles = e.signals(OCT).filter((s) => s.kind === 'untraced').map((s) => s.title);
+  assert.ok(titles.some((t) => t.includes('Pensionsveckan')));
+});
+
+test('team som tas bort tar sina epiker med sig, initiativ lämnar epikerna kvar', () => {
+  const Store = require('../js/store.js');
+  Store.reset();
+  const before = Store.db.epics.filter((x) => x.initiativeId === 'in_dora').length;
+  assert.ok(before > 0);
+  Store.remove('initiatives', 'in_dora');
+  assert.equal(Store.db.epics.filter((x) => x.initiativeId === 'in_dora').length, 0);
+  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 3);
+  Store.remove('teams', 't_sakerhet');
+  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 0);
+  Store.reset();
+});

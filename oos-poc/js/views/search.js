@@ -19,6 +19,8 @@
     { key: 'deliveryDomain', label: 'Leveransdomäner' },
     { key: 'domain', label: 'Verksamhets- och IT-domäner' },
     { key: 'system', label: 'System' },
+    { key: 'initiative', label: 'Initiativ' },
+    { key: 'epic', label: 'Epiker' },
     { key: 'competence', label: 'Kompetenser' }
   ];
   var PER_GROUP = 6;
@@ -63,6 +65,16 @@
     db.systems.forEach(function (s) {
       var owner = e.systemResponsibleTeam(s.id);
       add('system', s.name, [s.kind, owner ? owner.name : 'Saknar ansvarigt team'].filter(Boolean).join(' · '), 'systems:' + s.id, s.description);
+    });
+    (db.initiatives || []).forEach(function (x) {
+      var dd = e.get('deliveryDomains', x.deliveryDomainId);
+      var owner = x.ownerId ? e.get('workers', x.ownerId) : null;
+      add('initiative', x.name, 'Initiativ' + (dd ? ' · ' + dd.name : ''), 'initiatives:' + x.id, (x.goal || '') + ' ' + (owner ? owner.name : ''));
+    });
+    (db.epics || []).forEach(function (ep) {
+      var t = e.get('teams', ep.teamId);
+      var init = ep.initiativeId ? e.get('initiatives', ep.initiativeId) : null;
+      add('epic', ep.name, [C.EPIC_TYPE[ep.type], t ? t.name : '', C.EPIC_STATUS[ep.status]].filter(Boolean).join(' · '), 'epics:' + ep.id, (ep.description || '') + ' ' + (init ? init.name : ''));
     });
     db.competences.forEach(function (c) {
       add('competence', c.name, c.category, 'competences:' + c.id, (c.description || '') + ' ' + (c.details || ''));

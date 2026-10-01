@@ -16,11 +16,14 @@ var OOSStore = (function () {
   var CASCADE = {
     workers: {
       remove: [['teamWorkers', 'workerId'], ['workerCompetences', 'workerId'], ['extendedDomainCompetences', 'workerId'], ['extendedDeliveryCompetences', 'workerId']],
-      nullify: [['teams', 'leadId'], ['domains', 'ownerId'], ['deliveryDomains', 'ownerId']]
+      nullify: [['teams', 'leadId'], ['domains', 'ownerId'], ['deliveryDomains', 'ownerId'], ['initiatives', 'ownerId']]
     },
-    teams: { remove: [['teamWorkers', 'teamId'], ['teamDomains', 'teamId'], ['teamSystems', 'teamId'], ['teamReductions', 'teamId']] },
+    /* Ett team som tas bort tar sitt arbete med sig. Epiker utan team kan inte belasta någon kapacitet. */
+    teams: { remove: [['teamWorkers', 'teamId'], ['teamDomains', 'teamId'], ['teamSystems', 'teamId'], ['teamReductions', 'teamId'], ['epics', 'teamId']] },
+    /* Ett initiativ som tas bort lämnar epikerna kvar hos teamen, men utan koppling uppåt. */
+    initiatives: { nullify: [['epics', 'initiativeId']] },
     domains: { remove: [['teamDomains', 'domainId'], ['domainClusters', 'domainId'], ['itDomainSystems', 'domainId'], ['extendedDomainCompetences', 'domainId']] },
-    deliveryDomains: { remove: [['domainClusters', 'deliveryDomainId'], ['extendedDeliveryCompetences', 'deliveryDomainId']] },
+    deliveryDomains: { remove: [['domainClusters', 'deliveryDomainId'], ['extendedDeliveryCompetences', 'deliveryDomainId']], nullify: [['initiatives', 'deliveryDomainId']] },
     competences: { remove: [['workerCompetences', 'competenceId']] },
     systems: { remove: [['teamSystems', 'systemId'], ['itDomainSystems', 'systemId']] }
   };
@@ -41,7 +44,9 @@ var OOSStore = (function () {
     extendedDeliveryCompetences: 'leveransdomänroll',
     teamReductions: 'teamavdrag',
     overheadReductions: 'grundavdrag',
-    itDomainSystems: 'IT-domänkoppling'
+    itDomainSystems: 'IT-domänkoppling',
+    initiatives: 'initiativ',
+    epics: 'epik'
   };
 
   function readStorage() {
@@ -65,9 +70,19 @@ var OOSStore = (function () {
 
   function ensureShape(d) {
     var fresh = Seed.build();
+    /*
+     * Sparad data från före initiativ och epiker får demodatans arbete, så att belastningen inte
+     * blir noll. Bara epiker för team som finns kvar tas med.
+     */
+    if (d.epics === undefined && Array.isArray(d.teams)) {
+      var teamIds = new Set(d.teams.map(function (t) { return t.id; }));
+      d.initiatives = fresh.initiatives;
+      d.epics = fresh.epics.filter(function (ep) { return teamIds.has(ep.teamId); });
+    }
     Object.keys(fresh).forEach(function (k) {
       if (d[k] === undefined) d[k] = Array.isArray(fresh[k]) ? [] : fresh[k];
     });
+    if (d.settings && d.settings.loadSource === undefined) d.settings.loadSource = 'epics';
     if (!d.changeLog) d.changeLog = [];
     return d;
   }

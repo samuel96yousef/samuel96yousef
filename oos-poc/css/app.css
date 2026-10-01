@@ -1158,6 +1158,11 @@ table.tbl {
   white-space: nowrap;
 }
 
+/* Långa namn, som epiker, får bryta i stället för att trycka ut tabellen. */
+.tbl .name-cell.wrap {
+  white-space: normal;
+}
+
 .pager {
   display: flex;
   align-items: center;
@@ -3131,6 +3136,116 @@ kbd {
   }
 }
 
+/* ---------- Arbete: initiativ och epiker ---------- */
+
+/*
+ * Arbetstyperna skiljs åt med gråskala, inte färg: färg är reserverad för avvikelser.
+ * Utveckling mörkast, sedan förvaltning, utredning och utbildning.
+ */
+.budget-seg.development,
+.sw-k.development {
+  background: var(--bar);
+}
+
+.budget-seg.maintenance,
+.sw-k.maintenance {
+  background: color-mix(in srgb, var(--bar) 62%, var(--bg));
+}
+
+.budget-seg.investigation,
+.sw-k.investigation {
+  background: color-mix(in srgb, var(--bar) 40%, var(--bg));
+}
+
+.budget-seg.training,
+.sw-k.training {
+  background: color-mix(in srgb, var(--bar) 24%, var(--bg));
+}
+
+.sw-k {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.sw-k.free {
+  background: var(--track);
+}
+
+.commit.is-proposal .commit-hours,
+.commit.is-proposal a {
+  color: var(--fg-3);
+}
+
+.commit.is-proposal .sw-k {
+  background: none;
+  border: 1px dashed var(--fg-3);
+}
+
+.crit-text {
+  color: var(--crit);
+}
+
+/* Förhandsvisning i formuläret: vad epiken gör med teamets beläggning. */
+.form-preview:empty {
+  display: none;
+}
+
+.impact {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+  background: var(--canvas);
+}
+
+.impact.crit {
+  border-left-color: var(--crit);
+  background: var(--crit-soft);
+}
+
+.impact-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.impact-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.impact-tbl th {
+  text-align: left;
+  font-weight: 450;
+  color: var(--fg-3);
+  font-size: 12.5px;
+  padding: 4px 6px 4px 0;
+}
+
+.impact-tbl td {
+  padding: 4px 6px 4px 0;
+  border-top: 1px solid var(--line);
+}
+
+.impact-tbl .num {
+  text-align: right;
+}
+
+.impact-tbl .crit {
+  color: var(--crit);
+}
+
+.impact-tbl .warn {
+  color: var(--warn);
+}
+
 /* ---------- Text som anpassar sig ----------
  *
  * Rubriker och stora tal skalar med ytan de står i (cqi = procent av containerns bredd),
@@ -3158,6 +3273,11 @@ h2,
 .tier-head,
 .tbl th {
   text-wrap: balance;
+}
+
+/* Sifferrubriker är korta. Att bryta dem ("I / perioden") gör dem svårare att läsa. */
+.tbl th.num:not(.heat-col) {
+  white-space: nowrap;
 }
 
 p,
