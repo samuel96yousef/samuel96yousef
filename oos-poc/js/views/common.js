@@ -132,6 +132,24 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return h + '</tbody></table></div>';
   };
 
+  /*
+   * Kapacitetsstapel: längden är kapaciteten i förhållande till max, mörk del belastat, ljus del
+   * ledigt och randig röd del det som är planerat utöver kapaciteten. Hela stapeln växer som en enhet.
+   */
+  C.capBar = function (x, max, decorative) {
+    var total = Math.max(x.capacity, x.loaded, 0);
+    if (!total) return '<span class="muted">–</span>';
+    var inside = Math.min(Math.max(0, x.loaded), x.capacity);
+    var over = Math.max(0, x.loaded - x.capacity);
+    var free = Math.max(0, x.capacity - x.loaded);
+    function pct(v) { return (v / total) * 100; }
+    var label = decorative ? ' aria-hidden="true"' : ' role="img" aria-label="' + esc(U.fmtH(x.loaded) + ' belastat av ' + U.fmtH(x.capacity) + (over > 0.5 ? ', ' + U.fmtH(over) + ' över kapaciteten' : '')) + '"';
+    return '<div class="cbar" style="width:' + (total / max) * 100 + '%"' + label + '>' +
+      (inside > 0 ? '<span class="cbar-load" style="width:' + pct(inside) + '%"></span>' : '') +
+      (free > 0.5 ? '<span class="cbar-free" style="width:' + pct(free) + '%"></span>' : '') +
+      (over > 0.5 ? '<span class="cbar-over" style="width:' + pct(over) + '%"></span>' : '') + '</div>';
+  };
+
   C.relLabel = function (r) {
     return r === 'primary' ? 'Primär' : '<span class="quiet">Stödjande</span>';
   };

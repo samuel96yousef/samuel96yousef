@@ -13,7 +13,7 @@
 var OOSMotion = (function () {
   var A = typeof anime !== 'undefined' ? anime : null;
   var EASE = 'out(3)';
-  var BARS = '.bar-fill, .loadbar-fill, .hbar-loaded, .hbar-free, .stack100-seg, .depth-seg';
+  var BARS = '.bar-fill, .loadbar-fill, .cbar, .stack100-seg, .depth-seg';
   var NUMS = '.kpi-value, .lede strong, .big, .donut text';
   var COUNT_ON_ENTER = '.kpi-value, .lede strong';
   var nf = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 });

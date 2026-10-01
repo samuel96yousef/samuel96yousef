@@ -59,15 +59,18 @@
       var n = e.deliveryDomainCapacity(d.id, ctx.next);
       return { d: d, cap: c, next: n.capacity };
     }).sort(function (a, b) { return b.cap.capacity - a.cap.capacity; });
-    var max = Math.max.apply(null, dds.map(function (x) { return Math.max(x.cap.capacity, x.next); }).concat([1]));
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag</div></div></div><div class="hbars">';
+    var max = Math.max.apply(null, dds.map(function (x) { return Math.max(x.cap.capacity, x.cap.loaded); }).concat([1]));
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag. Stapelns längd är kapaciteten.</div></div></div><div class="hbars">';
     dds.forEach(function (x) {
-      var tip = x.d.name + '\nKapacitet: ' + U.fmtH(x.cap.capacity) + '\nPlanerat: ' + U.fmtH(x.cap.loaded) + ' (' + U.fmtPct(x.cap.loadPct) + ')\nLedigt: ' + U.fmtH(x.cap.free) + '\n' + x.cap.headcount + ' arbetare i ' + x.cap.teamCount + ' team\n' + ctx.next.label + ': ' + U.fmtH(x.next);
-      h += '<div class="hbar" style="grid-template-columns:minmax(0,1fr) auto" role="link" tabindex="0" aria-label="' + esc(x.d.name + ', ' + U.fmtH(x.cap.capacity) + ', ' + U.fmtPct(x.cap.loadPct) + ' planerat') + '" data-go="deliveryDomains:' + esc(x.d.id) + '" data-tip="' + esc(tip) + '">' +
+      var free = x.cap.capacity - x.cap.loaded;
+      var change = x.next - x.cap.capacity;
+      var line = U.fmtPct(x.cap.loadPct) + ' belagt · ' + (free < -0.5 ? '<span class="crit-text">' + U.fmtH(-free) + ' över</span>' : U.fmtH(free) + ' ledigt') + ' · ' + U.fmtSigned(change, ' h') + ' i ' + esc(ctx.next.inText);
+      h += '<div class="hbar dd-bar" role="link" tabindex="0" aria-label="' + esc(x.d.name + ', ' + U.fmtH(x.cap.capacity) + ', ' + U.fmtPct(x.cap.loadPct) + ' belagt, ' + U.fmtH(Math.max(0, free)) + ' ledigt') + '" data-go="deliveryDomains:' + esc(x.d.id) + '">' +
         '<span class="hbar-name">' + esc(x.d.name) + '</span><span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span>' +
-        '<div class="hbar-track" style="grid-column:1 / -1"><div class="hbar-loaded" style="width:' + (x.cap.loaded / max) * 100 + '%"></div><div class="hbar-free" style="width:' + (Math.max(0, x.cap.free) / max) * 100 + '%"></div><div class="hbar-next" style="left:calc(' + (x.next / max) * 100 + '% - 1px)"></div></div></div>';
+        '<div class="dd-bar-track">' + C.capBar({ capacity: x.cap.capacity, loaded: x.cap.loaded }, max, true) + '</div>' +
+        '<span class="dd-bar-note">' + line + '</span></div>';
     });
-    h += '<div class="legend-line"><span><span class="sw loaded"></span>Planerat</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw next"></span>' + esc(ctx.next.label) + '</span></div>';
+    h += '<div class="legend-line"><span><span class="sw loaded"></span>Belastat</span><span><span class="sw free"></span>Ledigt</span></div>';
     h += '</div></section></div>';
 
     h += factoryMap(ctx);

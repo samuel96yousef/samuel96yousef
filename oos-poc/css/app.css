@@ -1086,6 +1086,11 @@ table.tbl {
 /* Rapportens trädtabell: grupprad med summor, kompetenser indragna under. */
 .tbl.report tr.group-row td {
   font-weight: 600;
+}
+
+/* En öppen grupp avgränsas mot nästa med en tydligare linje. */
+.tbl.report tr.child + tr.group-row td,
+.tbl.report tr.child + tr.grand td {
   border-top: 1px solid var(--line-strong);
 }
 
@@ -1905,11 +1910,9 @@ mark {
   background: var(--track);
 }
 
-.sw.next {
-  width: 2px;
-  height: 12px;
-  border-radius: 0;
-  background: var(--fg-3);
+.sw.over {
+  background: repeating-linear-gradient(135deg, var(--crit) 0 2px, transparent 2px 4px);
+  box-shadow: inset 0 0 0 1px var(--crit);
 }
 
 .hbars {
@@ -1935,32 +1938,6 @@ mark {
   text-decoration: underline;
   text-decoration-color: var(--line-strong);
   text-underline-offset: 3px;
-}
-
-.hbar-track {
-  height: 10px;
-  display: flex;
-  gap: 2px;
-  position: relative;
-}
-
-.hbar-loaded {
-  background: var(--bar);
-  border-radius: 3px 0 0 3px;
-  min-width: 2px;
-}
-
-.hbar-free {
-  background: var(--track);
-  border-radius: 0 3px 3px 0;
-}
-
-.hbar-next {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 2px;
-  background: var(--fg-3);
 }
 
 .hbar-val {
@@ -3687,10 +3664,6 @@ p,
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px 12px;
   }
-  .hbar-track {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
   .table-tools .row {
     flex: 1 1 100%;
   }
@@ -3840,8 +3813,6 @@ p,
 /* Staplar växer från sin bas när de animeras (js/motion.js). */
 .bar-fill,
 .loadbar-fill,
-.hbar-loaded,
-.hbar-free,
 .stack100-seg,
 .depth-seg {
   transform-origin: left center;
@@ -3860,4 +3831,168 @@ p,
     transition: none;
     animation: none;
   }
+}
+
+/* ---------- Rapporter ---------- */
+
+.rc-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 24px;
+}
+
+.rc-main > .fld {
+  flex: 0 1 auto;
+}
+
+.rc-main > label.fld {
+  flex: 0 1 240px;
+}
+
+.period-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+}
+
+.rc-main .seg button {
+  min-height: 32px;
+}
+
+.period-step strong {
+  min-width: 112px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rc-filters {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.rc-filters-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+
+.rc-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.rc-active {
+  font-size: 13.5px;
+  color: var(--fg-3);
+}
+
+.rc-filters .filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+@container main (min-width: 980px) {
+  .rc-filters .filters {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container main (max-width: 560px) {
+  .rc-filters .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rc-main > label.fld {
+    flex: 1 1 100%;
+  }
+}
+
+.card-note {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--fg-3);
+  max-width: 72ch;
+}
+
+.warn-text {
+  color: var(--warn);
+}
+
+/* Stapeldiagrammet i rapporten: en tabell med en stapel per rad. */
+.tbl td.cbar-col {
+  width: 42%;
+  min-width: 140px;
+}
+
+.cbar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  min-width: 4px;
+  transform-origin: left center;
+}
+
+.cbar > span {
+  height: 100%;
+  min-width: 2px;
+}
+
+.cbar-load {
+  background: var(--bar);
+  border-radius: 3px 0 0 3px;
+}
+
+.cbar-free {
+  background: var(--track);
+}
+
+.cbar-over {
+  background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
+}
+
+.cbar > span:last-child {
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+.cbar > span:only-child {
+  border-radius: 3px;
+}
+
+.table-tools .legend-line {
+  margin-right: auto;
+}
+
+/* Verktygsrad utan rubrik: innehållet börjar till vänster. */
+.table-tools > span:empty {
+  display: none;
+}
+
+.table-tools > span:empty + .row {
+  flex: 1 1 auto;
+}
+
+/* Översiktens staplar per leveransdomän: namn och kapacitet, stapel, sedan talen i klartext. */
+.hbar.dd-bar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+}
+
+.dd-bar-track,
+.dd-bar-note {
+  grid-column: 1 / -1;
+}
+
+.dd-bar-note {
+  font-size: 13px;
+  color: var(--fg-3);
+  margin-top: -2px;
 }

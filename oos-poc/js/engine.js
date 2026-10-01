@@ -843,14 +843,10 @@ var OOSEngine = (function () {
     };
 
     function groupName(level, f) {
+      /* Per team samlas domänmolnen och nyckelrollerna i var sin grupp. De är inte team. */
       if (level === 'team') {
         if (f.teamId) return f.teamName;
-        if (f.source === 'domain') {
-          var d = get('domains', f.domainId);
-          return 'Domänmoln: ' + (d ? d.name : '');
-        }
-        var dd = get('deliveryDomains', f.deliveryDomainId);
-        return 'Nyckelroller: ' + (dd ? dd.name : '');
+        return f.source === 'domain' ? 'Domänmoln' : 'Nyckelroller';
       }
       var coll = level === 'delivery' ? 'deliveryDomains' : 'domains';
       var id = f[LEVEL_KEYS[level]];
@@ -860,7 +856,7 @@ var OOSEngine = (function () {
     }
 
     function groupKey(level, f) {
-      if (level === 'team' && !f.teamId) return '_cloud_' + (f.domainId || 'dd_' + f.deliveryDomainId);
+      if (level === 'team' && !f.teamId) return f.source === 'domain' ? '_cloud' : '_roles';
       return f[LEVEL_KEYS[level]] || '_none';
     }
 
@@ -930,7 +926,7 @@ var OOSEngine = (function () {
         groups = Array.from(gmap.values()).map(function (g) {
           var rows = rowsFor(g.cur, g.nxt, compKey, compName).sort(function (a, b) { return b.capacity - a.capacity; });
           var total = rowsFor(g.cur, g.nxt, function () { return 'total'; }, function () { return 'Totalt'; })[0];
-          return { key: g.key, name: g.name, rows: rows, total: total, isCloud: String(g.key).indexOf('_cloud_') === 0, isOther: g.key === '_none' };
+          return { key: g.key, name: g.name, rows: rows, total: total, isCloud: g.key === '_cloud' || g.key === '_roles', isOther: g.key === '_none' };
         });
         groups.sort(function (a, b) {
           if (a.isOther !== b.isOther) return a.isOther ? 1 : -1;
