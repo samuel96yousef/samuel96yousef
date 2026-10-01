@@ -5,28 +5,58 @@
   var esc = U.esc;
   var S = OOSStore;
 
+  /*
+   * Menyn i tre namngivna grupper. Inställningar ligger för sig längst ned.
+   * Ikonerna är enkla linjeikoner som hjälper ögat att hitta rätt, inte dekoration.
+   */
   var NAV = [
-    { items: [{ page: 'overview', label: 'Översikt' }, { page: 'insights', label: 'Insikter' }, { page: 'reports', label: 'Rapporter' }] },
     {
-      label: 'Struktur',
+      label: 'Uppföljning',
       items: [
-        { page: 'deliveryDomains', label: 'Leveransdomäner', count: function () { return S.db.deliveryDomains.length; } },
-        { page: 'businessDomains', label: 'Verksamhetsdomäner', count: function () { return S.db.domains.filter(function (d) { return d.type === 'business'; }).length; } },
-        { page: 'itDomains', label: 'IT-domäner', count: function () { return S.db.domains.filter(function (d) { return d.type === 'it'; }).length; } },
-        { page: 'teams', label: 'Team', count: function () { return S.db.teams.length; } },
-        { page: 'systems', label: 'System', count: function () { return S.db.systems.length; } }
+        { page: 'overview', label: 'Översikt', icon: 'home' },
+        { page: 'insights', label: 'Insikter', icon: 'chart' },
+        { page: 'reports', label: 'Rapporter', icon: 'table' }
+      ]
+    },
+    {
+      label: 'Organisation',
+      items: [
+        { page: 'deliveryDomains', label: 'Leveransdomäner', icon: 'layers', count: function () { return S.db.deliveryDomains.length; } },
+        { page: 'businessDomains', label: 'Verksamhetsdomäner', icon: 'briefcase', count: function () { return S.db.domains.filter(function (d) { return d.type === 'business'; }).length; } },
+        { page: 'itDomains', label: 'IT-domäner', icon: 'server', count: function () { return S.db.domains.filter(function (d) { return d.type === 'it'; }).length; } },
+        { page: 'teams', label: 'Team', icon: 'users', count: function () { return S.db.teams.length; } },
+        { page: 'systems', label: 'System', icon: 'box', count: function () { return S.db.systems.length; } }
       ]
     },
     {
       label: 'Resurser',
       items: [
-        { page: 'workers', label: 'Arbetare', count: function () { return S.db.workers.length; } },
-        { page: 'competences', label: 'Kompetenser', count: function () { return S.db.competences.length; } },
-        { page: 'capacity', label: 'Kapacitet' }
+        { page: 'workers', label: 'Arbetare', icon: 'user', count: function () { return S.db.workers.length; } },
+        { page: 'competences', label: 'Kompetenser', icon: 'star', count: function () { return S.db.competences.length; } },
+        { page: 'capacity', label: 'Kapacitet', icon: 'gauge' }
       ]
     },
-    { items: [{ page: 'settings', label: 'Inställningar' }] }
+    { label: '', foot: true, items: [{ page: 'settings', label: 'Inställningar', icon: 'sliders' }] }
   ];
+
+  var NAV_ICONS = {
+    home: '<path d="M4 11l8-6.5 8 6.5v8a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',
+    chart: '<path d="M4 20h16"/><path d="M6 16l4-4.5 3.5 3L19 8"/>',
+    table: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M10 10v9"/>',
+    layers: '<path d="M12 4l8.5 4.25L12 12.5 3.5 8.25z"/><path d="M3.5 12.25L12 16.5l8.5-4.25"/><path d="M3.5 16.25L12 20.5l8.5-4.25"/>',
+    briefcase: '<rect x="3.5" y="7" width="17" height="12.5" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17"/>',
+    server: '<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+    users: '<circle cx="9" cy="8.5" r="3.25"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5.6a3.25 3.25 0 0 1 0 5.8M21 19.5a6 6 0 0 0-3.5-5.45"/>',
+    box: '<path d="M12 3.5l8 4.25v8.5L12 20.5l-8-4.25v-8.5z"/><path d="M4 7.75l8 4.25 8-4.25M12 12v8.5"/>',
+    user: '<circle cx="12" cy="8.5" r="3.75"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    star: '<path d="M12 4l2.45 5 5.5.8-4 3.9.95 5.5L12 16.6l-4.9 2.6.95-5.5-4-3.9 5.5-.8z"/>',
+    gauge: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
+    sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.25"/><circle cx="10" cy="17" r="2.25"/>'
+  };
+
+  function navIcon(name) {
+    return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (NAV_ICONS[name] || '') + '</svg>';
+  }
 
   OOS.NAV = NAV;
   var IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
@@ -54,22 +84,41 @@
     return { e: S.engine(), db: S.db, period: p, next: OOSEngine.nextPeriod(p), id: st.id, page: st.page };
   };
 
+  function navItem(i) {
+    var on = st.page === i.page;
+    return '<button type="button" class="nav-item' + (on ? ' active' : '') + '" id="nav-' + i.page + '" data-go="' + i.page + '"' + (on ? ' aria-current="page"' : '') + '>' +
+      navIcon(i.icon) + '<span class="nav-text">' + esc(i.label) + '</span>' +
+      (i.count ? '<span class="nav-count">' + i.count() + '</span>' : '') + '</button>';
+  }
+
   function renderNav() {
     var nav = document.getElementById('nav');
     var p = OOS.period();
-    var h = '<div class="brand"><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div>';
-    h += '<button type="button" class="nav-search" data-action="global-search" aria-keyshortcuts="Control+K Meta+K">' + UI.icon('search') + '<span>Sök</span><kbd>' + (IS_MAC ? '⌘K' : 'Ctrl K') + '</kbd></button>';
-    NAV.forEach(function (g) {
-      h += '<div class="nav-group">' + (g.label ? '<div class="nav-label">' + esc(g.label) + '</div>' : '');
-      g.items.forEach(function (i) {
-        var on = st.page === i.page;
-        h += '<button type="button" class="nav-item' + (on ? ' active' : '') + '" data-go="' + i.page + '"' + (on ? ' aria-current="page"' : '') + '><span>' + esc(i.label) + '</span>' +
-          (i.count ? '<span class="nav-count">' + i.count() + '</span>' : '') + '</button>';
-      });
+    /* Fokus i menyn ska ligga kvar när menyn ritas om, till exempel efter byte av period. */
+    var focusId = document.activeElement && nav.contains(document.activeElement) ? document.activeElement.id : null;
+    var h = '<div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div></div>';
+    h += '<button type="button" class="nav-search" id="nav-search" data-action="global-search" aria-keyshortcuts="Control+K Meta+K">' + UI.icon('search') + '<span>Sök</span><kbd>' + (IS_MAC ? '⌘K' : 'Ctrl K') + '</kbd></button>';
+    h += '<div class="nav-groups">';
+    NAV.forEach(function (g, gi) {
+      if (g.foot) return;
+      h += '<div class="nav-group" role="group" aria-labelledby="nav-g-' + gi + '"><div class="nav-label" id="nav-g-' + gi + '">' + esc(g.label) + '</div>';
+      g.items.forEach(function (i) { h += navItem(i); });
       h += '</div>';
     });
-    h += '<div class="nav-foot"><div class="nav-period">Period <strong>' + esc(p.label) + '</strong></div><div>Prototyp 1 · ' + esc(S.db.settings.orgName) + ' (demodata)</div></div>';
+    h += '</div>';
+    h += '<div class="nav-foot">';
+    NAV.filter(function (g) { return g.foot; }).forEach(function (g) { g.items.forEach(function (i) { h += navItem(i); }); });
+    h += '<div class="nav-period" role="group" aria-label="Period">' +
+      '<div class="nav-period-label">Period</div><div class="nav-period-row">' +
+      '<button type="button" class="btn-icon" id="nav-prev" data-action="period-shift" data-dir="-1" aria-label="Föregående period">' + UI.icon('arrowLeft') + '</button>' +
+      '<strong aria-live="polite">' + esc(p.label) + '</strong>' +
+      '<button type="button" class="btn-icon" id="nav-next" data-action="period-shift" data-dir="1" aria-label="Nästa period">' + UI.icon('arrowRight') + '</button></div></div>';
+    h += '<div class="nav-org">Prototyp 1 · ' + esc(S.db.settings.orgName) + ' (demodata)</div></div>';
     nav.innerHTML = h;
+    if (focusId) {
+      var again = document.getElementById(focusId);
+      if (again) again.focus();
+    }
     nav.classList.toggle('open', st.navOpen);
     document.getElementById('nav-scrim').hidden = !st.navOpen;
     document.getElementById('topbar-title').textContent = PAGES[st.page] ? PAGES[st.page].label : '';

@@ -43,7 +43,7 @@
   --radius-sm: 8px;
 
   /* Layouten är flytande. Måtten växer med fönstret mellan ett golv och ett tak. */
-  --nav-w: clamp(208px, 16vw, 248px);
+  --nav-w: clamp(250px, 17.5vw, 268px);
   --gutter: clamp(16px, 4vw - 4px, 56px);
   --content-max: 1360px;
 }
@@ -187,12 +187,12 @@ th.num {
 }
 
 .nav {
-  background: var(--side);
+  background: var(--bg);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 22px 12px 18px;
+  gap: 16px;
+  padding: 20px 12px 16px;
   position: sticky;
   top: env(safe-area-inset-top, 0px);
   height: 100vh;
@@ -201,48 +201,100 @@ th.num {
 }
 
 .brand {
-  padding: 0 10px;
+  padding: 0 8px;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex: none;
 }
 
 .brand-name {
   font-weight: 650;
-  font-size: 16px;
+  font-size: 15.5px;
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .brand-sub {
   font-size: 12px;
   color: var(--fg-3);
+  line-height: 1.3;
+}
+
+/*
+ * Grupperna: en rubrik i versaler som inte går att förväxla med ett menyval,
+ * och en linje mellan grupperna så att det syns var en grupp slutar.
+ */
+.nav-groups {
+  display: flex;
+  flex-direction: column;
 }
 
 .nav-group {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  padding: 12px 0;
+}
+
+.nav-group + .nav-group {
+  border-top: 1px solid var(--line);
+}
+
+.nav-group:first-child {
+  padding-top: 4px;
 }
 
 .nav-label {
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--fg-3);
-  padding: 0 10px 4px;
+  padding: 4px 10px 6px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 10px;
-  border-radius: 7px;
+  padding: 7px 8px 7px 10px;
+  border-radius: 8px;
   border: 0;
   background: none;
   color: var(--fg-2);
   cursor: pointer;
   text-align: left;
+  font: inherit;
   font-size: 14px;
   width: 100%;
+  position: relative;
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--fg-3);
+}
+
+.nav-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -250,10 +302,30 @@ th.num {
   color: var(--fg);
 }
 
+.nav-item:hover .nav-icon {
+  color: var(--fg-2);
+}
+
+/* Vald sida: grå bakgrund, fet text och ett streck till vänster. */
 .nav-item.active {
   background: var(--nav-active);
   color: var(--fg);
-  font-weight: 550;
+  font-weight: 600;
+}
+
+.nav-item.active .nav-icon {
+  color: var(--fg);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--fg);
 }
 
 .nav-count {
@@ -262,6 +334,8 @@ th.num {
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
   font-weight: 400;
+  min-width: 22px;
+  text-align: right;
 }
 
 .nav-item.active .nav-count {
@@ -270,22 +344,47 @@ th.num {
 
 .nav-foot {
   margin-top: auto;
-  padding: 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+/* Perioden styr alla siffror i appen, därför går den att byta direkt här. */
+.nav-period {
+  padding: 8px 6px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+
+.nav-period-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--fg-3);
 }
 
-.nav-period {
-  color: var(--fg-2);
-  font-size: 13px;
+.nav-period-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
-.nav-period strong {
-  color: var(--fg);
-  font-weight: 550;
+.nav-period-row strong {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+}
+
+.nav-org {
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--fg-3);
 }
 
 .topbar {
@@ -2871,7 +2970,7 @@ kbd {
   padding: 7px 8px 7px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--canvas);
   color: var(--fg-3);
   font: inherit;
   font-size: 14px;

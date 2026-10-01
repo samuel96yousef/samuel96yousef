@@ -38,7 +38,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
 | Tabeller | Går kant i kant i kortet. Hårfina linjer mellan raderna, ingen bakgrund i rubrikraden. Texten linjerar med kortets rubrik. |
 | Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
-| Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
+| Sidomeny | Vit yta mot den grå sidan. Tre namngivna grupper: Uppföljning, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
 ## Sökning
