@@ -82,8 +82,12 @@ Följer ER-skissen för Prototyp 1. Tabellerna finns i `js/seed.js` och relation
 4. **Kompetens**: en medlems kapacitet fördelas jämnt på medlemmens primära kompetenser.
 5. **Leveransdomän** för ett team härleds: primär verksamhetsdomän → dess primära leveransdomän. Saknas verksamhetsdomän används primär IT-domän.
 6. **Domänkapacitet** = team med domänen som *primär* + domänmolnets timmar. Stödjande kopplingar visas men räknas inte, för att undvika dubbelräkning.
-7. **Belastning** räknas ur teamets epiker. En epik med ram per månad ger timmar som en löpande insats. En epik med total ram fördelas jämnt över sina arbetsdagar. Bara planerade och pågående epiker räknas; förslag och klara epiker gör det inte. Teamets beläggning = epikernas timmar / teamets kapacitet, och kan bli mer än 100 %. Varje medlem får teamets beläggning på sin del av kapaciteten. Under Inställningar går det att byta till manuell belastning per teammedlem, som förut. Domänmolnets timmar räknas som belastade.
+7. **Belastning** räknas ur teamets epiker. En epik med ram per månad ger timmar som en löpande insats. En epik med total ram fördelas jämnt över sina arbetsdagar. Förslag räknas inte. Klara epiker räknas för den tid de pågick, så att historiken står kvar; blir en epik klar i förtid flyttas slutdatum till i dag. Teamets beläggning = epikernas timmar / teamets kapacitet, och kan bli mer än 100 %. Varje medlem får teamets beläggning på sin del av kapaciteten. Under Inställningar går det att byta till manuell belastning per teammedlem, som förut. Domänmolnets timmar räknas som belastade.
 8. **Överallokering** räknas ned. Om en arbetares team och domänroller kräver mer än den tillgängliga tiden, skalas alla åtaganden ned i samma proportion. Kapaciteten blir alltså aldrig större än de timmar som finns. Överallokeringen visas som en kritisk signal.
+9. **Inget räknas två gånger.**
+   - Teamavdrag är tid som inte finns, till exempel föräldraledighet eller långtidsfrånvaro. Arbete, som utbildning, systembyte eller underhåll, är en epik. Formuläret stoppar avdrag som är arbete. Äldre sådana avdrag ger en signal och kan göras om till en epik med ett klick.
+   - Utbildningsepiker räknas först mot grundavdraget för kompetensutveckling, som redan är draget från kapaciteten. Bara det som går utöver belastar teamet. Vilka grundavdrag som täcker utbildning anges under Kapacitet.
+   - Domänroller och team delar på samma tillgängliga tid (regel 8), och en medlems kapacitet fördelas på kompetenserna utan överlapp (regel 4).
 
 ## Avvikelser och öppna frågor
 
@@ -93,7 +97,6 @@ Det här behöver beslutas innan en riktig Prototyp 1 byggs:
 2. **Allokering.** ER-skissen har `Team_Worker.AllocatedCapacity [month]` i timmar, GUI:t visar procent. POC:n använder procent för team och h/månad för domänroller.
 3. **Belastningens källa** är nu teamens epiker. Kvar att besluta:
    - Ska epiker på sikt hämtas från Jira i stället för att skrivas in här? Då behöver Jira en ram i timmar per epik.
-   - Ska utbildning vara en epik eller ett teamavdrag? Båda finns. Grundavdraget för kompetensutveckling och en utbildningsepik får inte avse samma tid.
    - En epik tillhör ett team. Arbete som flera team gör delas upp i en epik per team under samma initiativ.
    - Beläggningen är lika för alla i teamet. Belastning per person kräver att arbetet fördelas på personer, vilket POC:n inte gör.
 4. **Siffrorna i GUI-skisserna går inte ihop** (till exempel 142 respektive 42 arbetare). I POC:n räknas alla siffror fram.

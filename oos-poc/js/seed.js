@@ -326,14 +326,22 @@ var OOSSeed = (function () {
     d_digital: 'w_emma', d_crm: 'w_per', d_integration: 'w_henrik', d_infra: 'w_erik', d_penplat: 'w_mikael'
   };
 
+  /* Teamavdrag är tid som inte finns: frånvaro. Arbete ligger som epiker, så att inget räknas två gånger. */
   var TEAM_REDUCTIONS = [
-    ['t_kundportal', 'Utbildning', 10, '2026-09-01', '2026-09-30', 'Utbildning i nytt CMS'],
     ['t_forsakring', 'Föräldraledighet', 20, '2026-09-01', '2026-12-31', 'Två medarbetare på föräldraledighet'],
-    ['t_data', 'Systembyte', 30, '2026-10-01', '2026-10-31', 'Migrering till ny dataplattform'],
-    ['t_infra', 'Planerat underhåll', 15, '2026-09-15', '2026-09-22', 'Uppgradering av infrastruktur'],
-    ['t_sakerhet', 'Utbildning', 10, '2026-11-01', '2026-11-30', 'Säkerhetsutbildning (ISO 27001)'],
-    ['t_integration', 'Frånvaro', 10, '2026-09-01', '2026-09-30', 'Långtidsfrånvaro'],
-    ['t_test', 'Verktygsinförande', 15, '2026-10-01', '2026-10-31', 'Införande av nytt testverktyg']
+    ['t_integration', 'Frånvaro', 10, '2026-09-01', '2026-09-30', 'Långtidsfrånvaro']
+  ];
+
+  /*
+   * Avdrag som tidigare låg i demodatan men som är arbete. Sparad data uppdateras: avdraget tas bort
+   * och ersätts av epiken med samma arbete. null betyder att en epik redan täcker arbetet.
+   */
+  var RETIRED_REDUCTIONS = [
+    { teamId: 't_kundportal', type: 'Utbildning', comment: 'Utbildning i nytt CMS', epic: 'Utbildning i nytt CMS' },
+    { teamId: 't_data', type: 'Systembyte', comment: 'Migrering till ny dataplattform', epic: null },
+    { teamId: 't_infra', type: 'Planerat underhåll', comment: 'Uppgradering av infrastruktur', epic: 'Uppgradering av infrastruktur' },
+    { teamId: 't_sakerhet', type: 'Utbildning', comment: 'Säkerhetsutbildning (ISO 27001)', epic: 'Säkerhetsutbildning (ISO 27001)' },
+    { teamId: 't_test', type: 'Verktygsinförande', comment: 'Införande av nytt testverktyg', epic: 'Införande av nytt testverktyg' }
   ];
 
   /*
@@ -399,7 +407,12 @@ var OOSSeed = (function () {
     ['t_ipa', 'Förvaltning av Kolbot RPA', 'maintenance', null, 'active', 'monthly', 220, '2026-01-01', '2027-12-31', 'Övervakning, rättningar och nya versioner av robotarna.'],
     ['t_ipa', 'Kolbot: automatiserade avtalsändringar', 'development', 'in_kolbot', 'active', 'total', 1600, '2026-09-01', '2027-02-26', 'Robotar som hanterar de vanligaste avtalsändringarna utan manuellt steg.'],
     ['t_ipa', 'Kolbot: robotar för ITP 1-utbetalningar', 'development', 'in_itp1', 'planned', 'total', 500, '2026-11-02', '2027-03-31', 'Robotar för de undantag som den nya motorn inte hanterar.'],
-    ['t_ipa', 'Utredning: AI-agenter i Kolbot', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan AI-agenter ta över ärenden där robotarna i dag stannar?']
+    ['t_ipa', 'Utredning: AI-agenter i Kolbot', 'investigation', null, 'active', 'total', 160, '2026-09-14', '2026-11-30', 'Kan AI-agenter ta över ärenden där robotarna i dag stannar?'],
+    /* Tidigare avdrag som är arbete. */
+    ['t_kundportal', 'Utbildning i nytt CMS', 'training', null, 'done', 'total', 84, '2026-09-01', '2026-09-30', 'Teamet lärde sig det nya publiceringsverktyget.'],
+    ['t_infra', 'Uppgradering av infrastruktur', 'maintenance', null, 'done', 'total', 30, '2026-09-15', '2026-09-22', 'Planerat underhåll av servrar och nätverk.'],
+    ['t_sakerhet', 'Säkerhetsutbildning (ISO 27001)', 'training', null, 'planned', 'total', 31, '2026-11-01', '2026-11-30', 'Hela teamet går utbildningen inför certifieringen.'],
+    ['t_test', 'Införande av nytt testverktyg', 'maintenance', null, 'active', 'total', 65, '2026-10-01', '2026-10-31', 'Konfiguration och flytt av testfall till det nya verktyget.']
   ];
 
   function build() {
@@ -412,7 +425,7 @@ var OOSSeed = (function () {
       settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'month', periodAnchor: null, loadSource: 'epics' },
       overheadReductions: [
         { id: 'oh_semester', name: 'Semester', hoursPerWeek: 4, appliesToAI: false },
-        { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false },
+        { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false, coversTraining: true },
         { id: 'oh_moten', name: 'Interna möten', hoursPerWeek: 2, appliesToAI: false },
         { id: 'oh_admin', name: 'Administration', hoursPerWeek: 1, appliesToAI: false }
       ],
@@ -564,7 +577,7 @@ var OOSSeed = (function () {
     return db;
   }
 
-  return { build: build };
+  return { build: build, RETIRED_REDUCTIONS: RETIRED_REDUCTIONS };
 })();
 
 if (typeof module !== 'undefined') module.exports = OOSSeed;

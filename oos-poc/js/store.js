@@ -83,6 +83,24 @@ var OOSStore = (function () {
       if (d[k] === undefined) d[k] = Array.isArray(fresh[k]) ? [] : fresh[k];
     });
     if (d.settings && d.settings.loadSource === undefined) d.settings.loadSource = 'epics';
+    /* Grundavdraget för kompetensutveckling är den tid som utbildningsepiker räknas mot först. */
+    (d.overheadReductions || []).forEach(function (o) {
+      if (o.coversTraining === undefined) o.coversTraining = o.id === 'oh_kompetens' || /kompetensutveckling/i.test(o.name || '');
+    });
+    /* Avdrag i äldre demodata som egentligen är arbete ersätts av epiker, så att inget räknas två gånger. */
+    if (Array.isArray(d.teamReductions) && Array.isArray(d.epics)) {
+      (Seed.RETIRED_REDUCTIONS || []).forEach(function (rr) {
+        var hit = d.teamReductions.filter(function (r) { return r.teamId === rr.teamId && r.type === rr.type && r.comment === rr.comment; });
+        if (!hit.length) return;
+        d.teamReductions = d.teamReductions.filter(function (r) { return hit.indexOf(r) < 0; });
+        if (!rr.epic || d.epics.some(function (ep) { return ep.teamId === rr.teamId && ep.name === rr.epic; })) return;
+        var src = fresh.epics.filter(function (ep) { return ep.teamId === rr.teamId && ep.name === rr.epic; })[0];
+        if (!src) return;
+        var copy = Object.assign({}, src);
+        if (d.epics.some(function (ep) { return ep.id === copy.id; })) copy.id = src.id + '_m';
+        d.epics.push(copy);
+      });
+    }
     if (!d.changeLog) d.changeLog = [];
     return d;
   }

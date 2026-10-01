@@ -451,10 +451,44 @@ var OOSEngine = (function () {
           proposed += h;
         }
       });
+      /*
+       * Utbildning räknas först mot grundavdraget för kompetensutveckling, som redan är draget från
+       * kapaciteten. Bara det som går utöver belastar teamet. Annars räknas samma tid två gånger.
+       */
+      var training = byType.training || 0;
+      var pool = training ? trainingPool(teamId, period) : 0;
+      var absorbed = Math.min(training, pool);
+      list.forEach(function (x) {
+        x.absorbed = x.counts && x.epic.type === 'training' && training ? (x.hours * absorbed) / training : 0;
+        x.load = x.counts ? x.hours - x.absorbed : 0;
+      });
+      if (absorbed) {
+        hours -= absorbed;
+        byType.training = training - absorbed;
+        if (byType.training < 0.01) delete byType.training;
+      }
       list.sort(function (a, b) { return b.hours - a.hours; });
-      var res = { hours: hours, byType: byType, epics: list, proposed: proposed };
+      var res = { hours: hours, byType: byType, epics: list, proposed: proposed, trainingPool: pool, absorbed: absorbed };
       demandCache.set(key, res);
       return res;
+    }
+
+    /*
+     * Teamets andel av de grundavdrag som täcker utbildning (normalt kompetensutveckling), i timmar.
+     * Räknas som kapaciteten: medlemmens andel av tiden, nedskalning vid överallokering och teamavdrag.
+     */
+    function trainingPool(teamId, period) {
+      var covers = (db.overheadReductions || []).filter(function (r) { return r.coversTraining; });
+      if (!covers.length) return 0;
+      var red = teamReductionShare(teamId, period);
+      return U.sum(teamMembers(teamId), function (m) {
+        var w = m.worker;
+        var perWeek = U.sum(covers.filter(function (r) { return w.type !== 'ai' || r.appliesToAI; }), function (r) {
+          return r.hoursPerWeek * ((w.baseHoursPerWeek || 0) / standardWeek);
+        });
+        var wh = workerHours(w.id, period);
+        return ((weekToPeriod(perWeek, period) * m.tw.allocation) / 100) * wh.scale * (1 - red.share);
+      });
     }
 
     var supplyCache = new Map();
@@ -522,11 +556,12 @@ var OOSEngine = (function () {
     }
 
     /* Allt beslutat arbete i perioden, per arbetstyp, för hela organisationen. */
+    /* Beslutat arbete per typ i hela organisationen, efter att utbildning har räknats mot grundavdraget. */
     function workByType(period) {
       var out = {};
-      (db.epics || []).forEach(function (ep) {
-        if (!COUNTS[ep.status]) return;
-        out[ep.type] = (out[ep.type] || 0) + epicHoursInPeriod(ep, period);
+      db.teams.forEach(function (t) {
+        var d = teamDemand(t.id, period);
+        Object.keys(d.byType).forEach(function (k) { out[k] = (out[k] || 0) + d.byType[k]; });
       });
       return out;
     }
@@ -1004,6 +1039,20 @@ var OOSEngine = (function () {
           out.push({ kind: 'structure', severity: 'info', title: t.name + ' saknar teamledare', detail: 'Ansvaret för teamet är inte utpekat.', ref: { page: 'teams', id: t.id } });
         }
       });
+      if (epicMode) {
+        (db.teamReductions || []).forEach(function (r) {
+          if (!isWorkReduction(r.type) || r.to < period.start || r.from > period.end) return;
+          var t = get('teams', r.teamId);
+          if (!t) return;
+          out.push({
+            kind: 'double',
+            severity: 'warning',
+            title: r.type + ' i ' + t.name + ' är arbete, men ligger som avdrag',
+            detail: 'Avdrag är tid som inte finns, till exempel frånvaro. Arbete ska vara en epik. Annars kan samma tid räknas två gånger: först som minskad kapacitet, sedan som belastning.',
+            ref: { page: 'teams', id: t.id }
+          });
+        });
+      }
       (db.epics || []).forEach(function (ep) {
         if (ep.type !== 'development' || ep.initiativeId || !COUNTS[ep.status] || !epicHoursInPeriod(ep, period)) return;
         var t = get('teams', ep.teamId);
@@ -1334,6 +1383,7 @@ var OOSEngine = (function () {
       workerCapacity: workerCapacity,
       teamCapacity: teamCapacity,
       teamDemand: teamDemand,
+      trainingPool: trainingPool,
       teamSupply: teamSupply,
       initiativeEpics: initiativeEpics,
       initiativeSummary: initiativeSummary,
@@ -1387,7 +1437,11 @@ var OOSEngine = (function () {
     return { nodes: nodes, edges: edgeIdx };
   }
 
-  /* Arbetstyper och status för epiker. Bara beslutat arbete (planerat och pågående) belastar kapaciteten. */
+  /*
+   * Arbetstyper och status för epiker. Förslag belastar inte kapaciteten. Klara epiker räknas för
+   * den tid de pågick, så att historiken står kvar. Formuläret flyttar slutdatum till i dag när en
+   * epik blir klar i förtid, så att den inte belastar framtiden.
+   */
   var EPIC_TYPES = [
     { value: 'development', label: 'Utveckling' },
     { value: 'maintenance', label: 'Förvaltning' },
@@ -1398,10 +1452,20 @@ var OOSEngine = (function () {
     { value: 'proposed', label: 'Förslag', counts: false },
     { value: 'planned', label: 'Planerad', counts: true },
     { value: 'active', label: 'Pågår', counts: true },
-    { value: 'done', label: 'Klar', counts: false }
+    { value: 'done', label: 'Klar', counts: true }
   ];
   var COUNTS = {};
   EPIC_STATUS.forEach(function (x) { COUNTS[x.value] = x.counts; });
+
+  /*
+   * Ett teamavdrag ska vara tid som inte finns, till exempel frånvaro. Arbete, som utbildning,
+   * systembyte eller underhåll, är en epik. Annars räknas samma tid två gånger: först som minskad
+   * kapacitet och sedan som belastning.
+   */
+  var WORK_REDUCTION = /utbild|kurs|system|migrer|underhåll|verktyg|inför|projekt|uppgrader|utveckl|arbete/i;
+  function isWorkReduction(type) {
+    return WORK_REDUCTION.test(type || '');
+  }
 
   /* Epikens timmar i en period. Månadsram räknas per månad, totalram fördelas jämnt på arbetsdagarna. */
   function epicHoursInPeriod(epic, period) {
@@ -1425,6 +1489,7 @@ var OOSEngine = (function () {
     EPIC_TYPES: EPIC_TYPES,
     EPIC_STATUS: EPIC_STATUS,
     epicCounts: function (status) { return !!COUNTS[status]; },
+    isWorkReduction: isWorkReduction,
     epicHoursInPeriod: epicHoursInPeriod,
     epicFrame: epicFrame,
     workdays: workdays,

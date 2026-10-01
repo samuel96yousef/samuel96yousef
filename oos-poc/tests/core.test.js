@@ -54,13 +54,14 @@ test('arbetarens tillgängliga kapacitet är grundkapacitet minus grundavdrag', 
 test('teamavdrag minskar teamets kapacitet pro rata', () => {
   const db = Seed.build();
   const e = E.create(db);
-  const tc = e.teamCapacity('t_kundportal', SEP);
-  near(tc.reduction.share, 0.1);
+  const tc = e.teamCapacity('t_forsakring', SEP);
+  near(tc.reduction.share, 0.2);
   const gross = tc.members.reduce((s, m) => s + m.gross, 0);
-  near(tc.capacity, gross * 0.9);
+  near(tc.capacity, gross * 0.8);
 
-  /* Infrastruktur har 15 % under 15–22 sep = 6 av 22 arbetsdagar */
-  const infra = e.teamReductionShare('t_infra', SEP);
+  /* 15 % under 15–22 sep = 6 av 22 arbetsdagar */
+  db.teamReductions.push({ id: 'x', teamId: 't_infra', type: 'Frånvaro', percent: 15, from: '2026-09-15', to: '2026-09-22' });
+  const infra = E.create(db).teamReductionShare('t_infra', SEP);
   near(infra.share, (0.15 * 6) / 22);
 });
 
@@ -267,11 +268,13 @@ test('bara beslutat arbete belastar teamet, förslag redovisas för sig', () => 
     { id: 'a', teamId: 't_webb', type: 'maintenance', status: 'active', effort: 'monthly', hours: 100, from: '2026-01-01', to: '2026-12-31' },
     { id: 'b', teamId: 't_webb', type: 'development', status: 'planned', effort: 'monthly', hours: 50, from: '2026-01-01', to: '2026-12-31' },
     { id: 'c', teamId: 't_webb', type: 'development', status: 'proposed', effort: 'monthly', hours: 70, from: '2026-01-01', to: '2026-12-31' },
-    { id: 'd', teamId: 't_webb', type: 'training', status: 'done', effort: 'monthly', hours: 40, from: '2026-01-01', to: '2026-12-31' }
+    { id: 'd', teamId: 't_webb', type: 'maintenance', status: 'done', effort: 'monthly', hours: 40, from: '2026-01-01', to: '2026-09-30' }
   ];
   const e = E.create(db);
   const d = e.teamDemand('t_webb', OCT);
   near(d.hours, 150);
+  /* En klar epik räknas för den tid den pågick, så att historiken står kvar. */
+  near(e.teamDemand('t_webb', E.periodOf('2026-09-15', 'month')).hours, 190);
   near(d.proposed, 70);
   near(d.byType.maintenance, 100);
   near(d.byType.development, 50);
@@ -323,8 +326,62 @@ test('team som tas bort tar sina epiker med sig, initiativ lämnar epikerna kvar
   assert.ok(before > 0);
   Store.remove('initiatives', 'in_dora');
   assert.equal(Store.db.epics.filter((x) => x.initiativeId === 'in_dora').length, 0);
-  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 3);
+  assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 4);
   Store.remove('teams', 't_sakerhet');
   assert.equal(Store.db.epics.filter((x) => x.teamId === 't_sakerhet').length, 0);
+  Store.reset();
+});
+
+test('inget räknas två gånger: utbildning räknas först mot grundavdraget för kompetensutveckling', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const pool = e.trainingPool('t_kundportal', OCT);
+  /* 8 personer med 2 h kompetensutveckling i veckan, 22 arbetsdagar, efter allokering */
+  assert.ok(pool > 40 && pool < 90, 'pool ' + pool);
+  const d = e.teamDemand('t_kundportal', OCT);
+  const wcag = d.epics.find((x) => x.epic.name.startsWith('Utbildning i tillgänglighet'));
+  near(d.absorbed, Math.min(wcag.hours, pool));
+  near(wcag.load, wcag.hours - wcag.absorbed);
+  const raw = d.epics.filter((x) => x.counts).reduce((a, x) => a + x.hours, 0);
+  near(d.hours, raw - d.absorbed);
+  near(e.teamCapacity('t_kundportal', OCT).loaded, d.hours);
+
+  /* Utan grundavdrag som täcker utbildning belastar hela utbildningen teamet. */
+  db.overheadReductions.forEach((o) => { o.coversTraining = false; });
+  const d2 = E.create(db).teamDemand('t_kundportal', OCT);
+  near(d2.absorbed, 0);
+  near(d2.hours, raw);
+});
+
+test('inget räknas två gånger: avdrag är frånvaro, arbete som avdrag flaggas', () => {
+  assert.ok(E.isWorkReduction('Systembyte'));
+  assert.ok(E.isWorkReduction('Utbildning'));
+  assert.ok(E.isWorkReduction('Planerat underhåll'));
+  assert.ok(!E.isWorkReduction('Föräldraledighet'));
+  assert.ok(!E.isWorkReduction('Frånvaro'));
+  const db = Seed.build();
+  assert.equal(E.create(db).signals(OCT).filter((s) => s.kind === 'double').length, 0);
+  db.teamReductions.push({ id: 'x', teamId: 't_data', type: 'Systembyte', percent: 30, from: '2026-10-01', to: '2026-10-31', comment: '' });
+  const sig = E.create(db).signals(OCT).filter((s) => s.kind === 'double');
+  assert.equal(sig.length, 1);
+  assert.equal(sig[0].ref.id, 't_data');
+});
+
+test('sparad data: avdrag som är arbete ersätts av epiker, utan dubbletter', () => {
+  const Store = require('../js/store.js');
+  const old = Seed.build();
+  old.teamReductions.push(
+    { id: 'tr_a', teamId: 't_data', type: 'Systembyte', percent: 30, from: '2026-10-01', to: '2026-10-31', comment: 'Migrering till ny dataplattform' },
+    { id: 'tr_b', teamId: 't_test', type: 'Verktygsinförande', percent: 15, from: '2026-10-01', to: '2026-10-31', comment: 'Införande av nytt testverktyg' }
+  );
+  old.epics = old.epics.filter((ep) => ep.name !== 'Införande av nytt testverktyg');
+  old.overheadReductions.forEach((o) => { delete o.coversTraining; });
+  Store.importJSON(JSON.stringify(old));
+  const db = Store.db;
+  assert.equal(db.teamReductions.filter((r) => E.isWorkReduction(r.type)).length, 0);
+  assert.equal(db.epics.filter((ep) => ep.name === 'Införande av nytt testverktyg').length, 1);
+  /* Migreringen i Data & Analys täcks redan av en epik. Ingen ny epik läggs till. */
+  assert.equal(db.epics.filter((ep) => ep.teamId === 't_data' && /migrer/i.test(ep.name)).length, 1);
+  assert.equal(db.overheadReductions.find((o) => o.id === 'oh_kompetens').coversTraining, true);
   Store.reset();
 });

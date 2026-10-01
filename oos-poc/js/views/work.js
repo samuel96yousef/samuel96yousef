@@ -180,8 +180,11 @@
     }
 
     var months = Math.max(1, periodsIn(ep.from, ep.to, 60).length);
+    var mine = team ? e.teamDemand(team.id, p).epics.filter(function (x) { return x.epic.id === ep.id; })[0] : null;
     h += UI.facts([
-      { label: 'I ' + p.inText, value: U.fmtH(hrs), note: tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
+      { label: 'I ' + p.inText, value: U.fmtH(hrs), note: mine && mine.absorbed > 0.5
+        ? U.fmtH(mine.absorbed) + ' ryms i grundavdraget för kompetensutveckling, ' + U.fmtH(mine.load) + ' belastar teamet'
+        : tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
       { label: 'Ram', value: ep.effort === 'monthly' ? U.fmtNum(ep.hours) + ' h/mån' : U.fmtH(ep.hours), note: ep.effort === 'monthly' ? U.fmtH(frame) + ' under hela tiden' : 'Fördelas jämnt över tiden' },
       { label: 'Tid', value: U.plural(months, 'period', 'perioder'), note: monthSpan(ep) },
       tc ? { label: 'Teamets beläggning', value: U.fmtPct(tc.loadPct), note: 'I ' + p.inText + ', allt beslutat arbete', tone: loadTone(tc.loadPct) } : null
@@ -363,11 +366,15 @@
     d.epics.forEach(function (x) {
       var init = x.epic.initiativeId ? e.get('initiatives', x.epic.initiativeId) : null;
       rows += '<div class="commit' + (x.counts ? '' : ' is-proposal') + '">' + C.typeSwatch(x.epic.type) + '<div>' + C.epicRef(x.epic) +
-        '<div class="commit-sub">' + esc(C.EPIC_TYPE[x.epic.type] || '') + (init ? ' · ' + esc(init.name) : '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status]) + ', räknas inte') + '</div></div>' +
-        '<span class="commit-hours">' + (x.counts ? U.fmtH(x.hours) : '(' + U.fmtH(x.hours) + ')') + '</span>' + UI.iconBtn('edit', 'epic-edit', { id: x.epic.id }, 'Ändra ' + x.epic.name) + '</div>';
+        '<div class="commit-sub">' + esc(C.EPIC_TYPE[x.epic.type] || '') + (init ? ' · ' + esc(init.name) : '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status]) + ', räknas inte') +
+        (x.absorbed > 0.5 ? ' · ' + U.fmtH(x.hours) + ', varav ' + U.fmtH(x.absorbed) + ' i kompetensutvecklingen' : '') + '</div></div>' +
+        '<span class="commit-hours">' + (x.counts ? U.fmtH(x.load) : '(' + U.fmtH(x.hours) + ')') + '</span>' + UI.iconBtn('edit', 'epic-edit', { id: x.epic.id }, 'Ändra ' + x.epic.name) + '</div>';
     });
     if (!d.epics.length) rows += '<div class="empty">Inget arbete i perioden. Lägg till teamets förvaltning och de epiker teamet ska göra.</div>';
     h += workSplit(d.byType, tc.capacity, 'Kapacitet', rows);
+    if (d.absorbed > 0.5) {
+      h += '<p class="small muted">' + U.fmtH(d.absorbed) + ' utbildning ryms i grundavdraget för kompetensutveckling och belastar inte teamet. Det avdraget är redan draget från kapaciteten.</p>';
+    }
     if (d.proposed > 0 && tc.capacity) {
       var after = ((tc.loaded + d.proposed) / tc.capacity) * 100;
       h += '<p class="small' + (after > 100.5 ? ' crit-text' : ' muted') + '">Om förslagen beslutas blir beläggningen ' + U.fmtPct(after) + (after > 100.5 ? ', mer än teamet har.' : '.') + '</p>';

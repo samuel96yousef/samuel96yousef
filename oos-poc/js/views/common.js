@@ -89,9 +89,10 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * Jämför teamets beläggning utan epiken (eller med dess gamla värden) med beläggningen med den.
    * Ett förslag räknas som beslutat, så att man ser vad ett beslut skulle innebära.
    */
-  C.epicImpact = function (v, original) {
+  C.epicImpact = function (v, original, patch) {
     if (!v.teamId || !v.hours || !v.from || !v.to || v.from > v.to) return null;
-    var db = S.db;
+    /* patch: en ändring av datan som följer med beslutet, till exempel ett avdrag som tas bort. */
+    var db = patch ? patch(S.db) : S.db;
     var others = db.epics.filter(function (x) { return !original || x.id !== original.id; });
     var cand = Object.assign({}, original || {}, v, { id: original ? original.id : '_ny' });
     if (!OOSEngine.epicCounts(cand.status)) cand.status = 'planned';
@@ -148,6 +149,37 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       (inside > 0 ? '<span class="cbar-load" style="width:' + pct(inside) + '%"></span>' : '') +
       (free > 0.5 ? '<span class="cbar-free" style="width:' + pct(free) + '%"></span>' : '') +
       (over > 0.5 ? '<span class="cbar-over" style="width:' + pct(over) + '%"></span>' : '') + '</div>';
+  };
+
+  /*
+   * Gör om ett avdrag som egentligen är arbete till en epik. Timmarna blir avdragets andel av
+   * teamets kapacitet under avdragets dagar, räknat utan avdraget. Avdraget tas bort när epiken sparas.
+   */
+  C.reductionToEpic = function (r) {
+    var db = S.db;
+    function without(d) { return Object.assign({}, d, { teamReductions: d.teamReductions.filter(function (x) { return x.id !== r.id; }) }); }
+    var e2 = OOSEngine.create(without(db));
+    var hours = 0;
+    var p = OOSEngine.periodOf(r.from, 'month');
+    for (var i = 0; i < 36 && p.start <= r.to; i++) {
+      var days = OOSEngine.overlapWorkdays(r.from, r.to, p.start, p.end);
+      if (days && p.workdays) hours += (e2.teamCapacity(r.teamId, p).capacity * days) / p.workdays;
+      p = OOSEngine.nextPeriod(p);
+    }
+    hours = Math.max(1, Math.round((hours * (r.percent || 0)) / 100));
+    var t = r.type || '';
+    var type = /utbild|kurs/i.test(t) ? 'training' : /underhåll|förvalt|verktyg|uppgrader/i.test(t) ? 'maintenance' : /utred/i.test(t) ? 'investigation' : 'development';
+    F.epic(null, {
+      teamId: r.teamId, name: r.comment || t, type: type, effort: 'total', hours: hours, from: r.from, to: r.to,
+      status: r.to < U.todayISO() ? 'done' : 'planned',
+      description: 'Tidigare avdrag: ' + t + ' ' + U.fmtPct(r.percent) + '.'
+    }, {
+      title: 'Gör om avdraget till en epik',
+      intro: esc(t) + ' är arbete, inte frånvaro. Som epik belastar det teamet i stället för att minska kapaciteten, och avdraget tas bort när du sparar.',
+      patch: without,
+      savedText: 'Avdraget blev en epik.',
+      afterSave: function () { S.remove('teamReductions', r.id); }
+    });
   };
 
   C.relLabel = function (r) {
@@ -752,17 +784,18 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     var p = OOS.period();
     UI.openForm({
       title: isNew ? 'Lägg till avdrag' : 'Ändra avdrag',
-      intro: 'Ett särskilt avdrag minskar teamets kapacitet under en period, till exempel utbildning eller planerad frånvaro.',
+      intro: 'Ett avdrag är tid som inte finns, till exempel föräldraledighet eller långtidsfrånvaro. Arbete, som utbildning, systembyte eller underhåll, läggs som en epik. Annars räknas samma tid två gånger.',
       values: r || { teamId: teamId || '', percent: 10, from: p.start, to: p.end },
       fields: [
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams(), full: true },
-        { key: 'type', label: 'Avdragstyp', required: true, datalist: ['Utbildning', 'Frånvaro', 'Föräldraledighet', 'Systembyte', 'Planerat underhåll', 'Verktygsinförande'] },
+        { key: 'type', label: 'Avdragstyp', required: true, datalist: ['Frånvaro', 'Föräldraledighet', 'Sjukfrånvaro', 'Tjänstledighet', 'Vakans'] },
         { key: 'percent', label: 'Värde (%)', type: 'number', min: 0, max: 100, required: true },
         { key: 'from', label: 'Gäller från', type: 'date', required: true },
         { key: 'to', label: 'Gäller till', type: 'date', required: true },
         { key: 'comment', label: 'Orsak/kommentar', full: true }
       ],
       validate: function (v) {
+        if (OOSEngine.isWorkReduction(v.type)) return { type: 'Det här är arbete. Lägg det som en epik i stället, annars räknas tiden två gånger.' };
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
       },
       onSubmit: function (v) {
@@ -776,33 +809,39 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   };
 
   /* Epik: teamets arbete. Formuläret visar direkt vad epiken gör med teamets beläggning. */
-  F.epic = function (r, defaults) {
+  F.epic = function (r, defaults, opts) {
+    opts = opts || {};
     var isNew = !r;
     var p = OOS.period();
     UI.openForm({
-      title: isNew ? 'Lägg till epik' : 'Ändra ' + r.name,
-      intro: 'En epik är ett avgränsat eller löpande arbete som ett team gör. Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
+      title: opts.title || (isNew ? 'Lägg till epik' : 'Ändra ' + r.name),
+      intro: opts.intro || 'En epik är ett avgränsat eller löpande arbete som ett team gör. Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
       values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end }, defaults || {}),
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
         { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes },
         { key: 'initiativeId', label: 'Initiativ', type: 'select', placeholder: 'Inget initiativ', options: C.opts.initiatives(), help: 'Utvecklingsarbete bör höra till ett beslutat initiativ.' },
-        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: 'Förslag och klara epiker belastar inte teamet.' },
+        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: 'Förslag belastar inte teamet. Klara epiker räknas för den tid de pågick.' },
         { key: 'effort', label: 'Ram', type: 'select', required: true, options: C.opts.effort },
         { key: 'hours', label: 'Timmar', type: 'number', min: 1, max: 100000, required: true },
         { key: 'from', label: 'Från', type: 'date', required: true },
         { key: 'to', label: 'Till', type: 'date', required: true },
         { key: 'description', label: 'Beskrivning', type: 'textarea' }
       ],
-      preview: function (v) { return C.impactHtml(C.epicImpact(v, r)); },
+      preview: function (v) { return C.impactHtml(C.epicImpact(v, r, opts.patch)); },
       validate: function (v) {
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
       },
       onSubmit: function (v) {
         v.initiativeId = v.initiativeId || null;
+        /* En epik som blir klar i förtid slutar i dag. Annars skulle den belasta teamet framåt. */
+        var today = U.todayISO();
+        var trimmed = v.status === 'done' && v.to > today && v.from <= today;
+        if (trimmed) v.to = today;
         var rec = isNew ? S.insert('epics', v) : S.update('epics', r.id, v);
-        UI.toast(isNew ? 'Epiken lades till.' : 'Epiken sparades.');
+        if (opts.afterSave) opts.afterSave(rec);
+        UI.toast((opts.savedText || (isNew ? 'Epiken lades till.' : 'Epiken sparades.')) + (trimmed ? ' Slutdatum sattes till i dag eftersom den är klar.' : ''));
         if (isNew) OOS.go('epics:' + rec.id);
         else OOS.refresh();
       },
@@ -846,11 +885,12 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     UI.openForm({
       title: isNew ? 'Lägg till grundavdrag' : 'Ändra ' + r.name,
       intro: 'Grundavdrag gäller alla arbetare och skalas mot deras grundkapacitet.',
-      values: r || { hoursPerWeek: 1, appliesToAI: false },
+      values: r || { hoursPerWeek: 1, appliesToAI: false, coversTraining: false },
       fields: [
         { key: 'name', label: 'Avdragstyp', required: true, full: true },
         { key: 'hoursPerWeek', label: 'Värde (h/vecka vid heltid)', type: 'number', min: 0, max: 40, step: 0.5, required: true },
-        { key: 'appliesToAI', label: 'Gäller även AI-arbetare', type: 'checkbox' }
+        { key: 'appliesToAI', label: 'Gäller även AI-arbetare', type: 'checkbox' },
+        { key: 'coversTraining', label: 'Tiden används till utbildning', type: 'checkbox', full: true, help: 'Utbildningsepiker räknas först mot det här avdraget. Bara det som går utöver belastar teamet, så att samma tid inte räknas två gånger.' }
       ],
       onSubmit: function (v) {
         if (isNew) S.insert('overheadReductions', v);

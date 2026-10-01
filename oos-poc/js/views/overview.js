@@ -177,7 +177,7 @@
       '<div class="card-sub">Hur appen räknar ut hur mycket av kapaciteten som är planerad.</div></div>' +
       UI.seg('load-source', [{ key: 'epics', label: 'Ur epiker' }, { key: 'manual', label: 'Manuellt per teammedlem' }], src) + '</div>' +
       '<p class="aside-text">' + (src === 'epics'
-        ? 'Belastningen räknas fram ur teamens beslutade epiker: planerade och pågående epikers timmar i perioden delat med teamets kapacitet. Förslag och klara epiker räknas inte.'
+        ? 'Belastningen räknas fram ur teamens beslutade epiker: planerade och pågående epikers timmar i perioden delat med teamets kapacitet. Förslag räknas inte. Klara epiker räknas för den tid de pågick. Utbildning räknas först mot grundavdraget för kompetensutveckling, så att samma tid inte räknas två gånger.'
         : 'Belastningen anges som en procentsats på varje medlemskap i teamet. Epikerna visas men påverkar inte beläggningen.') + '</p></section>';
 
     var log = S.db.changeLog || [];

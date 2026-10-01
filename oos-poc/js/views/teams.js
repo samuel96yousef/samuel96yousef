@@ -169,8 +169,10 @@
     var rl = '<div class="aside-list">';
     reds.forEach(function (r) {
       var state = reductionState(r, ctx.period);
-      rl += '<div class="list-item' + (state === 'Avslutat' ? ' is-past' : '') + '"><div class="grow">' + esc(r.type) + ' ' + U.fmtPct(r.percent) +
-        '<div class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + ' · ' + state + '</div>' + (r.comment ? '<div class="muted small">' + esc(r.comment) + '</div>' : '') + '</div>' +
+      var work = OOSEngine.isWorkReduction(r.type);
+      rl += '<div class="list-item' + (state === 'Avslutat' ? ' is-past' : '') + '"><div class="grow">' + esc(r.type) + ' ' + U.fmtPct(r.percent) + (work ? ' ' + UI.badge('Arbete', 'warn') : '') +
+        '<div class="muted small">' + U.fmtDate(r.from) + ' – ' + U.fmtDate(r.to) + ' · ' + state + '</div>' + (r.comment ? '<div class="muted small">' + esc(r.comment) + '</div>' : '') +
+        (work ? '<button type="button" class="link-btn small" data-action="reduction-to-epic" data-id="' + esc(r.id) + '">Gör om till epik</button>' : '') + '</div>' +
         UI.iconBtn('edit', 'reduction-edit', { id: r.id }, 'Ändra avdrag') + '</div>';
     });
     if (!reds.length) rl += '<span class="muted small">Inga särskilda avdrag.</span>';
@@ -200,4 +202,5 @@
   };
   A['reduction-add'] = function (el) { C.forms.teamReduction(null, el.dataset.team); };
   A['reduction-edit'] = function (el) { C.forms.teamReduction(S.engine().get('teamReductions', el.dataset.id)); };
+  A['reduction-to-epic'] = function (el) { var r = S.engine().get('teamReductions', el.dataset.id); if (r) C.reductionToEpic(r); };
 })();
