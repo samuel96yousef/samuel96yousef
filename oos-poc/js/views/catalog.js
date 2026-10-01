@@ -36,7 +36,7 @@
       actions: UI.btn('Lägg till kompetens', 'comp-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal kompetenser', rows.length, C.categories().length + ' kategorier') +
+      UI.kpi('Totalt antal kompetenser', rows.length, U.plural(C.categories().length, 'kategori', 'kategorier')) +
       UI.kpi('Arbetare med kompetens', withComp) +
       UI.kpi('Bärs av en person', risky, 'Bara en person på nivå 3–4') +
       '</div>';

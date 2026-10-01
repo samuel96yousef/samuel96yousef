@@ -42,7 +42,7 @@
       actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
-      UI.kpi('Totalt antal arbetare', rows.length, ai + ' AI, ' + rows.filter(function (r) { return r.w.consultant; }).length + ' konsulter') +
+      UI.kpi('Totalt antal arbetare', rows.length, ai + ' AI, ' + U.plural(rows.filter(function (r) { return r.w.consultant; }).length, 'konsult', 'konsulter')) +
       UI.kpi('Arbetare i team', inTeams) +
       UI.kpi('Arbetare med domänroll', inClouds, 'Domänmoln och nyckelroller') +
       UI.kpi('Överallokerade', over, over ? 'Mer än 100 % av tillgänglig tid' : 'Ingen över 100 %') +

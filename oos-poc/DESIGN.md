@@ -37,6 +37,22 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
+## Text
+
+Texten ska få plats och läsas lätt, oavsett hur lång den är eller hur smal ytan är.
+
+| Regel | Hur |
+|---|---|
+| Storlek efter yta | Sidrubrik, inledning och stora tal skalar med den yta de står i (container-enheter), inte med fönstret. Ett nyckeltal i en smal ruta blir mindre än samma tal i en bred. |
+| Tal som inte får plats | Tal med hårt mellanslag, som "152 380 kr", krymps tills de får plats, ned till 60 % av normal storlek. |
+| Långa sammansatta ord | Etiketter och rubriker får mjuka bindestreck vid vanliga leder: "verksamhets-domän-ansvarig". Bindestrecket syns bara om ordet behöver brytas. Knappar, flikar och data (namn i tabeller) avstavas inte. |
+| Radbrytning | Rubriker bryts jämnt (text-wrap: balance). Stycken undviker ett ensamt ord på sista raden (text-wrap: pretty). Kolumnrubriker får bryta mellan ord. |
+| Metaraden | Punkterna mellan delarna syns aldrig först på en rad. |
+| Ord efter antal | "1 medlem", "3 medlemmar". Använd `OOSUtil.plural`. |
+| Perioder | "oktober 2026" och "Q4 2026". Inte "2026-Q4". |
+
+Kontroll: inget element med text får bli bredare än sin ruta, på någon sida, i någon bredd från 320 till 1920 px, även med mycket långa namn.
+
 ## Detaljsidor
 
 Alla detaljsidor har samma ordning, så att man vet var man ska titta:

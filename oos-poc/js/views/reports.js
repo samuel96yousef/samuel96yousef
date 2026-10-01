@@ -123,7 +123,7 @@
       var collapsed = g.key in r.collapsed ? r.collapsed[g.key] : narrow;
       var toggle = '<button type="button" class="btn-icon" id="rt-' + gi + '" data-action="report-toggle" data-key="' + esc(g.key) + '" aria-expanded="' + !collapsed + '" aria-label="' + (collapsed ? 'Visa' : 'Dölj') + ' kompetenser för ' + esc(g.name) + '">' + UI.icon(collapsed ? 'chevronRight' : 'chevronDown') + '</button>';
       h += '<tr class="group-row"><td><div class="group-name">' + toggle +
-        '<div><strong>' + esc(g.name) + '</strong><div class="muted small">' + g.total.peopleCount + ' personer · ' + g.rows.length + ' kompetenser</div></div></div></td>' + numCells(g.total) + '</tr>';
+        '<div><strong>' + esc(g.name) + '</strong><div class="muted small">' + U.plural(g.total.peopleCount, 'person', 'personer') + ' · ' + U.plural(g.rows.length, 'kompetens', 'kompetenser') + '</div></div></div></td>' + numCells(g.total) + '</tr>';
       if (!collapsed) {
         g.rows.forEach(function (x) {
           h += '<tr class="child"><td>' + esc(x.name) + '</td>' + numCells(x) + '</tr>';

@@ -164,12 +164,67 @@ var OOSLayout = (function () {
     if (t && t.classList && t.classList.contains('tabs')) tabEdges(t);
   }, true);
 
+  /* ---------- Text ---------- */
+
+  /*
+   * Stora tal och korta rubriker som inte kan radbrytas (till exempel "152 380 kr" med hårt
+   * mellanslag) krymps tills de får plats, men aldrig under 60 % av sin vanliga storlek.
+   */
+  var FIT = '.kpi-value, .big, .facts-mini strong, .period-now, .detail-title, .page-title';
+
+  function fitText(scope) {
+    scope.querySelectorAll(FIT).forEach(function (el) {
+      el.style.fontSize = '';
+      if (el.scrollWidth <= el.clientWidth + 1 || !el.clientWidth) return;
+      var base = parseFloat(getComputedStyle(el).fontSize);
+      var size = Math.max(base * 0.6, Math.floor((base * el.clientWidth) / el.scrollWidth));
+      el.style.fontSize = size + 'px';
+    });
+  }
+
+  /*
+   * Mjuka bindestreck i långa sammansatta ord, vid de leder som är vanliga i OOS.
+   * Webbläsaren visar bara bindestrecket om ordet behöver brytas där. Webbläsarnas egen
+   * avstavning saknar ofta svenska, därför görs det här.
+   */
+  var STEMS = /^(verksamhets|leverans|kompetens|kapacitets|belastnings|beläggnings|allokerings|utvecklings|rapporterings|förändrings|utbetalnings|organisations|notifikations|integrations|automations|säkerhets|arbetsgivar|medarbetar|pensions|plattforms|infrastruktur|kunskaps|ansvars|produkt|analys|arbets|domän|nyckel|standard|grund|system|avtals|kund)/i;
+  var SHY = '\u00ad';
+  /* Bara etiketter och rubriker. Knappar och flikar lämnas orörda, de bryts aldrig och läses upp. */
+  var HYPHENATE = '.kpi-label, .tbl th, .kv dt, .label, .aside-title, .eyebrow, .tier-head, .card-title, .page-title, .detail-title';
+
+  function softHyphens(word) {
+    if (word.length < 12 || word.indexOf(SHY) >= 0) return word;
+    var out = '';
+    var rest = word;
+    var m;
+    while ((m = STEMS.exec(rest)) && rest.length - m[1].length >= 4) {
+      out += rest.slice(0, m[1].length) + SHY;
+      rest = rest.slice(m[1].length);
+    }
+    return out + rest;
+  }
+
+  function hyphenate(scope) {
+    scope.querySelectorAll(HYPHENATE).forEach(function (el) {
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      var node;
+      while ((node = walker.nextNode())) {
+        var text = node.nodeValue;
+        if (text.length < 12 || /\d/.test(text)) continue;
+        var next = text.replace(/[A-Za-zÅÄÖåäöÉé]{12,}/g, softHyphens);
+        if (next !== text) node.nodeValue = next;
+      }
+    });
+  }
+
   /* ---------- Samlat ---------- */
 
   /* Anpassar allt i scope. reveal = true efter en omritning, så att vald flik rullas fram. */
   function fit(scope, reveal) {
+    if (reveal) hyphenate(scope);
     scope.querySelectorAll('table.tbl').forEach(fitTable);
     fitTabs(scope, reveal);
+    fitText(scope);
     markScrollable(scope);
   }
 
@@ -194,5 +249,5 @@ var OOSLayout = (function () {
     else window.addEventListener('resize', react);
   }
 
-  return { fit: fit, watch: watch, STACK_BELOW: STACK_BELOW };
+  return { fit: fit, watch: watch, hyphenate: hyphenate, STACK_BELOW: STACK_BELOW, _softHyphens: softHyphens };
 })();

@@ -59,14 +59,14 @@ var OOSEngine = (function () {
       var q = Math.floor(m / 3);
       start = U.toISO(new Date(Date.UTC(y, q * 3, 1)));
       end = lastDayOfMonth(y, q * 3 + 2);
-      label = y + '-Q' + (q + 1);
+      label = 'Q' + (q + 1) + ' ' + y;
     } else {
       start = U.toISO(new Date(Date.UTC(y, m, 1)));
       end = lastDayOfMonth(y, m);
       label = U.MONTHS_LONG[m] + ' ' + y;
       label = label.charAt(0).toUpperCase() + label.slice(1);
     }
-    /* inText används mitt i meningar: "i september 2026", "i 2026-Q3". */
+    /* inText används mitt i meningar: "i september 2026", "i Q3 2026". */
     var inText = type === 'quarter' ? label : label.toLowerCase();
     return { type: type || 'month', start: start, end: end, label: label, inText: inText, workdays: workdays(start, end) };
   }

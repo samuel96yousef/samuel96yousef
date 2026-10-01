@@ -408,7 +408,7 @@
 
     h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
       '<div class="card-sub">' + (sel
-        ? 'Visar det som hör till ' + esc(sel.name) + ': ' + (focus.nodes.size - 1) + ' delar. Primära kopplingar följs hela vägen, ' + (asMap ? 'streckade stödjande kopplingar visas men följs inte vidare.' : 'stödjande kopplingar visas men följs inte vidare.')
+        ? 'Visar det som hör till ' + esc(sel.name) + ': ' + U.plural(focus.nodes.size - 1, 'del', 'delar') + '. Primära kopplingar följs hela vägen, ' + (asMap ? 'streckade stödjande kopplingar visas men följs inte vidare.' : 'stödjande kopplingar visas men följs inte vidare.')
         : asMap
           ? 'Välj en ruta för att samla det som hör till den. Heldragen linje är primär koppling eller ansvar, streckad är stödjande. En gul punkt betyder en lucka.'
           : 'Välj en del för att se det som hör till den. En gul punkt betyder en lucka. Bredda fönstret för att se kartan med linjer.') + '</div></div>' +
@@ -469,7 +469,7 @@
         });
         h += '</div></div>';
       }
-      h += '<p class="muted small">' + e.teamMembers(sel.refId).length + ' medlemmar.</p>';
+      h += '<p class="muted small">' + U.plural(e.teamMembers(sel.refId).length, 'medlem', 'medlemmar') + '.</p>';
     }
     return h || '<p class="muted">Inga kopplingar.</p>';
   }

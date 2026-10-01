@@ -34,7 +34,7 @@
     h += '<p class="lede">' + lede + '</p>';
 
     h += '<div class="kpis">' +
-      UI.kpi('Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + itCount + ' IT-domäner') +
+      UI.kpi('Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + U.plural(itCount, 'IT-domän', 'IT-domäner')) +
       UI.kpi('Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
       UI.kpi('Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
       UI.kpi(ctx.next.label, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +

@@ -91,7 +91,7 @@
 
     var diff = nx.capacity - tc.capacity;
     h += UI.facts([
-      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: tc.headcount + ' medlemmar, efter avdrag' },
+      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: U.plural(tc.headcount, 'medlem', 'medlemmar') + ', efter avdrag' },
       { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + ' är planerat', tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
       { label: 'Ledigt', value: U.fmtH(tc.free), note: 'Kan planeras i ' + ctx.period.inText },
       { label: ctx.next.label, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }

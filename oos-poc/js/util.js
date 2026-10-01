@@ -119,8 +119,14 @@ var OOSUtil = (function () {
     return String(a.name).localeCompare(String(b.name), 'sv');
   }
 
+  /* "1 medlem", "3 medlemmar". Talet formateras med mellanrum för tusental. */
+  function plural(n, one, many) {
+    return fmtNum(n) + '\u00a0' + (Math.round(n) === 1 ? one : many);
+  }
+
   return {
     esc: esc,
+    plural: plural,
     uid: uid,
     round: round,
     fmtNum: fmtNum,

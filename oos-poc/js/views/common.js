@@ -704,7 +704,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     if (!rec) return;
     var msg = '';
     if (coll === 'workers') {
-      msg = rec.name + ' tas bort ur ' + e.workerTeams(id).length + ' team, ' + e.workerDomainRoles(id).length + ' domänroller och ' + e.workerCompetences(id).length + ' kompetenser.';
+      msg = rec.name + ' tas bort ur ' + e.workerTeams(id).length + ' team, ' + U.plural(e.workerDomainRoles(id).length, 'domänroll', 'domänroller') + ' och ' + U.plural(e.workerCompetences(id).length, 'kompetens', 'kompetenser') + '.';
     } else if (coll === 'teams') {
       msg = rec.name + ' tas bort med ' + e.teamMembers(id).length + ' medlemskap och ' + e.teamSystems(id).length + ' systemkopplingar. Arbetarna finns kvar.';
     } else if (coll === 'domains') {

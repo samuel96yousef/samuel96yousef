@@ -20,7 +20,7 @@ test('arbetsdagar räknas utan helger', () => {
 test('perioder för månad och kvartal', () => {
   assert.deepEqual([SEP.start, SEP.end, SEP.label], ['2026-09-01', '2026-09-30', 'September 2026']);
   const q = E.periodOf('2026-08-10', 'quarter');
-  assert.deepEqual([q.start, q.end, q.label], ['2026-07-01', '2026-09-30', '2026-Q3']);
+  assert.deepEqual([q.start, q.end, q.label], ['2026-07-01', '2026-09-30', 'Q3 2026']);
   assert.equal(E.nextPeriod(SEP).start, '2026-10-01');
   assert.equal(E.nextPeriod(E.periodOf('2026-12-03', 'month')).start, '2027-01-01');
 });
@@ -145,7 +145,7 @@ test('borttagning av team tar bort dess kopplingar men inte arbetarna', () => {
 
 test('kvartal visas med versaler även mitt i en mening', () => {
   const q = E.periodOf('2026-08-10', 'quarter');
-  assert.equal(q.inText, '2026-Q3');
+  assert.equal(q.inText, 'Q3 2026');
   assert.equal(SEP.inText, 'september 2026');
 });
 

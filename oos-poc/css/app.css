@@ -343,24 +343,37 @@ th.num {
   flex: 1 1 420px;
 }
 
-/* Kort rad om vad sidan handlar om, under rubriken: roll, typ, var den hör hemma. */
+/*
+ * Kort rad om vad sidan handlar om, under rubriken: roll, typ, var den hör hemma.
+ * Varje del börjar med en punkt. Raden är förskjuten och klippt till vänster, så punkten
+ * syns aldrig först på en rad, hur raden än bryts.
+ */
 .page-meta {
-  margin: 0;
+  margin: 0 0 0 -20px;
   color: var(--fg-2);
   font-size: 15px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 0;
+  row-gap: 2px;
+  overflow-x: clip;
 }
 
-.page-meta > span + span::before {
+.page-meta > span {
+  display: flex;
+  min-width: 0;
+}
+
+.page-meta > span::before {
   content: '·';
-  margin: 0 8px;
+  flex: none;
+  width: 20px;
+  text-align: center;
   color: var(--fg-3);
 }
 
 .page-title {
   font-size: clamp(26px, 1.4vw + 16px, 32px);
+  font-size: clamp(26px, 1.6cqi + 14px, 34px);
   line-height: 1.12;
   font-weight: 650;
   letter-spacing: -0.025em;
@@ -390,6 +403,7 @@ th.num {
 
 .lede {
   font-size: clamp(19px, 0.6vw + 14px, 22px);
+  font-size: clamp(18px, 0.8cqi + 12px, 22px);
   line-height: 1.45;
   letter-spacing: -0.015em;
   max-width: 44ch;
@@ -618,6 +632,7 @@ th.num {
 
 .kpi-value {
   font-size: 30px;
+  font-size: clamp(22px, 12cqi + 4px, 30px);
   font-weight: 600;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -866,6 +881,7 @@ table.tbl {
   display: block;
   min-width: 0;
   text-align: right;
+  overflow-wrap: break-word;
 }
 
 .tbl.stacked td > .cv:has(.bar) {
@@ -2753,6 +2769,53 @@ table.tbl {
   }
 }
 
+/* ---------- Text som anpassar sig ----------
+ *
+ * Rubriker och stora tal skalar med ytan de står i (cqi = procent av containerns bredd),
+ * inte med fönstret. Ett tal som ändå inte får plats krymps i js/layout.js.
+ * Rubriker bryts jämnt och stycken undviker ensamma ord på sista raden.
+ * Långa sammansatta ord får mjuka bindestreck i js/layout.js och bryts där de hör ihop.
+ */
+.kpi,
+.kpi-item {
+  container-type: inline-size;
+}
+
+.kpi-value,
+.big,
+.facts-mini strong {
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+.card-title,
+.detail-title,
+.kpi-label,
+.aside-title,
+.tier-head,
+.tbl th {
+  text-wrap: balance;
+}
+
+p,
+.page-sub,
+.card-sub,
+.kpi-note,
+.note,
+.commit-sub {
+  text-wrap: pretty;
+}
+
+/* Kolumnrubriker får bryta mellan ord. Då får fler kolumner plats innan några måste döljas. */
+.tbl th {
+  white-space: normal;
+}
+
+.tbl th.actions {
+  white-space: nowrap;
+}
+
 /* ---------- Detaljsidor ----------
  *
  * Samma mönster för arbetare, team, domäner och system:
@@ -2835,6 +2898,7 @@ table.tbl {
 
 .detail-title {
   font-size: 22px;
+  font-size: clamp(19px, 1cqi + 12px, 24px);
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -3136,9 +3200,6 @@ table.tbl {
   .hbar-track {
     grid-column: 1 / -1;
     grid-row: 2;
-  }
-  .kpi-value {
-    font-size: 26px;
   }
   .table-tools .row {
     flex: 1 1 100%;
