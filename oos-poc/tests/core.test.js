@@ -217,3 +217,31 @@ test('val i kopplingskartan följer primära kopplingar och stannar vid stödjan
   assert.ok(sys.nodes.has('team:t_kundportal'));
   assert.ok(!sys.nodes.has('dd:dd_km'));
 });
+
+test('sökning: alla ord i valfri ordning, utan hänsyn till versaler och å, ä, ö', () => {
+  const U = require('../js/util.js');
+  const m = U.matcher('PORTAL kund');
+  assert.ok(m('Kundportal Team'));
+  assert.ok(!m('Kundservice'));
+  assert.deepEqual(m.terms, ['portal', 'kund']);
+  assert.ok(U.matcher('doman')('Verksamhetsdomän'));
+  assert.ok(U.matcher('domän')('Verksamhetsdoman'));
+  assert.ok(U.matcher('')('vad som helst'));
+});
+
+test('sökning: tal hittas med och utan mellanslag för tusental', () => {
+  const U = require('../js/util.js');
+  assert.ok(U.matcher('1042')('1 042 h'));
+  assert.ok(U.matcher('1 042')('1042 h'));
+  assert.ok(U.matcher('−22')('−22 h'));
+  assert.ok(!U.matcher('1042')('104 2'));
+});
+
+test('sökning: markering behåller textens längd och synlig text tas ur HTML', () => {
+  const U = require('../js/util.js');
+  const s = 'Åsa Öberg, Kundtjänst';
+  assert.equal(U.searchNorm(s).length, s.length);
+  assert.equal(U.textOf('<span data-tip="dold">Data &amp; Analys</span><button aria-label="Ändra"></button>').trim(), 'Data & Analys');
+  assert.equal(U.plural(1, 'medlem', 'medlemmar'), '1 medlem');
+  assert.equal(U.plural(3, 'medlem', 'medlemmar'), '3 medlemmar');
+});

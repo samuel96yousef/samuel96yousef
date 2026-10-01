@@ -28,6 +28,9 @@
     { items: [{ page: 'settings', label: 'Inställningar' }] }
   ];
 
+  OOS.NAV = NAV;
+  var IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+
   var PAGES = {};
   NAV.forEach(function (g) { g.items.forEach(function (i) { PAGES[i.page] = i; }); });
 
@@ -55,6 +58,7 @@
     var nav = document.getElementById('nav');
     var p = OOS.period();
     var h = '<div class="brand"><div class="brand-name">Fabriken</div><div class="brand-sub">Organisationens operativsystem</div></div>';
+    h += '<button type="button" class="nav-search" data-action="global-search" aria-keyshortcuts="Control+K Meta+K">' + UI.icon('search') + '<span>Sök</span><kbd>' + (IS_MAC ? '⌘K' : 'Ctrl K') + '</kbd></button>';
     NAV.forEach(function (g) {
       h += '<div class="nav-group">' + (g.label ? '<div class="nav-label">' + esc(g.label) + '</div>' : '');
       g.items.forEach(function (i) {
@@ -220,6 +224,16 @@
         render();
         return;
       }
+      case 'tbl-clear': {
+        var tq = UI.tstate(ds.table);
+        tq.q = '';
+        tq.page = 1;
+        OOS.motion('quiet');
+        render();
+        var box = document.getElementById('q-' + ds.table);
+        if (box) box.focus();
+        return;
+      }
       case 'tbl-page':
         UI.tstate(ds.table).page = Number(ds.page);
         OOS.motion('quiet');
@@ -237,6 +251,10 @@
         return;
       case 'modal-delete':
         UI.modalDelete();
+        return;
+      case 'global-search':
+        if (st.navOpen) { st.navOpen = false; renderNav(); }
+        OOS.openSearch();
         return;
       case 'nav-toggle':
         st.navOpen = !st.navOpen;
@@ -268,6 +286,29 @@
   });
 
   document.addEventListener('keydown', function (ev) {
+    /* Global sökning: Ctrl+K eller ⌘K var som helst, / när man inte skriver i ett fält. */
+    var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName) || ev.target.isContentEditable;
+    if ((ev.key === 'k' || ev.key === 'K') && (ev.ctrlKey || ev.metaKey) && !ev.altKey) {
+      ev.preventDefault();
+      if (st.navOpen) { st.navOpen = false; renderNav(); }
+      OOS.openSearch();
+      return;
+    }
+    if (ev.key === '/' && !typing && !UI.modalOpen() && !ev.ctrlKey && !ev.metaKey) {
+      ev.preventDefault();
+      OOS.openSearch();
+      return;
+    }
+    /* Esc i ett sökfält tömmer det först. Nästa Esc gör det vanliga. */
+    if (ev.key === 'Escape' && ev.target.getAttribute && ev.target.getAttribute('data-input') === 'tbl-search' && ev.target.value) {
+      ev.preventDefault();
+      var tq = UI.tstate(ev.target.dataset.table);
+      tq.q = '';
+      tq.page = 1;
+      OOS.motion('quiet');
+      render();
+      return;
+    }
     if (ev.key === 'Escape') {
       if (UI.modalOpen()) UI.closeModal();
       else if (st.navOpen) { st.navOpen = false; renderNav(); }

@@ -6,6 +6,8 @@ All data är påhittad demodata för organisationen "Nordpension".
 
 Utseendet följer designfilosofin *Lugn yta, sann bild*. Se [DESIGN.md](DESIGN.md). Rörelsen bygger på [anime.js](https://animejs.com) (MIT), som ligger med i `js/vendor/` så att POC:n fungerar utan nätverk.
 
+Tryck Ctrl+K (⌘K på Mac) eller / för att söka efter vad som helst i appen. Tabellernas sökfält söker i alla kolumner.
+
 Layouten anpassar sig efter fönstret, från mobil till bred skärm. Tabeller visas som kort på smala skärmar och kopplingskartan som nivåer. Se avsnittet om layout i [DESIGN.md](DESIGN.md).
 
 ## Kom igång
@@ -106,7 +108,8 @@ js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
 js/select.js          rullistor och förslagslistor som ersätter webbläsarens
 js/motion.js          rörelse vid sidbyte, ändrad data och i kopplingskartan
-js/layout.js          anpassar tabeller och flikar efter den yta som finns
+js/layout.js          anpassar tabeller, flikar och text efter den yta som finns, markerar sökträffar
+js/views/search.js    global sökning (Ctrl+K) över arbetare, team, domäner, system och kompetenser
 js/vendor/            anime.js 4.5.0 (MIT), animationsbiblioteket som motion.js bygger på
 js/views/*.js         vyerna (insights.js: KPI:er, mätvärden och kopplingar)
 js/app.js             navigation och händelser

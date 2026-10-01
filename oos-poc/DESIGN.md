@@ -41,6 +41,21 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Sidomeny | Ljusgrå, bara text. Samma ton som operativsystemens egna appar. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
+## Sökning
+
+Samma sökregler gäller överallt: i tabellerna, i den globala sökningen och i rullistorna (`OOSUtil.matcher`).
+
+| Regel | Exempel |
+|---|---|
+| Alla ord måste finnas, i valfri ordning och i vilket fält som helst | "konsult kundportal" hittar konsulter i Kundportal Team |
+| Versaler, å, ä och ö spelar ingen roll | "doman" hittar "Verksamhetsdomän" |
+| Tal hittas med och utan mellanslag | "2594" hittar "2 594 h" |
+| Tabeller söker i allt som står i raden | Även kolumner som är dolda på smal skärm, och det vyn lägger till, till exempel alla kompetenser för en arbetare |
+| Träffarna markeras | Gul markering i tabellen och i sökresultatet, det enda stället där gult inte betyder avvikelse |
+| Antal träffar visas, och sökningen går att rensa | "3 träffar bland 20 system · Rensa". Esc tömmer sökfältet. |
+
+**Global sökning** öppnas med Ctrl+K (⌘K på Mac), med / när man inte skriver i ett fält, med Sök i menyn eller med förstoringsglaset i toppfältet på mobil. Den hittar sidor, arbetare, team, leveransdomäner, verksamhets- och IT-domäner, system och kompetenser. Träffar i namnet rankas före träffar i beskrivningar och kopplingar, och gruppen med den bästa träffen visas först. Piltangenterna väljer och Enter öppnar.
+
 ## Text
 
 Texten ska få plats och läsas lätt, oavsett hur lång den är eller hur smal ytan är.

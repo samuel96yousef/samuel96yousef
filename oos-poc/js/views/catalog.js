@@ -47,7 +47,7 @@
       h += UI.table({
         id: 'tbl-comp',
         rows: rows,
-        search: { placeholder: 'Sök kompetens …', text: function (r) { return r.c.name + ' ' + r.c.category + ' ' + (r.c.description || ''); } },
+        search: { placeholder: 'Sök kompetens, kategori …', text: function (r) { return [r.c.category, r.c.description, r.c.details].join(' '); } },
         rowGo: function (r) { return 'competences:' + r.id; },
         selectedId: selected ? selected.id : null,
         defaultSort: 'name',
@@ -153,7 +153,15 @@
       id: 'tbl-systems',
       rows: rows,
       title: 'System',
-      search: { placeholder: 'Sök system …', text: function (r) { return r.s.name + ' ' + r.s.kind + ' ' + (r.owner ? r.owner.name : '') + ' ' + (r.it ? r.it.name : ''); } },
+      /* Utöver kolumnerna: alla kopplade team och IT-domäner. */
+      search: {
+        placeholder: 'Sök system, typ, team, status …',
+        text: function (r) {
+          return e.systemTeams(r.id).map(function (x) { return x.team.name; })
+            .concat(e.systemItDomains(r.id).map(function (x) { return x.domain.name; }))
+            .join(' ');
+        }
+      },
       rowGo: function (r) { return 'systems:' + r.id; },
       selectedId: selected ? selected.id : null,
       defaultSort: 'name',

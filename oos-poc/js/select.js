@@ -168,22 +168,24 @@ var OOSSelect = (function () {
 
   function query() {
     if (!cur) return '';
-    if (cur.search) return cur.search.value.trim().toLowerCase();
-    if (cur.mode === 'suggest') return cur.filter ? cur.input.value.trim().toLowerCase() : '';
+    if (cur.search) return cur.search.value.trim();
+    if (cur.mode === 'suggest') return cur.filter ? cur.input.value.trim() : '';
     return '';
   }
 
   function render() {
     if (!cur) return;
     var q = query();
+    /* Samma sökregler som i tabellerna: flera ord i valfri ordning, utan hänsyn till versaler och å, ä, ö. */
+    var match = OOSUtil.matcher(q);
+    var qNorm = OOSUtil.searchNorm(q, true);
     var selected = cur.mode === 'select' ? cur.select.value : cur.input.value;
     cur.visible = [];
     var h = '';
     var group = null;
     cur.items.forEach(function (it, i) {
-      var hay = (it.label + ' ' + it.sub + ' ' + it.group).toLowerCase();
-      if (q && hay.indexOf(q) < 0) return;
-      if (cur.mode === 'suggest' && q && it.label.toLowerCase() === q) return;
+      if (q && !match(it.label + ' ' + it.sub + ' ' + it.group)) return;
+      if (cur.mode === 'suggest' && q && OOSUtil.searchNorm(it.label, true) === qNorm) return;
       if (it.group !== group) {
         group = it.group;
         if (group) h += '<div class="sel-group" role="presentation">' + esc(group) + '</div>';

@@ -217,11 +217,65 @@ var OOSLayout = (function () {
     });
   }
 
+  /* ---------- Sökträffar ---------- */
+
+  /*
+   * Markerar sökorden i en tabell som är filtrerad (data-q), så att det syns varför raden
+   * kom med. Bara i textnoder, inte i knappar eller dold text.
+   */
+  function highlight(scope) {
+    scope.querySelectorAll('table[data-q]').forEach(function (table) {
+      var terms = OOSUtil.matcher(table.getAttribute('data-q')).terms;
+      if (!terms.length) return;
+      Array.prototype.forEach.call(table.tBodies, function (tb) {
+        var walker = document.createTreeWalker(tb, NodeFilter.SHOW_TEXT, {
+          acceptNode: function (n) {
+            return n.parentNode.closest('button, .sr-only, svg, mark') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+          }
+        });
+        var nodes = [];
+        var n;
+        while ((n = walker.nextNode())) nodes.push(n);
+        nodes.forEach(function (node) {
+          var text = node.nodeValue;
+          var norm = OOSUtil.searchNorm(text);
+          if (norm.length !== text.length) return;
+          var ranges = [];
+          terms.forEach(function (term) {
+            for (var i = norm.indexOf(term); i >= 0; i = norm.indexOf(term, i + term.length)) ranges.push([i, i + term.length]);
+          });
+          if (!ranges.length) return;
+          ranges.sort(function (a, b) { return a[0] - b[0]; });
+          var merged = [ranges[0]];
+          ranges.slice(1).forEach(function (r) {
+            var last = merged[merged.length - 1];
+            if (r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+            else merged.push(r);
+          });
+          var frag = document.createDocumentFragment();
+          var pos = 0;
+          merged.forEach(function (r) {
+            if (r[0] > pos) frag.appendChild(document.createTextNode(text.slice(pos, r[0])));
+            var m = document.createElement('mark');
+            m.textContent = text.slice(r[0], r[1]);
+            frag.appendChild(m);
+            pos = r[1];
+          });
+          if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
+          node.parentNode.replaceChild(frag, node);
+        });
+      });
+    });
+  }
+
   /* ---------- Samlat ---------- */
 
   /* Anpassar allt i scope. reveal = true efter en omritning, så att vald flik rullas fram. */
   function fit(scope, reveal) {
-    if (reveal) hyphenate(scope);
+    if (reveal) {
+      hyphenate(scope);
+      highlight(scope);
+    }
     scope.querySelectorAll('table.tbl').forEach(fitTable);
     fitTabs(scope, reveal);
     fitText(scope);

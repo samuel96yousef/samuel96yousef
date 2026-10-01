@@ -217,10 +217,15 @@ var OOSUI = (function () {
   function table(cfg) {
     var st = tstate(cfg.id, { sortKey: cfg.defaultSort || null, dir: cfg.defaultDir || 1 });
     var rows = cfg.rows.slice();
+    /*
+     * Sökningen täcker allt som står i raden: varje kolumns synliga text, även kolumner som
+     * är dolda på smal skärm, plus det som vyn lägger till i search.text (till exempel beskrivning).
+     */
     if (cfg.search && st.q) {
-      var q = st.q.toLowerCase();
+      var match = U.matcher(st.q);
       rows = rows.filter(function (r) {
-        return cfg.search.text(r).toLowerCase().indexOf(q) >= 0;
+        var text = cfg.columns.map(function (c) { return c.render ? U.textOf(c.render(r)) : ''; }).join(' ');
+        return match(text + ' ' + (cfg.search.text ? cfg.search.text(r) : ''));
       });
     }
     var sortCol = cfg.columns.filter(function (c) { return c.key === st.sortKey; })[0];
@@ -259,7 +264,7 @@ var OOSUI = (function () {
       }
       h += '</div></div>';
     }
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr>';
+    h += '<div class="table-wrap"><table class="tbl"' + (cfg.search && st.q ? ' data-q="' + esc(st.q) + '"' : '') + '><thead><tr>';
     cfg.columns.forEach(function (c) {
       var cls = (c.cls || '') + (c.sort ? ' sortable' : '');
       var arrow = st.sortKey === c.key ? (st.dir > 0 ? '↑' : '↓') : '';
@@ -267,7 +272,9 @@ var OOSUI = (function () {
     });
     h += '</tr></thead><tbody>';
     if (!shown.length) {
-      h += '<tr><td colspan="' + cfg.columns.length + '"><div class="empty">' + esc(st.q ? 'Inga träffar på "' + st.q + '".' : cfg.emptyText || 'Inget att visa ännu.') + '</div></td></tr>';
+      h += '<tr><td colspan="' + cfg.columns.length + '"><div class="empty">' + (st.q
+        ? esc('Inga träffar på "' + st.q + '".') + ' <button type="button" class="link-btn" data-action="tbl-clear" data-table="' + esc(cfg.id) + '">Rensa sökningen</button>'
+        : esc(cfg.emptyText || 'Inget att visa ännu.')) + '</div></td></tr>';
     }
     shown.forEach(function (r) {
       var click = cfg.rowGo ? cfg.rowGo(r) : null;
@@ -280,7 +287,11 @@ var OOSUI = (function () {
     });
     h += '</tbody></table></div>';
     if (cfg.pageSize !== 0) {
-      h += '<div class="pager"><span>Visar ' + (rows.length ? from + 1 : 0) + '–' + Math.min(from + size, rows.length) + ' av ' + rows.length + ' ' + esc(cfg.noun || '') + '</span>';
+      var showing = st.q
+        ? (rows.length ? 'Visar ' + (from + 1) + '–' + Math.min(from + size, rows.length) + ' av ' : '') + U.plural(rows.length, 'träff', 'träffar') + ' bland ' + cfg.rows.length + ' ' + esc(cfg.noun || '') +
+          ' · <button type="button" class="link-btn" data-action="tbl-clear" data-table="' + esc(cfg.id) + '">Rensa</button>'
+        : 'Visar ' + (rows.length ? from + 1 : 0) + '–' + Math.min(from + size, rows.length) + ' av ' + rows.length + ' ' + esc(cfg.noun || '');
+      h += '<div class="pager"><span>' + showing + '</span>';
       if (pages > 1) {
         h += '<div class="pager-pages"><button type="button" data-action="tbl-page" data-table="' + esc(cfg.id) + '" data-page="' + (st.page - 1) + '" id="pg-' + esc(cfg.id) + '-prev"' + (st.page === 1 ? ' disabled' : '') + ' aria-label="Föregående sida">←</button>';
         pageList(st.page, pages).forEach(function (p) {
@@ -425,6 +436,15 @@ var OOSUI = (function () {
     if (!modalOpen()) returnFocus = document.activeElement;
   }
 
+  /* Egen dialog, till exempel sökningen. Samma fokusregler som formulären. Returnerar dialogens rot. */
+  function openDialog(html) {
+    rememberFocus();
+    root().innerHTML = html;
+    activeForm = null;
+    OOSMotion.dialogIn(root().querySelector('.modal'));
+    return root();
+  }
+
   /* Stänger dialogen, svarar nej på en öppen fråga och återställer fokus. */
   function closeModal() {
     OOSSelect.close();
@@ -558,6 +578,7 @@ var OOSUI = (function () {
     tableState: tableState,
     tstate: tstate,
     openForm: openForm,
+    openDialog: openDialog,
     closeModal: closeModal,
     modalDelete: modalDelete,
     modalOpen: modalOpen,

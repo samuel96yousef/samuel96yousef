@@ -119,6 +119,41 @@ var OOSUtil = (function () {
     return String(a.name).localeCompare(String(b.name), 'sv');
   }
 
+  /*
+   * Text i sökbar form: gemener, utan accenter och prickar (å, ä, ö blir a, a, o), hårda
+   * mellanslag som vanliga och utan mjuka bindestreck. Med loose tas även mellanslaget i
+   * tusental bort, så att "1042" hittar "1 042 h". Utan loose behålls längden tecken för
+   * tecken, vilket behövs för att markera träffar i texten.
+   */
+  function searchNorm(s, loose) {
+    var t = String(s === null || s === undefined ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u00a0\u202f\u2009]/g, ' ').replace(/\u2212/g, '-');
+    if (loose) t = t.replace(/\u00ad/g, '').replace(/(\d) (?=\d{3}(?!\d))/g, '$1');
+    return t;
+  }
+
+  /*
+   * Sökning: alla ord i frågan måste finnas, i valfri ordning och i vilket fält som helst.
+   * Returnerar en funktion som testar en text. Orden finns i .terms.
+   */
+  function matcher(query) {
+    var terms = searchNorm(query, true).split(/\s+/).filter(Boolean);
+    var test = function (text) {
+      if (!terms.length) return true;
+      var t = searchNorm(text, true);
+      return terms.every(function (x) { return t.indexOf(x) >= 0; });
+    };
+    test.terms = terms;
+    return test;
+  }
+
+  /* Synlig text ur HTML, för att söka i det som faktiskt står i en tabellcell. */
+  function textOf(html) {
+    return String(html === null || html === undefined ? '' : html)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  }
+
   /* "1 medlem", "3 medlemmar". Talet formateras med mellanrum för tusental. */
   function plural(n, one, many) {
     return fmtNum(n) + '\u00a0' + (Math.round(n) === 1 ? one : many);
@@ -127,6 +162,9 @@ var OOSUtil = (function () {
   return {
     esc: esc,
     plural: plural,
+    searchNorm: searchNorm,
+    matcher: matcher,
+    textOf: textOf,
     uid: uid,
     round: round,
     fmtNum: fmtNum,

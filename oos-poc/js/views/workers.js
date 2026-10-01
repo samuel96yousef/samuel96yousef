@@ -51,7 +51,17 @@
       id: 'tbl-workers',
       rows: shown,
       title: UI.seg('workers-filter', FILTERS, filter),
-      search: { placeholder: 'Sök arbetare, roll eller kompetens …', text: function (r) { return r.w.name + ' ' + (r.w.title || '') + ' ' + (r.main ? r.main.name : '') + ' ' + (r.pd.team ? r.pd.team.name : ''); } },
+      /* Utöver kolumnerna: alla kompetenser, alla team, domänroller, beskrivning och anställningsform. */
+      search: {
+        placeholder: 'Sök namn, roll, team, kompetens …',
+        text: function (r) {
+          return [r.w.description, r.w.consultant ? 'konsult' : 'anställd', r.w.type === 'ai' ? 'AI' : '']
+            .concat(ctx.e.workerCompetences(r.id).map(function (x) { return x.competence.name + ' ' + x.competence.category; }))
+            .concat(r.wc.teams.map(function (t) { return t.team.name + ' ' + (t.tw.role || ''); }))
+            .concat(r.roles.map(function (x) { return x.ext.role + ' ' + x.target.name; }))
+            .join(' ');
+        }
+      },
       rowGo: function (r) { return 'workers:' + r.id; },
       defaultSort: 'name',
       noun: 'arbetare',

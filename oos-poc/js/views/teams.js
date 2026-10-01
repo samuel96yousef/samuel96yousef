@@ -36,7 +36,18 @@
       id: 'tbl-teams',
       rows: rows,
       title: 'Alla team',
-      search: { placeholder: 'Sök team …', text: function (r) { return r.team.name + ' ' + (r.dd ? r.dd.name : '') + ' ' + (r.bd ? r.bd.name : '') + ' ' + (r.it ? r.it.name : ''); } },
+      /* Utöver kolumnerna: beskrivning, syfte, teamledare, medlemmar och system. */
+      search: {
+        placeholder: 'Sök team, domän, person, system …',
+        text: function (r) {
+          var e = ctx.e;
+          var lead = r.team.leadId ? e.get('workers', r.team.leadId) : null;
+          return [r.team.description, r.team.purpose, lead ? lead.name : '', C.categoryLabel(r.team.category)]
+            .concat(e.teamMembers(r.team.id).map(function (m) { return m.worker ? m.worker.name : ''; }))
+            .concat(e.teamSystems(r.team.id).map(function (x) { return x.system.name; }))
+            .join(' ');
+        }
+      },
       rowGo: function (r) { return 'teams:' + r.id; },
       defaultSort: 'name',
       noun: 'team',

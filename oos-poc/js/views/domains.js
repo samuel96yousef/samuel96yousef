@@ -114,7 +114,14 @@
       title: esc(k.title),
       rows: rows,
       columns: cols,
-      search: { placeholder: 'Sök ' + k.singular + ' …', text: function (r) { return r.rec.name + ' ' + (r.rec.description || ''); } },
+      /* Utöver kolumnerna: syfte och ägare. */
+      search: {
+        placeholder: 'Sök ' + k.singular + ' …',
+        text: function (r) {
+          var owner = r.rec.ownerId ? e.get('workers', r.rec.ownerId) : null;
+          return [r.rec.purpose, owner ? owner.name : ''].join(' ');
+        }
+      },
       rowGo: function (r) { return kind + ':' + r.id; },
       selectedId: selectedId,
       defaultSort: 'name',
