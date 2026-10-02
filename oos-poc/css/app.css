@@ -416,12 +416,72 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   gap: 2px;
 }
 
-.nav-period-row strong {
+.nav-period {
+  position: relative;
+}
+
+.nav-period-btn {
   flex: 1;
-  text-align: center;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
   font-weight: 600;
   font-size: 14.5px;
+  text-align: center;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.nav-period-btn:hover,
+.nav-period-btn[aria-expanded='true'] {
+  background: var(--accent-soft);
+}
+
+/* Fönstret öppnas uppåt, ovanför perioden i menyns fot. */
+.period-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.period-menu .seg {
+  display: flex;
+}
+
+.period-menu .seg button {
+  flex: 1;
+}
+
+.period-menu-label {
+  font-size: 12.5px;
+  color: var(--fg-3);
+}
+
+.period-menu-dates {
+  font-size: 13px;
+  color: var(--fg-2);
+  line-height: 1.45;
+}
+
+.period-menu-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .topbar {
@@ -4382,6 +4442,38 @@ p,
 
 .spot p {
   margin: 6px 0 0;
+}
+
+/* Det som kan lösa en flaskhals: en rad per slag med etikett, i stället för ett stycke. */
+.spot-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 8px 0 0;
+  font-size: 13.5px;
+}
+
+.spot-list dt {
+  color: var(--fg-3);
+}
+
+.spot-list dd {
+  margin: 0;
+}
+
+@container main (max-width: 640px) {
+  .spot-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .spot-list dd {
+    margin-bottom: 6px;
+  }
+}
+
+.period-menu-foot .link {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /*

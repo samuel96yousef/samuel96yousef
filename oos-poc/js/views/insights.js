@@ -9,14 +9,14 @@
   var TABS = [
     { key: 'kpi', label: 'KPI:er' },
     { key: 'metrics', label: 'Mätvärden' },
-    { key: 'connections', label: 'Kopplingar' }
+    { key: 'connections', label: 'Organisationskarta' }
   ];
 
   OOS.views.insights = function (ctx) {
     var tab = OOS.tab('insights', 'kpi');
     var h = UI.pageHead({
       title: 'Insikter',
-      sub: 'Nyckeltal, mätvärden och kopplingar för ' + esc(ctx.period.inText) + '. Allt räknas fram ur samma modell som resten av Fabriken.',
+      sub: 'Nyckeltal, mätvärden och organisationskartan för ' + esc(ctx.period.inText) + '. Allt räknas fram ur samma modell som resten av Fabriken.',
       actions: tab === 'kpi' ? UI.btn('Ändra mål', 'kpi-targets') : ''
     });
     h += '<div>' + UI.tabs('insights', TABS, tab) + '<div class="stack-lg">';
@@ -361,7 +361,7 @@
     var lay = layout(g, focus, geo);
     var width = g.columns.length * W + (g.columns.length - 1) * GAP;
     var svg = '<svg class="graph" viewBox="0 0 ' + width + ' ' + lay.height + '" width="' + width + '" height="' + lay.height + '" aria-labelledby="graph-title">' +
-      '<title id="graph-title">Kopplingskarta från leveransdomän till IT-domän</title>';
+      '<title id="graph-title">Organisationskarta från leveransdomän till IT-domän</title>';
     g.columns.forEach(function (c, ci) {
       svg += '<text class="graph-head" x="' + (ci * (W + GAP)) + '" y="14">' + esc(trunc(c.label, Math.floor((W + GAP - 8) / 6.6))) + '</text>';
     });
@@ -450,7 +450,7 @@
       });
     }
 
-    h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
+    h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Organisationskarta</div>' +
       '<div class="card-sub">' + (sel
         ? 'Visar det som hör till ' + esc(sel.name) + ': ' + U.plural(focus.nodes.size - 1, 'del', 'delar') + '. Primära kopplingar följs hela vägen, ' + (asMap ? 'streckade stödjande kopplingar visas men följs inte vidare.' : 'stödjande kopplingar visas men följs inte vidare.')
         : asMap

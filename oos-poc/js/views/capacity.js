@@ -11,7 +11,7 @@
     var st = S.db.settings;
     var ohTotal = U.sum(S.db.overheadReductions, function (r) { return r.hoursPerWeek; });
     var h = UI.pageHead({
-      title: 'Kapacitet',
+      title: 'Kapacitetsregler',
       sub: 'Här styrs hur verklig kapacitet räknas: standardarbetstid, rapporteringsperiod, grundavdrag för alla och särskilda avdrag per team.'
     });
 
@@ -154,6 +154,14 @@
     var p = OOS.period();
     var np = Number(el.dataset.dir) > 0 ? OOSEngine.nextPeriod(p) : OOSEngine.prevPeriod(p);
     S.updateSettings({ periodAnchor: np.start });
+    OOS.refresh();
+  };
+  A['period-menu'] = function () {
+    OOS.state.periodMenu = !OOS.state.periodMenu;
+    OOS.refresh();
+  };
+  A['period-type'] = function (el) {
+    S.updateSettings({ periodType: el.dataset.type });
     OOS.refresh();
   };
   A['period-today'] = function () {

@@ -108,7 +108,7 @@
 
     var h = UI.pageHead({
       title: 'Epiker',
-      sub: 'Epiker är teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik för drift, utbildning och kompetensspridning. Ramen är den beslutade tiden, och det är den som belastar teamets kapacitet.',
+      sub: 'Epiker är teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik för drift, utbildning och kompetensspridning. Ett förslag är teamets estimat. När epiken beslutas blir estimatet dess ram och belastar teamet.',
       actions: UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-primary' })
     });
     /* Tre sätt att se samma arbete: som lista, över tid med beroenden, och som flöde till kompetens. */
@@ -156,7 +156,7 @@
         { key: 'team', label: 'Team', sort: function (r) { return r.team ? r.team.name : 'ö'; }, render: function (r) { return r.team ? esc(r.team.name) : '<span class="muted">–</span>'; } },
         { key: 'init', label: 'Initiativ', opt: 1, sort: function (r) { return r.init ? r.init.name : 'ö'; }, render: function (r) { return r.init ? esc(r.init.name) : '<span class="muted">–</span>'; } },
         { key: 'span', label: 'Gäller', opt: 2, sort: function (r) { return r.ep.from; }, render: function (r) { return '<span class="nowrap">' + U.fmtDate(r.ep.from) + ' –</span> <span class="nowrap">' + U.fmtDate(r.ep.to) + '</span>'; } },
-        { key: 'frame', label: 'Ram', cls: 'num', opt: 2, sort: function (r) { return r.frame; }, render: function (r) { return C.epicFrameText(r.ep); } },
+        { key: 'frame', label: 'Timmar', cls: 'num', opt: 2, sort: function (r) { return r.frame; }, render: function (r) { return C.epicFrameText(r.ep); } },
         {
           key: 'hours', label: 'I perioden', cls: 'num', sort: function (r) { return r.hours; },
           render: function (r) { return r.hours ? (e.counts(r.ep) ? U.fmtH(r.hours) : '<span class="muted">(' + U.fmtH(r.hours) + ')</span>') : '<span class="muted">–</span>'; }
@@ -217,9 +217,8 @@
    * Var kompetensen finns: först personer med kompetensen och tid som inte är fördelad, eftersom
    * det är det närmaste sättet att lösa en flaskhals, sedan ledig tid i andra team.
    */
-  function freeIn(category, exceptTeamId, e, p) {
-    var people = e.unallocatedIn(category, p);
-    var who = people.length ? 'Inte fördelad tid med ' + esc(category) + ': ' + people.slice(0, 3).map(function (x) { return C.link('workers:' + x.worker.id, x.worker.name) + ' ' + U.fmtH(x.hours); }).join(', ') + '. ' : '';
+  function freeParts(category, exceptTeamId, e, p) {
+    var people = e.unallocatedIn(category, p).slice(0, 3);
     var spots = [];
     S.db.teams.forEach(function (t) {
       if (t.id === exceptTeamId) return;
@@ -228,8 +227,27 @@
       });
     });
     spots.sort(function (a, b) { return b.free - a.free; });
-    if (!spots.length) return who + 'Inget annat team har ledig tid inom ' + esc(category) + ' i ' + esc(p.inText) + '.';
-    return who + 'Ledigt i andra team: ' + spots.slice(0, 3).map(function (x) { return C.link('teams:' + x.team.id, x.team.name) + ' ' + U.fmtH(x.free); }).join(', ') + '.';
+    return {
+      people: people.length ? people.map(function (x) { return C.link('workers:' + x.worker.id, x.worker.name) + ' ' + U.fmtH(x.hours); }).join(', ') : '',
+      teams: spots.length ? spots.slice(0, 3).map(function (x) { return C.link('teams:' + x.team.id, x.team.name) + ' ' + U.fmtH(x.free); }).join(', ') : ''
+    };
+  }
+
+  /* Som löptext, till exempel under ett kompetensbehov på epiken. */
+  function freeIn(category, exceptTeamId, e, p) {
+    var f = freeParts(category, exceptTeamId, e, p);
+    return (f.people ? 'Inte fördelad tid med ' + esc(category) + ': ' + f.people + '. ' : '') +
+      (f.teams ? 'Ledigt i andra team: ' + f.teams + '.' : 'Inget annat team har ledig tid inom ' + esc(category) + ' i ' + esc(p.inText) + '.');
+  }
+
+  /* Som lista med etiketter, för det som behöver lösas: lättare att läsa än ett stycke. */
+  function freeList(category, exceptTeamId, e, p, drivers) {
+    var f = freeParts(category, exceptTeamId, e, p);
+    var rows = [];
+    if (drivers) rows.push(['Arbete som behöver ' + category, drivers]);
+    rows.push(['Inte fördelad tid', f.people || '<span class="muted">Ingen med ' + esc(category) + '</span>']);
+    rows.push(['Ledigt i andra team', f.teams || '<span class="muted">Inget annat team har ledig tid</span>']);
+    return '<dl class="spot-list">' + rows.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
   }
 
   /* Beroenden åt båda hållen, med de risker som gör att arbetet kan bli försenat. */
@@ -427,7 +445,7 @@
         (r.gap ? UI.badge('Saknas i teamet', 'crit') : UI.badge(U.fmtPct(r.loadPct), 'crit')) + '</span>' +
         '<span class="crit-text">' + U.fmtH(x.over) + ' för mycket</span></div>' +
         (r.gap ? '' : '<div class="spot-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }, { noValue: true }) + '</div>') +
-        '<p class="small">' + (drivers.length ? 'Arbete som behöver ' + esc(r.category) + ': ' + drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') + '. ' : '') + freeIn(r.category, x.team.id, e, p) + '</p></div>';
+        freeList(r.category, x.team.id, e, p, drivers.length ? drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') : '') + '</div>';
     });
     h += '</section>';
 

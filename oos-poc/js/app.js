@@ -41,7 +41,7 @@
       items: [
         { page: 'workers', label: 'Arbetare', icon: 'user', count: function () { return S.db.workers.length; } },
         { page: 'competences', label: 'Kompetenser', icon: 'star', count: function () { return S.db.competences.length; } },
-        { page: 'capacity', label: 'Kapacitet', icon: 'gauge' }
+        { page: 'capacity', label: 'Kapacitetsregler', icon: 'gauge' }
       ]
     },
     { label: '', foot: true, items: [{ page: 'settings', label: 'Inställningar', icon: 'sliders' }] }
@@ -102,6 +102,19 @@
       (i.count ? '<span class="nav-count">' + i.count() + '</span>' : '') + '</button>';
   }
 
+  /* Fönstret för perioden: typ, datum och tillbaka till dagens period. Gäller alla sidor. */
+  function periodMenu(p) {
+    return '<div class="period-menu" id="nav-period-menu" role="group" aria-label="Välj period">' +
+      '<div class="period-menu-label">Visa per</div>' +
+      '<div class="seg" role="group">' + OOSEngine.PERIOD_TYPES.map(function (t) {
+        var on = p.type === t.value;
+        return '<button type="button" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '" data-action="period-type" data-type="' + t.value + '">' + esc(t.label) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="period-menu-dates">' + esc(U.fmtDate(p.start) + ' – ' + U.fmtDate(p.end)) + '<br>' + p.workdays + ' arbetsdagar' + (p.outside ? '<br><span class="warn-text">Utanför PI-kalendern</span>' : '') + '</div>' +
+      '<div class="period-menu-foot">' + (S.db.settings.periodAnchor ? '<button type="button" class="btn btn-sm" data-action="period-today">Gå till i dag</button>' : '') +
+      '<button type="button" class="link" data-go="capacity">PI-kalender</button></div></div>';
+  }
+
   function renderNav() {
     var nav = document.getElementById('nav');
     var p = OOS.period();
@@ -122,8 +135,10 @@
     /* Perioden styr alla siffror. Den står i foten, alltid synlig, utan egen rubrik för att spara höjd. */
     h += '<div class="nav-period" role="group" aria-label="Period"><div class="nav-period-row">' +
       '<button type="button" class="btn-icon" id="nav-prev" data-action="period-shift" data-dir="-1" aria-label="Föregående period">' + UI.icon('arrowLeft') + '</button>' +
-      '<strong aria-live="polite" data-tip="' + esc(U.fmtDate(p.start) + ' – ' + U.fmtDate(p.end) + '\n' + p.workdays + ' arbetsdagar') + '">' + esc(p.label) + '</strong>' +
-      '<button type="button" class="btn-icon" id="nav-next" data-action="period-shift" data-dir="1" aria-label="Nästa period">' + UI.icon('arrowRight') + '</button></div></div>';
+      /* Perioden är en knapp: den öppnar ett litet fönster där man väljer PI, år eller månad. */
+      '<button type="button" class="nav-period-btn" id="nav-period-btn" data-action="period-menu" aria-expanded="' + (st.periodMenu ? 'true' : 'false') + '" aria-controls="nav-period-menu" aria-live="polite">' + esc(p.label) + '</button>' +
+      '<button type="button" class="btn-icon" id="nav-next" data-action="period-shift" data-dir="1" aria-label="Nästa period">' + UI.icon('arrowRight') + '</button></div>' +
+      (st.periodMenu ? periodMenu(p) : '') + '</div>';
     h += '</div>';
     nav.innerHTML = h;
     if (focusId) {
@@ -342,6 +357,11 @@
   });
 
   document.addEventListener('click', function (ev) {
+    /* Periodfönstret stängs när man klickar utanför det. */
+    if (st.periodMenu && !ev.target.closest('.nav-period')) {
+      st.periodMenu = false;
+      renderNav();
+    }
     var actEl = ev.target.closest('[data-action]');
     var goEl = ev.target.closest('[data-go]');
     if (actEl && (!goEl || goEl.contains(actEl))) {
@@ -392,6 +412,12 @@
     }
     if (ev.key === 'Escape') {
       if (UI.modalOpen()) UI.closeModal();
+      else if (st.periodMenu) {
+        st.periodMenu = false;
+        renderNav();
+        var pb = document.getElementById('nav-period-btn');
+        if (pb) pb.focus();
+      }
       else if (st.navOpen) { st.navOpen = false; renderNav(); }
       return;
     }

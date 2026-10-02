@@ -140,7 +140,7 @@
     var tab = OOS.tab(kind + '-detail', 'overview');
     var tabsList = [
       { key: 'overview', label: 'Översikt' }
-    ].concat(isDd(kind) ? [{ key: 'initiatives', label: 'Initiativ' }] : []).concat([
+    ].concat(isDd(kind) ? [{ key: 'initiatives', label: 'Initiativ' }, { key: 'map', label: 'Karta' }] : []).concat([
       { key: 'links', label: 'Domänkopplingar' },
       { key: 'teams', label: 'Team' },
       { key: 'systems', label: 'System' },
@@ -151,6 +151,7 @@
     var body;
     if (tab === 'overview') body = overview(kind, d, ctx);
     else if (tab === 'initiatives') body = initiatives(d, ctx);
+    else if (tab === 'map') body = OOS.factoryMap(d, ctx);
     else if (tab === 'links') body = links(kind, d, ctx);
     else if (tab === 'teams') body = teams(kind, d, ctx);
     else if (tab === 'systems') body = systems(kind, d, ctx);

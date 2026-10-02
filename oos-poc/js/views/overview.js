@@ -12,46 +12,98 @@
     return n + ' ' + (n === 1 ? one : many);
   }
 
+  /*
+   * Signaler av samma slag samlas till en rad med antal och en länk till sidan där de löses, så att
+   * listan visar vad som behöver göras och inte upprepar sig. Ett slag med en enda signal visas som den.
+   */
+  var GROUPS = {
+    bottleneck: { key: 'competence', page: 'bottlenecks' },
+    gap: { key: 'competence', page: 'bottlenecks' },
+    dependency: { key: 'dependency', page: 'bottlenecks', title: function (n) { return n + ' beroenden med risk'; } },
+    keyperson: { key: 'keyperson', page: 'competences', title: function (n) { return n + ' kompetenser bärs av en person'; } },
+    overallocated: { key: 'overallocated', page: 'workers', seg: ['workers-filter', 'over'], title: function (n) { return n + ' personer är överallokerade'; } },
+    unallocated: { key: 'unallocated', page: 'workers', seg: ['workers-filter', 'free'], title: function (n) { return n + ' personer saknar allokering'; } },
+    untraced: { key: 'untraced', page: 'epics', title: function (n) { return n + ' utvecklingsepiker saknar initiativ'; } },
+    investment: { key: 'investment', page: 'initiatives', title: function (n) { return n + ' initiativ går över investeringen'; } }
+  };
+  var RANK = { critical: 0, warning: 1, info: 2 };
+
+  function groupSignals(sigs) {
+    var out = [];
+    var byKey = {};
+    sigs.forEach(function (s) {
+      var g = GROUPS[s.kind];
+      if (!g) { out.push({ items: [s] }); return; }
+      if (!byKey[g.key]) { byKey[g.key] = { group: g, items: [] }; out.push(byKey[g.key]); }
+      byKey[g.key].items.push(s);
+    });
+    return out.map(function (x) {
+      var worst = x.items.reduce(function (m, s) { return RANK[s.severity] < RANK[m] ? s.severity : m; }, 'info');
+      if (x.items.length === 1) return { severity: worst, title: x.items[0].title, detail: x.items[0].detail, go: x.items[0].ref.page + ':' + x.items[0].ref.id };
+      var g = x.group;
+      var title;
+      if (g.key === 'competence') {
+        var b = x.items.filter(function (s) { return s.kind === 'bottleneck'; }).length;
+        var gp = x.items.length - b;
+        title = [b ? plural(b, 'flaskhals', 'flaskhalsar') : '', gp ? plural(gp, 'lucka', 'luckor') : ''].filter(Boolean).join(' och ') + ' i kompetens';
+      } else {
+        title = g.title(x.items.length);
+      }
+      return { severity: worst, title: title, detail: x.items.slice(0, 3).map(function (s) { return s.title; }).join(' · ') + (x.items.length > 3 ? ' · med flera' : ''), go: g.page, seg: g.seg, count: x.items.length };
+    }).sort(function (a, b) { return RANK[a.severity] - RANK[b.severity] || (b.count || 1) - (a.count || 1); });
+  }
+
+  /* "a, b och c" */
+  function joinSv(list) {
+    return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' och ' + list[list.length - 1];
+  }
+
   OOS.views.overview = function (ctx) {
     var e = ctx.e;
     var org = e.orgCapacity(ctx.period);
     var nxt = e.orgCapacity(ctx.next);
     var sigs = e.signals(ctx.period);
-    var over = sigs.filter(function (s) { return s.kind === 'overallocated'; }).length;
-    var keyp = sigs.filter(function (s) { return s.kind === 'keyperson'; }).length;
-    var ai = S.db.workers.filter(function (w) { return w.type === 'ai'; }).length;
-    var bdCount = S.db.domains.filter(function (d) { return d.type === 'business'; }).length;
-    var itCount = S.db.domains.length - bdCount;
+    var unalloc = e.unallocated(ctx.period);
+    var count = function (kind) { return sigs.filter(function (s) { return s.kind === kind; }).length; };
     var month = ctx.period.inText;
 
-    var h = UI.pageHead({ title: esc(ctx.period.label), actions: UI.btn('Öppna rapporter', 'go', { data: { to: 'reports' } }) });
+    var h = UI.pageHead({ title: 'Läget i ' + esc(month), actions: UI.btn('Öppna rapporter', 'go', { data: { to: 'reports' } }) });
 
-    /* Läget i en mening: det är den som ska gå att säga högt på ett möte. */
-    var lede = esc(S.db.settings.orgName) + ' har <strong>' + U.fmtH(org.capacity) + '</strong> verklig kapacitet i ' + esc(month) + '. ' +
-      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är belagt och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.';
-    if (over) lede += ' <strong class="over">' + plural(over, 'person är', 'personer är') + ' överallokerad' + (over === 1 ? '' : 'e') + '.</strong>';
-    if (keyp) lede += ' ' + plural(keyp, 'kompetens', 'kompetenser') + ' har bara en person på nivå 3–4.';
+    /* Läget i en mening: det ska gå att säga högt på ett möte. Först det som är kritiskt. */
+    var crit = [];
+    var nb = count('bottleneck');
+    var ng = count('gap');
+    if (nb || ng) crit.push([nb ? plural(nb, 'flaskhals', 'flaskhalsar') : '', ng ? plural(ng, 'lucka', 'luckor') : ''].filter(Boolean).join(' och ') + ' i kompetens');
+    if (count('overallocated')) crit.push(plural(count('overallocated'), 'person är överallokerad', 'personer är överallokerade'));
+    if (count('investment')) crit.push(plural(count('investment'), 'initiativ går', 'initiativ går') + ' över investeringen');
+    var lede = 'Teamen har <strong>' + U.fmtH(org.capacity) + '</strong> i ' + esc(month) + '. ' +
+      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är belagt och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.' +
+      (crit.length ? ' <strong class="over">Att lösa: ' + joinSv(crit) + '.</strong>' : ' Inget kritiskt att lösa.') +
+      (unalloc.hours > 0.5 ? ' ' + U.fmtH(unalloc.hours) + ' hos ' + plural(unalloc.people.length, 'person', 'personer') + ' är inte fördelad på något team.' : '');
     h += '<p class="lede">' + lede + '</p>';
 
+    var lp = org.loadPct;
     h += '<div class="kpis">' +
-      UI.kpi('Leveransdomäner', S.db.deliveryDomains.length, bdCount + ' verksamhets- och ' + U.plural(itCount, 'IT-domän', 'IT-domäner')) +
-      UI.kpi('Team', S.db.teams.length, S.db.teams.filter(function (t) { return t.category === 'producing'; }).length + ' producerande') +
-      UI.kpi('Arbetare', S.db.workers.length, ai ? ai + ' AI' : '') +
+      UI.kpi('Beläggning', U.fmtPct(lp), U.fmtH(org.loaded) + ' belastat av ' + U.fmtH(org.capacity), { crit: lp > 100.5, warn: lp >= 90 && lp <= 100.5 }) +
+      UI.kpi('Ledigt', U.fmtH(org.free), 'I teamen, kan planeras') +
+      UI.kpi('Inte fördelad', U.fmtH(unalloc.hours), unalloc.people.length ? 'Hos ' + plural(unalloc.people.length, 'person', 'personer') + ', i inget team' : 'All tid är fördelad') +
       UI.kpi('Kapacitet i ' + ctx.next.inText, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
       '</div>';
 
+    var groups = groupSignals(sigs);
     var showAll = OOS.state.allSignals;
-    var shown = showAll ? sigs : sigs.slice(0, 6);
-    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det modellen visar just nu, även när det är obekvämt.</div></div></div>';
+    var shown = showAll ? groups : groups.slice(0, 8);
+    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag. Visa går till sidan där det löses.</div></div></div>';
     h += '<div class="signals">';
     shown.forEach(function (s) {
       h += '<div class="signal"><span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
         '<div><div class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</div><div class="signal-detail">' + esc(s.detail) + '</div></div>' +
-        '<button type="button" class="btn btn-sm" data-go="' + esc(s.ref.page + ':' + s.ref.id) + '">Visa</button></div>';
+        (s.seg ? '<button type="button" class="btn btn-sm" data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '">Visa</button>'
+          : '<button type="button" class="btn btn-sm" data-go="' + esc(s.go) + '">Visa</button>') + '</div>';
     });
     if (!sigs.length) h += '<div class="empty">Inget avviker. Modellen hänger ihop.</div>';
     h += '</div>';
-    if (sigs.length > 6) h += '<div class="pager"><span>' + shown.length + ' av ' + sigs.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
+    if (groups.length > 8) h += '<div class="pager"><span>' + shown.length + ' av ' + groups.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
     h += '</section>';
 
     var dds = S.db.deliveryDomains.map(function (d) {
@@ -72,15 +124,13 @@
     h += UI.barLegend(dds.some(function (x) { return x.cap.loaded > x.cap.capacity + 0.5; }));
     h += '</div></section></div>';
 
-    h += factoryMap(ctx);
     h += recentChanges();
     return h;
   };
 
-  function factoryMap(ctx) {
+  /* Fabrikskarta: hur en leveransdomän är uppbyggd, från verksamhet till teknik. Visas i leveransdomänens låda. */
+  OOS.factoryMap = function (dd, ctx) {
     var e = ctx.e;
-    var ddId = OOS.segVal('fmap', 'dd_ag');
-    var dd = e.get('deliveryDomains', ddId) || S.db.deliveryDomains[0];
     if (!dd) return '';
     var teams = e.teamsOfDeliveryDomain(dd.id);
     var primaryBds = e.domainsOfDeliveryDomain(dd.id, 'business').filter(function (x) { return x.relationship === 'primary'; }).map(function (x) { return x.domain; }).sort(U.byName);
@@ -95,14 +145,13 @@
     var keyRoles = e.deliveryDomainExperts(dd.id);
     var owner = dd.ownerId ? e.get('workers', dd.ownerId) : null;
 
-    var h = '<section class="card"><div class="card-head"><div><div class="card-title">Fabrikskarta</div><div class="card-sub">Hur en leveransdomän är uppbyggd, från verksamhet till teknik.</div></div>' +
-      UI.seg('fmap', S.db.deliveryDomains.slice().sort(U.byName).map(function (d) { return { key: d.id, label: d.name }; }), dd.id) + '</div>';
+    var h = '<p class="small muted" style="margin:0 0 12px">Hur ' + esc(dd.name) + ' är uppbyggd, från verksamhet till teknik.</p>';
     h += '<dl class="kv small" style="grid-template-columns:max-content minmax(0,1fr);margin-bottom:18px">' +
       '<dt>Ägare</dt><dd>' + (owner ? C.link('workers:' + owner.id, owner.name) : UI.badge('Ej utsedd', 'warn')) + '</dd>' +
       '<dt>Nyckelroller</dt><dd>' + (keyRoles.length ? keyRoles.map(function (k) { return C.link('workers:' + k.worker.id, k.worker.name) + ' <span class="muted">' + esc(k.ext.role.toLowerCase()) + ', ' + k.ext.hoursPerMonth + ' h/mån</span>'; }).join(' · ') : '<span class="muted">Inga</span>') + '</dd>' +
       (supportive.length ? '<dt>Stödjande domäner</dt><dd>' + supportive.map(function (s) { return C.link(C.domainPage(s.domain) + ':' + s.domain.id, s.domain.name); }).join(' · ') + '</dd>' : '') +
       '</dl>';
-    if (!cols.length) return h + '<div class="empty">Leveransdomänen har inga verksamhetsdomäner eller team ännu.</div></section>';
+    if (!cols.length) return h + '<div class="empty">Leveransdomänen har inga verksamhetsdomäner eller team ännu.</div>';
 
     h += '<div class="fmap"><div class="fmap-grid" style="--cols:' + cols.length + '">';
     cols.forEach(function (c) {
@@ -133,9 +182,9 @@
       if (!its.size) h += '<span class="meta">–</span>';
       h += '</div>';
     });
-    h += '</div></div></section>';
+    h += '</div></div>';
     return h;
-  }
+  };
 
   function recentChanges() {
     var log = (S.db.changeLog || []).slice(0, 6);
@@ -203,6 +252,11 @@
   };
 
   var A = OOS.actions;
+  /* Gå till en sida med ett filter förvalt, till exempel Arbetare med bara överallokerade. */
+  A['go-filtered'] = function (el) {
+    OOS.state.segs[el.dataset.seg] = el.dataset.key;
+    OOS.go(el.dataset.to);
+  };
   A['signals-toggle'] = function () {
     OOS.state.allSignals = !OOS.state.allSignals;
     OOS.refresh();
