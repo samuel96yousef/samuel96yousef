@@ -121,6 +121,7 @@
 
     var t = rep.total;
     var tone = loadTone(t.loadPct);
+    var unalloc = ctx.e.unallocated(ctx.period);
     h += UI.facts([
       { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(t.capacity), note: 'Teamen, ' + U.plural(t.peopleCount, 'person', 'personer') + (t.reserved > 0.5 ? ' · ' + U.fmtH(t.reserved) + ' i domänroller' : '') },
       { label: 'Belastat', value: U.fmtH(t.loaded), note: U.fmtPct(t.loadPct) + ' beläggning', tone: tone },
@@ -139,7 +140,8 @@
     h += r.view === 'chart' ? chart(rep, r, lvl, ctx) : tableView(rep, r, lvl, ctx);
     h += '<p class="card-note">Förändring är kapaciteten i ' + esc(ctx.next.inText) + ' jämfört med ' + esc(ctx.period.inText) + ', utan hänsyn till belastning. ' +
       'Den beror på antal arbetsdagar, teamavdrag och domänroller som börjar eller slutar.' +
-      (t.reserved > 0.5 ? ' Domänmoln och nyckelroller är reserverad tid (' + U.fmtH(t.reserved) + ') och räknas inte i totalens beläggning.' : '') + '</p>';
+      (t.reserved > 0.5 ? ' Domänmoln och nyckelroller är reserverad tid (' + U.fmtH(t.reserved) + ') och räknas inte i totalens beläggning.' : '') +
+      (unalloc.hours > 0.5 && !filters.filter(function (f) { return f !== 'bara team'; }).length ? ' Utöver det har ' + U.plural(unalloc.people.length, 'person', 'personer') + ' ' + U.fmtH(unalloc.hours) + ' som inte är fördelad på något team eller någon roll (' + C.link('workers', 'se Arbetare') + ').' : '') + '</p>';
     h += '</section>';
     return h;
   };

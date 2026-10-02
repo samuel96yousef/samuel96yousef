@@ -213,7 +213,13 @@
   }
 
   /* Ledig tid i samma område i andra team, som text. */
+  /*
+   * Var kompetensen finns: först personer med kompetensen och tid som inte är fördelad, eftersom
+   * det är det närmaste sättet att lösa en flaskhals, sedan ledig tid i andra team.
+   */
   function freeIn(category, exceptTeamId, e, p) {
+    var people = e.unallocatedIn(category, p);
+    var who = people.length ? 'Inte fördelad tid med ' + esc(category) + ': ' + people.slice(0, 3).map(function (x) { return C.link('workers:' + x.worker.id, x.worker.name) + ' ' + U.fmtH(x.hours); }).join(', ') + '. ' : '';
     var spots = [];
     S.db.teams.forEach(function (t) {
       if (t.id === exceptTeamId) return;
@@ -222,8 +228,8 @@
       });
     });
     spots.sort(function (a, b) { return b.free - a.free; });
-    if (!spots.length) return 'Inget annat team har ledig tid inom ' + esc(category) + ' i ' + esc(p.inText) + '.';
-    return 'Ledigt i andra team: ' + spots.slice(0, 3).map(function (x) { return C.link('teams:' + x.team.id, x.team.name) + ' ' + U.fmtH(x.free); }).join(', ') + '.';
+    if (!spots.length) return who + 'Inget annat team har ledig tid inom ' + esc(category) + ' i ' + esc(p.inText) + '.';
+    return who + 'Ledigt i andra team: ' + spots.slice(0, 3).map(function (x) { return C.link('teams:' + x.team.id, x.team.name) + ' ' + U.fmtH(x.free); }).join(', ') + '.';
   }
 
   /* Beroenden åt båda hållen, med de risker som gör att arbetet kan bli försenat. */
@@ -254,7 +260,8 @@
       title: esc(ep.name) + (ep.status === 'proposed' || ep.status === 'done' ? ' ' + C.epicStatus(ep.status) : ''),
       meta: [esc(C.EPIC_TYPE[ep.type] || ''), team ? esc(team.name) : '', init ? esc(init.name) : ''],
       sub: esc(ep.description || ''),
-      actions: UI.btn('Redigera', 'epic-edit', { data: { id: ep.id } }) + UI.btn('Ta bort', 'epic-delete', { cls: 'btn-danger', data: { id: ep.id } })
+      actions: (ep.status === 'proposed' ? UI.btn('Besluta', 'epic-decide', { cls: 'btn-primary', data: { id: ep.id } }) : '') +
+        UI.btn('Redigera', 'epic-edit', { data: { id: ep.id } }) + UI.btn('Ta bort', 'epic-delete', { cls: 'btn-danger', data: { id: ep.id } })
     });
 
     if (E.epicCounts(ep.status) && !counts && init && init.status === 'proposed') {
@@ -287,7 +294,7 @@
     var mine = team ? e.teamDemand(team.id, p).epics.filter(function (x) { return x.epic.id === ep.id; })[0] : null;
     h += UI.facts([
       { label: 'I ' + p.inText, value: U.fmtH(hrs), note: tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
-      { label: 'Ram', value: ep.effort === 'monthly' ? U.fmtNum(ep.hours) + ' h/mån' : U.fmtH(ep.hours), note: ep.effort === 'monthly' ? U.fmtH(frame) + ' under hela tiden' : 'Fördelas jämnt över tiden' },
+      { label: ep.status === 'proposed' ? 'Estimat' : 'Ram', value: ep.effort === 'monthly' ? U.fmtNum(ep.hours) + ' h/mån' : U.fmtH(ep.hours), note: (ep.effort === 'monthly' ? U.fmtH(frame) + ' under hela tiden' : 'Fördelas jämnt över tiden') + (ep.status === 'proposed' ? ', teamets estimat' : '') },
       { label: 'Tid', value: U.plural(months, 'period', 'perioder'), note: monthSpan(ep) },
       tc ? { label: 'Teamets beläggning', value: U.fmtPct(tc.loadPct), note: 'I ' + p.inText + ', allt beslutat arbete', tone: loadTone(tc.loadPct) } : null
     ]);
@@ -340,7 +347,7 @@
       ['Leveransdomän', C.ddRef(dd)],
       ['Arbetstyp', esc(C.EPIC_TYPE[ep.type] || '')],
       ['Status', C.epicStatus(ep.status)],
-      ['Ram', C.epicFrameText(ep)],
+      [ep.status === 'proposed' ? 'Estimat' : 'Ram', C.epicFrameText(ep)],
       ['Gäller', monthSpan(ep)]
     ]));
     if (team) {
@@ -632,7 +639,8 @@
     sum.epics.slice().sort(function (a, b) { return a.from.localeCompare(b.from); }).forEach(function (ep) {
       var t = e.get('teams', ep.teamId);
       var hrs = E.epicHoursInPeriod(ep, p);
-      main += '<tr class="clickable' + (ep.status === 'done' ? ' is-past' : '') + '" data-go="epics:' + ep.id + '" tabindex="0"><td>' + esc(ep.name) + '<div class="muted small">' + [t ? esc(t.name) : '', esc(C.EPIC_TYPE[ep.type] || ''), monthSpan(ep)].filter(Boolean).join(' · ') + '</div></td><td>' + C.epicStatus(ep.status) + '</td>' +
+      main += '<tr class="clickable' + (ep.status === 'done' ? ' is-past' : '') + '" data-go="epics:' + ep.id + '" tabindex="0"><td>' + esc(ep.name) + '<div class="muted small">' + [t ? esc(t.name) : '', esc(C.EPIC_TYPE[ep.type] || ''), monthSpan(ep)].filter(Boolean).join(' · ') + '</div></td><td>' + C.epicStatus(ep.status) +
+        (ep.status === 'proposed' ? ' ' + UI.btn('Besluta', 'epic-decide', { cls: 'btn-sm', data: { id: ep.id } }) : '') + '</td>' +
         '<td class="num">' + C.epicFrameText(ep) + '</td><td class="num">' + (hrs ? (e.counts(ep) ? U.fmtH(hrs) : '<span class="muted">(' + U.fmtH(hrs) + ')</span>') : '<span class="muted">–</span>') + '</td></tr>';
     });
     if (!sum.epics.length) main += '<tr><td colspan="4"><div class="empty">Initiativet har inga epiker ännu.</div></td></tr>';
@@ -695,7 +703,8 @@
       var what = x.epic.type === 'maintenance' ? 'Förvaltning: drift, utbildning och kompetensspridning' : esc(C.EPIC_TYPE[x.epic.type] || '');
       rows += '<div class="commit' + (x.counts ? '' : ' is-proposal') + '">' + C.typeSwatch(x.epic.type) + '<div>' + C.epicRef(x.epic) +
         '<div class="commit-sub">' + what + (init ? ' · ' + esc(init.name) : '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status]) + ', räknas inte') + '</div></div>' +
-        '<span class="commit-hours">' + (x.counts ? U.fmtH(x.load) : '(' + U.fmtH(x.hours) + ')') + '</span>' + UI.iconBtn('edit', 'epic-edit', { id: x.epic.id }, 'Ändra ' + x.epic.name) + '</div>';
+        '<span class="commit-hours">' + (x.counts ? U.fmtH(x.load) : '(' + U.fmtH(x.hours) + ')') + '</span>' +
+        '<span class="commit-acts">' + (x.epic.status === 'proposed' ? UI.btn('Besluta', 'epic-decide', { cls: 'btn-sm', data: { id: x.epic.id } }) : '') + UI.iconBtn('edit', 'epic-edit', { id: x.epic.id }, 'Ändra ' + x.epic.name) + '</span></div>';
     });
     if (!d.epics.length) rows += '<div class="empty">Inget annat arbete i perioden.</div>';
     h += workSplit(d.byType, tc.capacity, 'Kapacitet', rows);
@@ -728,8 +737,9 @@
     C.forms.epic(null, defaults);
   };
   A['epic-edit'] = function (el) { C.forms.epic(S.engine().get('epics', el.dataset.id)); };
+  A['epic-decide'] = function (el) { C.decideEpic(S.engine().get('epics', el.dataset.id)); };
   A['epic-delete'] = function (el) { C.removeEntity('epics', el.dataset.id, 'epics'); };
-  A['initiative-add'] = function () { C.forms.initiative(null); };
+  A['initiative-add'] = function (el) { C.forms.initiative(null, el && el.dataset.dd ? { deliveryDomainId: el.dataset.dd } : null); };
   A['initiative-edit'] = function (el) { C.forms.initiative(S.engine().get('initiatives', el.dataset.id)); };
   A['initiative-delete'] = function (el) { C.removeEntity('initiatives', el.dataset.id, 'initiatives'); };
 })();

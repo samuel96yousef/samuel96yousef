@@ -1122,13 +1122,13 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * Initiativ: en beslutad satsning som en leveransdomän äger och som bryts ned i teamens epiker.
    * Investeringen är hur mycket tid satsningen får kosta (omvänd estimering). Teamen estimerar epikerna.
    */
-  F.initiative = function (r) {
+  F.initiative = function (r, defaults) {
     var isNew = !r;
     var p = OOS.period();
     UI.openForm({
       title: isNew ? 'Lägg till initiativ' : 'Ändra ' + r.name,
       intro: 'Leveransdomänen beslutar initiativet och hur mycket tid det får kosta. Teamen bryter ned det i epiker och estimerar dem.',
-      values: r || { status: 'planned', from: p.start, to: C.defaultEnd(p, 2) },
+      values: r || Object.assign({ status: 'planned', from: p.start, to: C.defaultEnd(p, 2) }, defaults || {}),
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'deliveryDomainId', label: 'Leveransdomän', type: 'select', required: true, placeholder: 'Välj leveransdomän …', options: C.opts.deliveryDomains() },
@@ -1243,6 +1243,28 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
           OOS.refresh();
         });
       }
+    });
+  };
+
+  /*
+   * Besluta ett förslag: visa konsekvensen för teamet och initiativets investering, och sätt sedan
+   * status. Har epiken redan börjat blir den pågående, annars planerad. Timmarna blir dess ram.
+   */
+  C.decideEpic = function (ep) {
+    if (!ep) return;
+    var e = S.engine();
+    var team = e.get('teams', ep.teamId);
+    var init = ep.initiativeId ? e.get('initiatives', ep.initiativeId) : null;
+    var status = ep.from <= U.todayISO() ? 'active' : 'planned';
+    var body = '<p>' + esc(ep.name) + ' blir ' + (status === 'active' ? 'pågående' : 'planerad') + (team ? ' och belastar ' + esc(team.name) : '') +
+      ' från ' + U.fmtDate(ep.from) + '. Teamets estimat, ' + C.epicFrameText(ep) + ', blir epikens ram.</p>' +
+      C.impactHtml(C.epicImpact(ep, ep)) + C.investmentImpactHtml(ep, ep) +
+      (init && init.status === 'proposed' ? '<div class="note warn inv-impact"><strong>Initiativet är ett förslag.</strong> Epiken belastar teamet först när ' + esc(init.name) + ' beslutas.</div>' : '');
+    UI.confirm({ title: 'Besluta epiken?', body: body, confirmLabel: 'Besluta' }).then(function (ok) {
+      if (!ok) return;
+      S.update('epics', ep.id, { status: status });
+      UI.toast(ep.name + ' är beslutad.');
+      OOS.refresh();
     });
   };
 

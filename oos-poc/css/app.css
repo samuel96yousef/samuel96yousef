@@ -3652,6 +3652,13 @@ p,
   background: var(--track);
 }
 
+/* Knappar sist på en rad i en arbetslista: Besluta för förslag och Ändra. */
+.commit-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Konsekvensen under initiativets investering. */
 .inv-note {
   margin: 10px 0 0;

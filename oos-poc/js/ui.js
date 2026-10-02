@@ -629,7 +629,7 @@ var OOSUI = (function () {
       var h =
         '<div class="modal-back" data-action="modal-backdrop"><div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title">' +
         '<div class="modal-head"><h2 class="modal-title" id="modal-title">' + esc(cfg.title) + '</h2></div>' +
-        '<div class="modal-body single"><p>' + cfg.message + '</p></div>' +
+        '<div class="modal-body single">' + (cfg.body || '<p>' + cfg.message + '</p>') + '</div>' +
         '<div class="modal-foot"><button type="button" class="btn" data-confirm="no">Avbryt</button>' +
         '<button type="button" class="btn ' + (cfg.danger ? 'btn-danger-solid' : 'btn-primary') + '" data-confirm="yes">' + esc(cfg.confirmLabel || 'Bekräfta') + '</button></div></div></div>';
       rememberFocus();

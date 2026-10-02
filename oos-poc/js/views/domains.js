@@ -139,15 +139,18 @@
     var e = ctx.e;
     var tab = OOS.tab(kind + '-detail', 'overview');
     var tabsList = [
-      { key: 'overview', label: 'Översikt' },
+      { key: 'overview', label: 'Översikt' }
+    ].concat(isDd(kind) ? [{ key: 'initiatives', label: 'Initiativ' }] : []).concat([
       { key: 'links', label: 'Domänkopplingar' },
       { key: 'teams', label: 'Team' },
       { key: 'systems', label: 'System' },
       { key: 'experts', label: isDd(kind) ? 'Nyckelroller' : 'Domänmoln' },
       { key: 'capacity', label: 'Kapacitet' }
-    ];
+    ]);
+    if (!tabsList.some(function (t) { return t.key === tab; })) tab = 'overview';
     var body;
     if (tab === 'overview') body = overview(kind, d, ctx);
+    else if (tab === 'initiatives') body = initiatives(d, ctx);
     else if (tab === 'links') body = links(kind, d, ctx);
     else if (tab === 'teams') body = teams(kind, d, ctx);
     else if (tab === 'systems') body = systems(kind, d, ctx);
@@ -159,6 +162,40 @@
       actions: C.drawerActions({ action: 'domain-edit', data: { kind: kind, id: d.id } }, { action: 'domain-delete', data: { kind: kind, id: d.id } }),
       body: body
     });
+  }
+
+  /*
+   * Leveransdomänens initiativ: det den beställer och den investering den har beslutat, mot teamens
+   * epiker. Det är beställarens vy för att förhandla om tid (problem 15 och 17). Överst hur mycket
+   * av domänens teamkapacitet initiativen använder i perioden.
+   */
+  function initiatives(d, ctx) {
+    var e = ctx.e;
+    var p = ctx.period;
+    var list = S.db.initiatives.filter(function (x) { return x.deliveryDomainId === d.id; }).map(function (x) {
+      return { x: x, sum: e.initiativeSummary(x.id, p) };
+    }).sort(function (a, b) { return (a.x.status === 'done') - (b.x.status === 'done') || b.sum.hoursInPeriod - a.sum.hoursInPeriod; });
+    var add = { action: 'initiative-add', label: 'Lägg till initiativ', data: { dd: d.id } };
+    if (!list.length) return C.drawerSection('Initiativ', '<p class="drawer-empty">' + esc(d.name) + ' har inga initiativ ännu.</p>', add);
+    var cap = e.deliveryDomainCapacity(d.id, p);
+    var inPeriod = U.sum(list, function (r) { return r.sum.hoursInPeriod; });
+    var invested = list.filter(function (r) { return r.sum.investment !== null; });
+    var over = list.filter(function (r) { return r.sum.over; });
+    var h = '<p class="small" style="margin:0 0 10px">' + 'Initiativen använder <strong>' + U.fmtH(inPeriod) + '</strong> i ' + esc(p.inText) +
+      (cap.capacity ? ', motsvarande ' + U.fmtPct((inPeriod / cap.capacity) * 100) + ' av kapaciteten i domänens egna team (' + U.fmtH(cap.capacity) + ')' : '') + '. ' +
+      'Beslutad investering ' + U.fmtH(U.sum(invested, function (r) { return r.sum.investment; })) + ' i ' + U.plural(invested.length, 'initiativ', 'initiativ') +
+      (over.length ? ', <span class="warn-text">' + U.plural(over.length, 'initiativ', 'initiativ') + ' över investeringen</span>' : '') + '.</p>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Initiativ</th><th>Status</th><th class="num">Investering</th><th class="num">Beslutat</th><th class="num" data-opt="1">Förslag</th><th class="num">I perioden</th></tr></thead><tbody>';
+    list.forEach(function (r) {
+      var s = r.sum;
+      var room = s.investment === null ? '' : s.over ? '<br>' + UI.badge(U.fmtH(-s.room) + ' över', 'warn') : '<br><span class="sub">' + U.fmtH(s.room) + ' kvar</span>';
+      h += '<tr class="clickable' + (r.x.status === 'done' ? ' is-past' : '') + '" data-go="initiatives:' + esc(r.x.id) + '" tabindex="0"><td>' + esc(r.x.name) + '</td><td>' + C.epicStatus(r.x.status) + '</td>' +
+        '<td class="num">' + (s.investment === null ? '<span class="muted">–</span>' : U.fmtH(s.investment)) + '</td>' +
+        '<td class="num">' + U.fmtH(s.frame) + room + '</td><td class="num">' + (s.proposedFrame ? U.fmtH(s.proposedFrame) : '<span class="muted">–</span>') + '</td>' +
+        '<td class="num">' + U.fmtH(s.hoursInPeriod) + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    return C.drawerSection('Initiativ som ' + d.name + ' beställer', h, add);
   }
 
   /* Översikten: vad domänen är till för, vem som äger den och hur kapaciteten fördelar sig. */

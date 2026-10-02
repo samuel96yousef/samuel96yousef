@@ -11,7 +11,7 @@
     { key: 'team', label: 'I team' },
     { key: 'cloud', label: 'Domänroller' },
     { key: 'over', label: 'Överallokerade' },
-    { key: 'free', label: 'Ej allokerade' },
+    { key: 'free', label: 'Tid kvar att fördela' },
     { key: 'ai', label: 'AI' }
   ];
 
@@ -28,7 +28,7 @@
       if (filter === 'team') return r.wc.teams.length > 0;
       if (filter === 'cloud') return r.roles.length > 0;
       if (filter === 'over') return r.wc.allocationPct > 100.5;
-      if (filter === 'free') return r.wc.committed === 0;
+      if (filter === 'free') return r.wc.unallocated >= 0.5;
       if (filter === 'ai') return r.w.type === 'ai';
       return true;
     });
@@ -41,9 +41,10 @@
       sub: 'Arbetare är de personer eller AI-resurser som bidrar med kompetens och kapacitet i ett eller flera team och domäner.',
       actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary' })
     });
+    var notAllocated = ctx.e.unallocated(ctx.period);
     h += '<div class="kpis">' +
-      UI.kpi('Arbetare', rows.length, ai + ' AI, ' + U.plural(rows.filter(function (r) { return r.w.consultant; }).length, 'konsult', 'konsulter')) +
-      UI.kpi('I team', inTeams, U.plural(rows.length - inTeams, 'arbetare', 'arbetare') + ' utan team') +
+      UI.kpi('Arbetare', rows.length, inTeams + ' i team · ' + ai + ' AI · ' + U.plural(rows.filter(function (r) { return r.w.consultant; }).length, 'konsult', 'konsulter')) +
+      UI.kpi('Inte fördelad tid', U.fmtH(notAllocated.hours), notAllocated.people.length ? 'Hos ' + U.plural(notAllocated.people.length, 'person', 'personer') + ', i inget team eller roll' : 'All tid är fördelad') +
       UI.kpi('Med domänroll', inClouds, 'Domänmoln och nyckelroller') +
       UI.kpi('Överallokerade', over, over ? 'Mer än 100 % av tillgänglig tid' : 'Ingen över 100 %') +
       '</div>';

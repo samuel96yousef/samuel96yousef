@@ -622,8 +622,33 @@ var OOSEngine = (function () {
       return res;
     }
 
+    /*
+     * Tid som inte är fördelad på något team eller någon domänroll. Den räknas inte som kapacitet
+     * eller ledig tid, eftersom någon först måste besluta var den ska användas. Men den finns, och
+     * den är ofta det närmaste sättet att lösa en flaskhals.
+     */
+    function unallocated(period) {
+      var people = [];
+      db.workers.forEach(function (w) {
+        var wc = workerCapacity(w.id, period);
+        if (!wc || wc.unallocated < 0.5) return;
+        var cats = [];
+        attributionCompetences(w.id).forEach(function (c) { if (cats.indexOf(catOf(c)) < 0) cats.push(catOf(c)); });
+        people.push({ worker: w, hours: wc.unallocated, categories: cats });
+      });
+      people.sort(function (a, b) { return b.hours - a.hours; });
+      return { hours: U.sum(people, function (x) { return x.hours; }), people: people };
+    }
+
+    /* Personer med ett kompetensområde som primär kompetens och tid som inte är fördelad. */
+    function unallocatedIn(category, period, min) {
+      return unallocated(period).people.filter(function (x) { return x.hours >= (min || 20) && x.categories.indexOf(category) >= 0; });
+    }
+
     /* Var samma kompetensområde har ledig tid i andra team, som text till en signal. */
     function freeElsewhere(category, exceptTeamId, period) {
+      var people = unallocatedIn(category, period);
+      var who = people.length ? ' Inte fördelad tid med ' + category + ': ' + people.slice(0, 2).map(function (x) { return x.worker.name + ' ' + U.fmtH(x.hours); }).join(', ') + '.' : '';
       var spots = [];
       db.teams.forEach(function (t) {
         if (t.id === exceptTeamId) return;
@@ -632,8 +657,8 @@ var OOSEngine = (function () {
         });
       });
       spots.sort(function (a, b) { return b.free - a.free; });
-      if (!spots.length) return ' Inget annat team har ledig tid inom ' + category + '.';
-      return ' Ledigt i andra team: ' + spots.slice(0, 2).map(function (x) { return x.team.name + ' ' + U.fmtH(x.free); }).join(', ') + '.';
+      if (!spots.length) return who + ' Inget annat team har ledig tid inom ' + category + '.';
+      return who + ' Ledigt i andra team: ' + spots.slice(0, 2).map(function (x) { return x.team.name + ' ' + U.fmtH(x.free); }).join(', ') + '.';
     }
 
     /* Organisationens kompetensområden: kapacitet, beslutat arbete och ledigt, summerat över teamen. */
@@ -1701,6 +1726,8 @@ var OOSEngine = (function () {
       initiativeEpics: initiativeEpics,
       initiativeSummary: initiativeSummary,
       counts: counts,
+      unallocated: unallocated,
+      unallocatedIn: unallocatedIn,
       workByType: workByType,
       epicMode: epicMode,
       domainCapacity: domainCapacity,

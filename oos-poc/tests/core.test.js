@@ -121,6 +121,20 @@ test('epiker under ett initiativ som är ett förslag belastar inte teamen', () 
   assert.ok(s.proposedFrame > 0);
 });
 
+test('tid som inte är fördelad syns och föreslås vid en flaskhals', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const pi = E.periodOf('2026-10-02', 'pi', db.pis);
+  const u = e.unallocated(pi);
+  const sum = db.workers.reduce((a, w) => a + e.workerCapacity(w.id, pi).unallocated, 0);
+  near(u.hours, sum, 0.5);
+  /* Ofördelad tid räknas inte som kapacitet. */
+  near(e.orgCapacity(pi).capacity, db.teams.reduce((a, t) => a + e.teamCapacity(t.id, pi).capacity, 0), 0.5);
+  /* Testaren i Utbetalning Team har tid kvar och föreslås för flaskhalsen i Test & QA. */
+  assert.ok(e.unallocatedIn('Test & QA', pi).some((x) => x.worker.name === 'Hanna Engström'));
+  assert.ok(e.signals(pi).some((s) => s.kind === 'bottleneck' && s.detail.includes('Hanna Engström')));
+});
+
 test('arbetarens tillgängliga kapacitet är grundkapacitet minus grundavdrag', () => {
   const db = Seed.build();
   const e = E.create(db);

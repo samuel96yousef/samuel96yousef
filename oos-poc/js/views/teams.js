@@ -105,7 +105,13 @@
       var room = (tc.categories || []).filter(function (r) { return !r.gap && r.free > 10; }).slice(0, 2);
       h += '<div class="note crit"><strong>' + tight.map(function (r) { return esc(r.category) + (r.gap ? ' saknas' : ' ' + U.fmtPct(r.loadPct)); }).join(', ') + ' i ' + esc(ctx.period.inText) + '.</strong> ' +
         (tight.length > 1 ? 'Områdena behöver' : 'Området behöver') + ' ' + U.fmtH(U.sum(tight, function (r) { return r.gap ? r.demand : -r.free; })) + ' mer än teamet har' +
-        (room.length ? ', medan ' + room.map(function (r) { return esc(r.category) + ' har ' + U.fmtH(r.free) + ' ledigt'; }).join(' och ') : '') + '. ' + C.link('bottlenecks', 'Se var kompetensen finns ledig') + '.</div>';
+        (room.length ? ', medan ' + room.map(function (r) { return esc(r.category) + ' har ' + U.fmtH(r.free) + ' ledigt'; }).join(' och ') : '') + '. ' +
+        /* Medlemmar med kompetensen och tid som inte är fördelad: närmaste sättet att lösa det. */
+        tight.map(function (r) {
+          var own = ctx.e.unallocatedIn(r.category, ctx.period).filter(function (x) { return tc.members.some(function (m) { return m.worker.id === x.worker.id; }); });
+          return own.length ? own.map(function (x) { return C.link('workers:' + x.worker.id, x.worker.name); }).join(' och ') + ' har ' + esc(r.category) + ' och ' + U.fmtH(U.sum(own, function (x) { return x.hours; })) + ' som inte är fördelad. ' : '';
+        }).join('') +
+        C.link('bottlenecks', 'Se var kompetensen finns ledig') + '.</div>';
     }
 
     var diff = nx.capacity - tc.capacity;
