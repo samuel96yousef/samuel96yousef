@@ -1071,7 +1071,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       wide: true,
       side: ['needs', 'dependsOn'],
       previewEmpty: 'Välj team för att se vad epiken betyder för teamets beläggning.',
-      values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end, needs: [], dependsOn: [] }, defaults || {}),
+      values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: C.defaultEnd(p, 1), needs: [], dependsOn: [] }, defaults || {}),
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
@@ -1127,7 +1127,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     UI.openForm({
       title: isNew ? 'Lägg till initiativ' : 'Ändra ' + r.name,
       intro: 'Leveransdomänen beslutar initiativet och hur mycket tid det får kosta. Teamen bryter ned det i epiker och estimerar dem.',
-      values: r || { status: 'planned', from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end },
+      values: r || { status: 'planned', from: p.start, to: C.defaultEnd(p, 2) },
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'deliveryDomainId', label: 'Leveransdomän', type: 'select', required: true, placeholder: 'Välj leveransdomän …', options: C.opts.deliveryDomains() },
@@ -1171,6 +1171,77 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
         OOS.refresh();
       },
       onDelete: isNew ? null : function () { C.removeLink('overheadReductions', r.id, r.name + ' tas bort från grundavdragen.'); }
+    });
+  };
+
+  /*
+   * Förslag på slutdatum för nytt arbete som börjar med perioden: n PI:er när perioden är en PI,
+   * annars tre månader. Ett år är för långt som förslag för en epik.
+   */
+  C.defaultEnd = function (p, n) {
+    if (p.type === 'pi') {
+      var q = p;
+      for (var i = 1; i < n; i++) q = OOSEngine.nextPeriod(q);
+      return q.end;
+    }
+    var m = OOSEngine.periodOf(p.start, 'month');
+    return OOSEngine.nextPeriod(OOSEngine.nextPeriod(m)).end;
+  };
+
+  /*
+   * En PI i PI-kalendern. En ny PI föreslås direkt efter den sista, lika lång och med nästa namn,
+   * så att kalendern går att fylla på med några klick. PI:er får inte överlappa.
+   */
+  F.pi = function (r) {
+    var isNew = !r;
+    var last = S.db.pis.slice().sort(function (a, b) { return a.end.localeCompare(b.end); }).pop();
+    var values = r;
+    if (isNew) {
+      var start = last ? U.addDays(last.end, 1) : OOS.period().start;
+      var end;
+      /* Följer den sista PI:n hela månader blir förslaget lika många hela månader, annars lika många dagar. */
+      var ls = last && U.parseDate(last.start);
+      var le = last && U.parseDate(last.end);
+      if (last && ls.getUTCDate() === 1 && U.addDays(last.end, 1).slice(8) === '01') {
+        var months = (le.getUTCFullYear() - ls.getUTCFullYear()) * 12 + le.getUTCMonth() - ls.getUTCMonth() + 1;
+        var sd = U.parseDate(start);
+        end = U.toISO(new Date(Date.UTC(sd.getUTCFullYear(), sd.getUTCMonth() + months, 0)));
+      } else {
+        end = U.addDays(start, last ? Math.round((le - ls) / 864e5) : 90);
+      }
+      var m = last && /^PI (\d+) (\d{4})$/.exec(last.name);
+      var year = start.slice(0, 4);
+      var name = m ? (m[2] === year && +m[1] < 4 ? 'PI ' + (+m[1] + 1) + ' ' + year : 'PI 1 ' + year) : '';
+      values = { name: name, start: start, end: end };
+    }
+    UI.openForm({
+      title: isNew ? 'Lägg till PI' : 'Ändra ' + r.name,
+      intro: 'En PI är en planeringsperiod. Alla siffror i Fabriken kan visas per PI.',
+      values: values,
+      fields: [
+        { key: 'name', label: 'Namn', required: true, full: true },
+        { key: 'start', label: 'Från', type: 'date', required: true },
+        { key: 'end', label: 'Till', type: 'date', required: true, help: function (v) { return v.start && v.end && v.start <= v.end ? OOSEngine.workdays(v.start, v.end) + ' arbetsdagar.' : ''; } }
+      ],
+      validate: function (v) {
+        if (v.start && v.end && v.start > v.end) return { end: 'Slutdatum måste vara efter startdatum.' };
+        var clash = S.db.pis.filter(function (x) { return (!r || x.id !== r.id) && x.start <= v.end && x.end >= v.start; })[0];
+        if (clash) return { start: 'Överlappar ' + clash.name + ', ' + U.fmtDate(clash.start) + ' – ' + U.fmtDate(clash.end) + '.' };
+      },
+      onSubmit: function (v) {
+        if (isNew) S.insert('pis', v);
+        else S.update('pis', r.id, v);
+        UI.toast(isNew ? 'PI:n lades till.' : 'PI:n sparades.');
+        OOS.refresh();
+      },
+      onDelete: isNew ? null : function () {
+        UI.confirm({ title: 'Ta bort ' + r.name + '?', message: 'Datumen räknas då inte till någon PI. Siffrorna i Fabriken ändras inte, bara hur perioderna delas.', confirmLabel: 'Ta bort', danger: true }).then(function (ok) {
+          if (!ok) return;
+          S.remove('pis', r.id);
+          UI.toast('PI:n togs bort.');
+          OOS.refresh();
+        });
+      }
     });
   };
 

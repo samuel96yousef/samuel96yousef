@@ -50,12 +50,23 @@ var OOSEngine = (function () {
     return U.toISO(new Date(Date.UTC(y, m + 1, 0)));
   }
 
-  function periodOf(anchor, type) {
+  /*
+   * Perioder: PI, år, kvartal eller månad. En PI hämtas ur PI-kalendern (cal: [{ id, name, start, end }]).
+   * dir säger åt vilket håll man letar när datumet ligger mellan två PI:er: framåt ger nästa PI,
+   * bakåt den förra. Utanför kalendern blir perioden kalenderkvartalet, märkt outside, och den
+   * kapas så att den inte går in i kalenderns första eller sista PI.
+   */
+  function periodOf(anchor, type, cal, dir) {
+    if (type === 'pi') return piOf(anchor, cal, dir || 1);
     var d = U.parseDate(anchor);
     var y = d.getUTCFullYear();
     var m = d.getUTCMonth();
     var start, end, label;
-    if (type === 'quarter') {
+    if (type === 'year') {
+      start = y + '-01-01';
+      end = y + '-12-31';
+      label = String(y);
+    } else if (type === 'quarter') {
       var q = Math.floor(m / 3);
       start = U.toISO(new Date(Date.UTC(y, q * 3, 1)));
       end = lastDayOfMonth(y, q * 3 + 2);
@@ -66,18 +77,43 @@ var OOSEngine = (function () {
       label = U.MONTHS_LONG[m] + ' ' + y;
       label = label.charAt(0).toUpperCase() + label.slice(1);
     }
-    /* inText används mitt i meningar: "i september 2026", "i Q3 2026". */
-    var inText = type === 'quarter' ? label : label.toLowerCase();
+    /* inText används mitt i meningar: "i september 2026", "i Q3 2026", "i 2026", "i PI 4 2026". */
+    var inText = type === 'month' || !type ? label.toLowerCase() : label;
     return { type: type || 'month', start: start, end: end, label: label, inText: inText, workdays: workdays(start, end) };
   }
 
+  function piOf(anchor, cal, dir) {
+    var list = (cal || []).filter(function (x) { return x && x.start && x.end && x.start <= x.end; })
+      .slice().sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; });
+    var hit = list.filter(function (x) { return x.start <= anchor && x.end >= anchor; })[0];
+    if (!hit) hit = dir < 0
+      ? list.filter(function (x) { return x.end < anchor; }).pop()
+      : list.filter(function (x) { return x.start > anchor; })[0];
+    if (hit) {
+      return { type: 'pi', start: hit.start, end: hit.end, label: hit.name, inText: hit.name, workdays: workdays(hit.start, hit.end), piId: hit.id, cal: list };
+    }
+    var q = periodOf(anchor, 'quarter');
+    var start = q.start;
+    var end = q.end;
+    if (list.length && start <= list[list.length - 1].end && anchor > list[list.length - 1].end) start = U.addDays(list[list.length - 1].end, 1);
+    if (list.length && end >= list[0].start && anchor < list[0].start) end = U.addDays(list[0].start, -1);
+    return { type: 'pi', start: start, end: end, label: q.label, inText: q.label, workdays: workdays(start, end), outside: true, cal: list };
+  }
+
   function nextPeriod(p) {
-    return periodOf(U.addDays(p.end, 1), p.type);
+    return periodOf(U.addDays(p.end, 1), p.type, p.cal, 1);
   }
 
   function prevPeriod(p) {
-    return periodOf(U.addDays(p.start, -1), p.type);
+    return periodOf(U.addDays(p.start, -1), p.type, p.cal, -1);
   }
+
+  /* Periodtyperna som går att välja, i den ordning de visas. PI är standard. */
+  var PERIOD_TYPES = [
+    { value: 'pi', label: 'PI' },
+    { value: 'year', label: 'År' },
+    { value: 'month', label: 'Månad' }
+  ];
 
   /* Timmar per månad fördelas månad för månad efter överlappande arbetsdagar. */
   function monthlyHoursInPeriod(hoursPerMonth, from, to, period) {
@@ -1748,6 +1784,7 @@ var OOSEngine = (function () {
     periodOf: periodOf,
     nextPeriod: nextPeriod,
     prevPeriod: prevPeriod,
+    PERIOD_TYPES: PERIOD_TYPES,
     UNSPECIFIED: UNSPECIFIED,
     DEFAULT_TARGETS: DEFAULT_TARGETS
   };

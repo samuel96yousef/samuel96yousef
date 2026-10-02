@@ -87,7 +87,7 @@
 
   OOS.period = function () {
     var s = S.db.settings;
-    return OOSEngine.periodOf(s.periodAnchor || U.todayISO(), s.periodType || 'month');
+    return OOSEngine.periodOf(s.periodAnchor || U.todayISO(), s.periodType || 'pi', S.db.pis);
   };
 
   OOS.ctx = function () {
@@ -122,7 +122,7 @@
     /* Perioden styr alla siffror. Den står i foten, alltid synlig, utan egen rubrik för att spara höjd. */
     h += '<div class="nav-period" role="group" aria-label="Period"><div class="nav-period-row">' +
       '<button type="button" class="btn-icon" id="nav-prev" data-action="period-shift" data-dir="-1" aria-label="Föregående period">' + UI.icon('arrowLeft') + '</button>' +
-      '<strong aria-live="polite">' + esc(p.label) + '</strong>' +
+      '<strong aria-live="polite" data-tip="' + esc(U.fmtDate(p.start) + ' – ' + U.fmtDate(p.end) + '\n' + p.workdays + ' arbetsdagar') + '">' + esc(p.label) + '</strong>' +
       '<button type="button" class="btn-icon" id="nav-next" data-action="period-shift" data-dir="1" aria-label="Nästa period">' + UI.icon('arrowRight') + '</button></div></div>';
     h += '</div>';
     nav.innerHTML = h;

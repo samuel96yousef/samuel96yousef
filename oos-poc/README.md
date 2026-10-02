@@ -28,7 +28,7 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 |---|---|
 | Översikt | Nyckeltal, signaler, kapacitet per leveransdomän, fabrikskarta och senaste ändringar |
 | Insikter | Tre flikar. **KPI:er** visar åtta nyckeltal med målnivåer och status; målen kan ändras. **Mätvärden** visar kapacitet över tid, kompetensmatris, beläggning per team, kapacitetens sammansättning och kompetensdjup. **Kopplingar** är en karta från leveransdomän via verksamhetsdomän, team och system till IT-domän. När man väljer en ruta samlas det som hör till den överst och resten tonas ned. Primära kopplingar följs hela vägen; stödjande visas men följs inte vidare. Öppna går till den valda delens sida. Under kartan listas luckorna, delar som saknar en koppling. |
-| Rapporter | Kapacitet, belastning och ledig tid. Gruppera efter team, domän, leveransdomän eller kompetens och avgränsa urvalet med filter. Tabellen visar grupperna först och kompetenserna när man fäller ut dem. Diagrammet visar en stapel per grupp med talen i egna kolumner. Domänmoln och nyckelroller är en grupp var. Jämför med nästa period. Kan kopieras som CSV. |
+| Rapporter | Kapacitet, belastning och ledig tid. Gruppera efter team, domän, leveransdomän eller kompetens och avgränsa urvalet med filter. Tabellen visar grupperna först och kompetenserna när man fäller ut dem. Diagrammet visar en stapel per grupp med talen i egna kolumner. Domänmoln och nyckelroller är en grupp var. Visa per PI (standard), år eller månad, och jämför med nästa period av samma slag. Kan kopieras som CSV. |
 | Leveransdomäner, verksamhetsdomäner, IT-domäner | Lista där ett klick på en rad fäller ut detaljerna direkt under den, med flikarna Översikt, Domänkopplingar, Team, System, Domänmoln/Nyckelroller och Kapacitet |
 | Initiativ | Satsningar som leveransdomänerna har beslutat. Detaljvyn visar vilka team som bär initiativet, deras beläggning och initiativets epiker. Ramen är summan av epikerna. |
 | Epiker | Teamens arbete: utveckling, förvaltning och utredning. Varje team har en förvaltningsepik med löpande ram per månad. Den rymmer drift, rättningar, utbildning och kompetensspridning. Tre vyer: Lista (var tiden går per arbetstyp), Tidslinje (epikerna över tolv månader, grupperade efter beroendekedja, team eller initiativ; ett klick fäller ut epikens beroenden och risker) och Kopplingar (tre listor: varifrån arbetet kommer, vilka team som gör det och vilka kompetensområden det kräver; ett val filtrerar de andra listorna och visar valets del). Detaljvyn visar vem som gör jobbet (epikens timmar per kompetensområde, teamets läge i varje område och personerna med kompetensen), beroendekedjan åt båda hållen med risker, och epiken period för period som tabell med en stapel per period. |
@@ -37,7 +37,7 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 | Arbetare | Lista med filter och detaljvy med kompetenser, team, domänroller och kapacitetsberäkning |
 | Kompetenser | Lista, kategorier, nivåer och vilka som bär kunskapen. Ett klick på en kompetens fäller ut detaljerna under raden. |
 | System | Ansvarigt team och IT-domän per system. Ett klick på ett system fäller ut detaljerna under raden. |
-| Kapacitet | Standardarbetstid, rapporteringsperiod, grundavdrag och särskilda avdrag per team |
+| Kapacitet | Standardarbetstid, periodtyp (PI, år eller månad), PI-kalender, grundavdrag och särskilda avdrag per team |
 | Inställningar | Belastningens källa (epiker eller manuellt), data och ändringslogg |
 
 Allt går att skapa, ändra och ta bort. Alla ändringar loggas.
@@ -73,6 +73,7 @@ Följer ER-skissen för Prototyp 1. Tabellerna finns i `js/seed.js` och relation
 | ExtendedDomain_Competence, ExtendedDeliveryCompetence | `extendedDomainCompetences`, `extendedDeliveryCompetences` |
 | Systems, ITDomain_System | `systems`, `itDomainSystems` |
 | OverheadReduction | `overheadReductions` (grundavdrag) och `teamReductions` (särskilda avdrag) |
+| Finns inte i skissen | `pis`: PI-kalendern med namn, start och slut. Demodatan har en PI per kalenderkvartal 2025–2028 |
 | Finns inte i skissen | `initiatives`: leveransdomän, ägare, status, period, mål och investering (`investment`, timmar totalt, valfri: `null` betyder att ingen investering är beslutad) |
 | Finns inte i skissen | `epics`: team, arbetstyp, initiativ (valfritt), status, ram (`monthly` h/mån eller `total` h), från, till, kompetensbehov (`needs`: kompetensområde och andel i procent) och beroenden (`dependsOn`: andra epiker) |
 | CapacitySummary | Räknas fram i `engine.allFacts()`, lagras inte |
@@ -80,7 +81,7 @@ Följer ER-skissen för Prototyp 1. Tabellerna finns i `js/seed.js` och relation
 ## Beräkningsregler
 
 1. **Tillgänglig kapacitet per arbetare** = grundkapacitet − grundavdrag. Grundavdragen skalas mot standardarbetstiden, så att deltid får proportionellt avdrag. Grundavdrag gäller inte AI-arbetare om inget annat anges.
-2. **Periodens timmar** = timmar per vecka / 5 × arbetsdagar i perioden. Helgdagar räknas inte bort.
+2. **Periodens timmar** = timmar per vecka / 5 × arbetsdagar i perioden. Helgdagar räknas inte bort. En period är en PI (standard), ett år eller en månad, och perioden i menyn gäller alla sidor. En PI hämtas ur PI-kalendern. Ett uppehåll mellan två PI:er hör inte till någon PI, och stegar man förbi kalenderns slut blir perioden kalenderkvartalet. Alla tal räknas per arbetsdag, så en PI:s kapacitet och belastning är summan av dess månader.
 3. **Teamkapacitet** = Σ tillgänglig kapacitet × allokering × (1 − teamavdrag). Teamavdrag viktas på de arbetsdagar som överlappar perioden.
 4. **Kompetens**: en medlems kapacitet fördelas jämnt på medlemmens primära kompetenser.
 5. **Leveransdomän** för ett team härleds: primär verksamhetsdomän → dess primära leveransdomän. Saknas verksamhetsdomän används primär IT-domän.
@@ -110,6 +111,7 @@ Det här behöver beslutas innan en riktig Prototyp 1 byggs:
 4. **Siffrorna i GUI-skisserna går inte ihop** (till exempel 142 respektive 42 arbetare). I POC:n räknas alla siffror fram.
 5. **Stödjande team** hamnar med hela sin kapacitet i en leveransdomän. Om de ska fördelas över flera krävs en fördelningsnyckel på `Team_Domain`.
 6. **Individuell frånvaro** (föräldraledighet, sjukdom) ligger i skissen som teamavdrag. Det hör hemma på arbetaren och bör hämtas från HR-systemet.
+7. **PI-kalendern** är förifylld med kvartal. Den riktiga kalendern, med sommaruppehåll och IP-iterationer, bör läggas in eller hämtas från det verktyg där PI:erna planeras. Ska IP-iterationen räknas som kapacitet i PI:n eller dras av?
 7. **AI-arbetare i timmar.** En AI-agent på "40 h/vecka" säger lite om vad den levererar. Behöver en egen modell.
 
 ## Utanför scope

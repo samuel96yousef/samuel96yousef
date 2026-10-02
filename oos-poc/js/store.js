@@ -46,7 +46,8 @@ var OOSStore = (function () {
     overheadReductions: 'grundavdrag',
     itDomainSystems: 'IT-domänkoppling',
     initiatives: 'initiativ',
-    epics: 'epik'
+    epics: 'epik',
+    pis: 'PI'
   };
 
   function readStorage() {
@@ -78,6 +79,14 @@ var OOSStore = (function () {
       var teamIds = new Set(d.teams.map(function (t) { return t.id; }));
       d.initiatives = fresh.initiatives;
       d.epics = fresh.epics.filter(function (ep) { return teamIds.has(ep.teamId); });
+    }
+    /*
+     * Sparad data från före PI-kalendern får demodatans kalender, och PI blir periodtyp. Kvartal
+     * och månad var de enda valen förut, och PI är det nya standardvalet.
+     */
+    if (d.pis === undefined && d.settings) {
+      d.pis = fresh.pis;
+      d.settings.periodType = 'pi';
     }
     Object.keys(fresh).forEach(function (k) {
       if (d[k] === undefined) d[k] = Array.isArray(fresh[k]) ? [] : fresh[k];

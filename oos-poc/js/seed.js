@@ -483,7 +483,7 @@ var OOSSeed = (function () {
 
     var db = {
       meta: { version: 1, seededAt: '2026-09-04' },
-      settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'month', periodAnchor: null, loadSource: 'epics' },
+      settings: { orgName: 'Nordpension', standardWeekHours: 40, periodType: 'pi', periodAnchor: null, loadSource: 'epics' },
       overheadReductions: [
         { id: 'oh_semester', name: 'Semester', hoursPerWeek: 4, appliesToAI: false },
         { id: 'oh_kompetens', name: 'Kompetensutveckling', hoursPerWeek: 2, appliesToAI: false },
@@ -491,6 +491,8 @@ var OOSSeed = (function () {
         { id: 'oh_admin', name: 'Administration', hoursPerWeek: 1, appliesToAI: false }
       ],
       teamReductions: [],
+      /* PI-kalendern. Demodatan har en PI per kalenderkvartal. Den går att ändra under Kapacitet. */
+      pis: quarterPIs(2025, 2028),
       initiatives: [],
       epics: [],
       deliveryDomains: [],
@@ -645,7 +647,18 @@ var OOSSeed = (function () {
     return db;
   }
 
-  return { build: build, RETIRED_REDUCTIONS: RETIRED_REDUCTIONS, RETIRED_EPICS: RETIRED_EPICS };
+  /* En PI per kalenderkvartal: PI 1 är januari–mars. */
+  function quarterPIs(fromYear, toYear) {
+    var out = [];
+    for (var y = fromYear; y <= toYear; y++) {
+      for (var q = 0; q < 4; q++) {
+        out.push({ id: 'pi_' + y + '_' + (q + 1), name: 'PI ' + (q + 1) + ' ' + y, start: U.toISO(new Date(Date.UTC(y, q * 3, 1))), end: U.toISO(new Date(Date.UTC(y, q * 3 + 3, 0))) });
+      }
+    }
+    return out;
+  }
+
+  return { build: build, quarterPIs: quarterPIs, RETIRED_REDUCTIONS: RETIRED_REDUCTIONS, RETIRED_EPICS: RETIRED_EPICS };
 })();
 
 if (typeof module !== 'undefined') module.exports = OOSSeed;

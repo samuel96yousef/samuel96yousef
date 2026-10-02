@@ -120,7 +120,7 @@
     });
     h += '</div><div class="cols-labels" aria-hidden="true">';
     trend.forEach(function (t) {
-      h += '<span class="col-label' + (t.current ? ' current' : '') + '">' + esc(t.period.type === 'quarter' ? t.period.label : U.MONTHS[U.parseDate(t.period.start).getUTCMonth()]) + '</span>';
+      h += '<span class="col-label' + (t.current ? ' current' : '') + '">' + esc(t.period.type === 'month' ? U.MONTHS[U.parseDate(t.period.start).getUTCMonth()] : t.period.label) + '</span>';
     });
     h += '</div><p class="muted small" style="margin-top:12px">Skillnaderna kommer av antal arbetsdagar, teamavdrag och domänroller som börjar eller slutar. Staplarna börjar på noll, så små skillnader syns som små.</p></section>';
 

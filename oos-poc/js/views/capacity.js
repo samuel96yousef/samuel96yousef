@@ -22,7 +22,10 @@
 
     h += '<section class="card"><div class="card-head"><div class="card-title">Rapporteringsperiod</div></div><div class="card-body stack">' +
       '<p class="muted small">Styr vilken period som används för planering och uppföljning i hela OOS.</p>' +
-      '<label class="fld"><span>Periodtyp</span><select id="period-type" data-change="period-type"><option value="month"' + (st.periodType === 'month' ? ' selected' : '') + '>Månad</option><option value="quarter"' + (st.periodType === 'quarter' ? ' selected' : '') + '>Kvartal</option></select></label>' +
+      '<label class="fld"><span>Periodtyp</span><select id="period-type" data-change="period-type">' + OOSEngine.PERIOD_TYPES.map(function (t) {
+        return '<option value="' + t.value + '"' + (ctx.period.type === t.value ? ' selected' : '') + '>' + esc(t.label) + '</option>';
+      }).join('') + '</select></label>' +
+      (ctx.period.outside ? '<p class="note warn small">' + esc(ctx.period.label) + ' ligger utanför PI-kalendern och visas som kvartal. Lägg till PI:er nedan.</p>' : '') +
       '<div class="field-block"><span class="label">Aktuell period</span><div class="row" style="gap:6px;flex-wrap:nowrap">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') +
       '<strong class="period-now">' + esc(ctx.period.label) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</div></div>' +
       UI.props([
@@ -41,6 +44,8 @@
     h += '<tr class="total"><td>Summa</td><td class="num">' + U.fmtNum(ohTotal) + ' h/v</td><td colspan="2" class="muted small">' + U.fmtPct((ohTotal / st.standardWeekHours) * 100) + ' av arbetstiden</td></tr>';
     h += '</tbody></table></div></section>';
     h += '</div>';
+
+    h += piCalendar(ctx);
 
     var reds = S.db.teamReductions.slice().sort(function (a, b) { return a.from.localeCompare(b.from); });
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Tid som inte finns i ett team under en period, till exempel föräldraledighet eller långtidsfrånvaro. Arbete läggs som epik: utbildning och underhåll i teamets förvaltning, systembyten och annat i egna epiker. Då räknas inget två gånger. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
@@ -85,6 +90,43 @@
     return h;
   };
 
+  /*
+   * PI-kalendern: PI är standardperioden. Datumen ska följa organisationens planering, till exempel
+   * ett sommaruppehåll mellan två PI:er. Som standard visas PI:erna från i år och framåt.
+   */
+  function piCalendar(ctx) {
+    var today = U.todayISO();
+    var range = OOS.segVal('pi-range', 'ahead');
+    var fromYear = today.slice(0, 4) + '-01-01';
+    var all = S.db.pis.slice().sort(function (a, b) { return a.start.localeCompare(b.start); });
+    var rows = range === 'all' ? all : all.filter(function (x) { return x.end >= fromYear; });
+    function state(x) {
+      if (x.end < today) return '<span class="muted">Klar</span>';
+      if (x.start > today) return '<span class="muted">Kommande</span>';
+      return 'Pågår';
+    }
+    var h = '<section class="card" id="pi-calendar"><div class="card-head"><div><div class="card-title">PI-kalender</div>' +
+      '<p class="card-sub">PI är standardperioden i hela Fabriken. Ändra datumen så att de följer er planering. Ett uppehåll mellan två PI:er, till exempel på sommaren, räknas inte till någon PI.</p></div>' +
+      '<div class="page-actions">' + UI.seg('pi-range', [{ key: 'ahead', label: 'Från i år' }, { key: 'all', label: 'Alla' }], range) + UI.btn('Lägg till PI', 'pi-add', { cls: 'btn-sm' }) + '</div></div>';
+    h += UI.table({
+      id: 'tbl-pis',
+      rows: rows,
+      defaultSort: 'start',
+      noun: 'PI',
+      pageSize: 0,
+      rowClass: function (x) { return x.end < today ? 'is-past' : ''; },
+      columns: [
+        { key: 'name', label: 'PI', sort: function (x) { return x.start; }, render: function (x) { return '<span class="name">' + esc(x.name) + '</span>' + (x.id === ctx.period.piId ? ' ' + UI.badge('Vald period', 'muted') : ''); } },
+        { key: 'start', label: 'Gäller', sort: function (x) { return x.start; }, render: function (x) { return '<span class="nowrap">' + U.fmtDate(x.start) + ' –</span> <span class="nowrap">' + U.fmtDate(x.end) + '</span>'; } },
+        { key: 'days', label: 'Arbetsdagar', cls: 'num', opt: 1, sort: function (x) { return OOSEngine.workdays(x.start, x.end); }, render: function (x) { return OOSEngine.workdays(x.start, x.end); } },
+        { key: 'state', label: 'Läge', opt: 2, render: state },
+        { key: 'act', label: '', cls: 'actions', render: function (x) { return UI.iconBtn('edit', 'pi-edit', { id: x.id }, 'Ändra ' + x.name); } }
+      ]
+    });
+    if (!all.length) h += '<p class="muted">Ingen PI-kalender. Perioden blir kalenderkvartal tills du lägger till PI:er.</p>';
+    return h + '</section>';
+  }
+
   function effect(e, r, period) {
     var ov = OOSEngine.overlapWorkdays(r.from, r.to, period.start, period.end);
     if (!ov || !period.workdays) return 0;
@@ -122,4 +164,6 @@
     S.updateSettings({ periodType: el.value });
     OOS.refresh();
   };
+  A['pi-add'] = function () { C.forms.pi(null); };
+  A['pi-edit'] = function (el) { C.forms.pi(S.engine().get('pis', el.dataset.id)); };
 })();

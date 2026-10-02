@@ -162,7 +162,7 @@
     var h = UI.pageHead({ title: 'Inställningar', sub: 'Organisation, data och ändringslogg för POC:n.' });
     h += '<div class="grid-2">';
     h += '<section class="card"><div class="card-head"><div class="card-title">Organisation</div>' + UI.btn('Redigera', 'org-edit', { cls: 'btn-sm' }) + '</div><div class="card-body"><dl class="kv">' +
-      '<dt>Organisationsnamn</dt><dd>' + esc(st.orgName) + '</dd><dt>Standardarbetstid</dt><dd>' + st.standardWeekHours + ' h/vecka</dd><dt>Rapporteringsperiod</dt><dd>' + (st.periodType === 'quarter' ? 'Kvartal' : 'Månad') + ' (' + esc(ctx.period.label) + ')</dd>' +
+      '<dt>Organisationsnamn</dt><dd>' + esc(st.orgName) + '</dd><dt>Standardarbetstid</dt><dd>' + st.standardWeekHours + ' h/vecka</dd><dt>Rapporteringsperiod</dt><dd>' + esc(({ pi: 'PI', year: 'År', quarter: 'Kvartal', month: 'Månad' })[ctx.period.type] || 'Månad') + ' (' + esc(ctx.period.label) + ')</dd>' +
       '<dt>Lagring</dt><dd>' + (S.isPersistent() ? 'Sparas i den här webbläsaren' : UI.badge('Sparas inte', 'warn') + ' <span class="muted small">Webbläsaren blockerar lokal lagring. Ändringar försvinner när sidan laddas om.</span>') + '</dd></dl></div></section>';
     h += '<section class="card"><div class="card-head"><div class="card-title">Data</div></div><div class="card-body stack">' +
       '<p class="small">All data är påhittad demodata för organisationen Nordpension. Ändringar sparas bara i din webbläsare och syns inte för andra.</p>' +

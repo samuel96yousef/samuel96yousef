@@ -34,6 +34,50 @@ test('timmar per månad fördelas på överlappande arbetsdagar', () => {
   near(E.monthlyHoursInPeriod(40, '2026-01-01', '2026-12-31', q), 120);
 });
 
+test('år och PI ur PI-kalendern', () => {
+  const y = E.periodOf('2026-10-02', 'year');
+  assert.deepEqual([y.start, y.end, y.label, y.inText], ['2026-01-01', '2026-12-31', '2026', '2026']);
+  assert.equal(E.nextPeriod(y).label, '2027');
+  const cal = Seed.build().pis;
+  const pi = E.periodOf('2026-10-02', 'pi', cal);
+  assert.deepEqual([pi.start, pi.end, pi.label, pi.inText], ['2026-10-01', '2026-12-31', 'PI 4 2026', 'PI 4 2026']);
+  assert.equal(E.nextPeriod(pi).label, 'PI 1 2027');
+  assert.equal(E.prevPeriod(pi).label, 'PI 3 2026');
+});
+
+test('PI med uppehåll: stegen hoppar över uppehållet och utanför kalendern blir det kvartal', () => {
+  const cal = [
+    { id: 'a', name: 'PI A', start: '2026-01-05', end: '2026-03-27' },
+    { id: 'b', name: 'PI B', start: '2026-04-06', end: '2026-06-19' },
+    { id: 'c', name: 'PI C', start: '2026-08-17', end: '2026-10-30' }
+  ];
+  /* Sommaruppehållet: framåt ger nästa PI, bakåt den förra. */
+  assert.equal(E.periodOf('2026-07-10', 'pi', cal).label, 'PI C');
+  assert.equal(E.periodOf('2026-07-10', 'pi', cal, -1).label, 'PI B');
+  const b = E.periodOf('2026-05-01', 'pi', cal);
+  assert.equal(E.nextPeriod(b).label, 'PI C');
+  assert.equal(E.prevPeriod(E.nextPeriod(b)).label, 'PI B');
+  /* Efter sista PI:n: resten av kvartalet, märkt som utanför kalendern. */
+  const after = E.nextPeriod(E.periodOf('2026-09-01', 'pi', cal));
+  assert.deepEqual([after.start, after.end, after.label, after.outside], ['2026-10-31', '2026-12-31', 'Q4 2026', true]);
+  /* Före första PI:n: kvartalet fram till dagen före. */
+  const before = E.prevPeriod(E.periodOf('2026-02-01', 'pi', cal));
+  assert.deepEqual([before.start, before.end, before.outside], ['2026-01-01', '2026-01-04', true]);
+  /* Utan kalender blir PI kalenderkvartal. */
+  assert.equal(E.periodOf('2026-10-02', 'pi', []).label, 'Q4 2026');
+});
+
+test('en PI:s kapacitet och belastning är summan av dess månader', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const pi = E.periodOf('2026-10-02', 'pi', db.pis);
+  const months = ['2026-10-15', '2026-11-15', '2026-12-15'].map((d) => E.periodOf(d, 'month'));
+  const cap = months.reduce((a, m) => a + e.orgCapacity(m).capacity, 0);
+  const load = months.reduce((a, m) => a + e.orgCapacity(m).loaded, 0);
+  near(e.orgCapacity(pi).capacity, cap, 0.5);
+  near(e.orgCapacity(pi).loaded, load, 0.5);
+});
+
 test('arbetarens tillgängliga kapacitet är grundkapacitet minus grundavdrag', () => {
   const db = Seed.build();
   const e = E.create(db);

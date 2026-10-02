@@ -99,7 +99,11 @@
 
     /* Vad som visas och hur, sedan vilket urval. */
     h += '<section class="card report-controls"><div class="rc-main">';
-    h += '<div class="fld"><span>Period</span><div class="period-step">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') +
+    /* Periodtypen gäller hela Fabriken, som perioden i menyn. PI är standard. */
+    h += '<div class="fld"><span>Visa per</span>' + UI.seg('period-type', OOSEngine.PERIOD_TYPES.map(function (t) { return { key: t.value, label: t.label }; }), ctx.period.type) + '</div>';
+    /* Datumen står i etiketten, så att fälten står i linje. En PI säger inget om datum utan dem. */
+    h += '<div class="fld"><span>Period <span class="muted">' + (ctx.period.type === 'month' ? ctx.period.workdays + ' arbetsdagar' : U.fmtDate(ctx.period.start) + ' – ' + U.fmtDate(ctx.period.end)) + '</span></span>' +
+      '<div class="period-step">' + UI.iconBtn('arrowLeft', 'period-shift', { dir: -1 }, 'Föregående period') +
       '<strong>' + esc(ctx.period.label) + '</strong>' + UI.iconBtn('arrowRight', 'period-shift', { dir: 1 }, 'Nästa period') + '</div></div>';
     h += select('level', 'Gruppera efter', LEVELS, r.level);
     h += '<div class="fld"><span>Visa som</span>' + UI.seg('report-view', [{ key: 'table', label: 'Tabell' }, { key: 'chart', label: 'Diagram' }], r.view) + '</div>';
@@ -299,5 +303,6 @@
   };
   OOS.segHandlers = OOS.segHandlers || {};
   OOS.segHandlers['report-view'] = function (key) { rs().view = key; };
+  OOS.segHandlers['period-type'] = function (key) { S.updateSettings({ periodType: key }); };
   OOS.reportState = rs;
 })();
