@@ -7,12 +7,12 @@ Filosofin kommer från problembeskrivningarna. Där står att ett arbetssätt sk
 ## Fem principer
 
 **1. Varje block har en tydlig yta.**
-Innehållet ligger i vita kort med hårfin kant på en ljusgrå botten. Då syns det var ett block börjar och var det slutar. Inuti korten skapas struktur med luft, typografi och hårfina linjer. Det finns inga skuggor och inga ikoner som dekoration. En ikon används bara när den är själva knappen, till exempel stäng, sök eller ändra.
+Innehållet ligger i vita kort med hårfin kant på en ljus, sval botten. Då syns det var ett block börjar och var det slutar. Inuti korten skapas struktur med luft, typografi och hårfina linjer. Den enda skuggan är en svag under en utfälld ram, och det finns inga ikoner som dekoration. En ikon används bara när den är själva knappen, till exempel stäng, sök eller ändra.
 
 *Ändrat efter användartest:* den första versionen hade inga rutor alls. Det blev svårt att se var informationen började och slutade, särskilt på detaljsidorna.
 
 **2. Färg betyder avvikelse.**
-Ytan är svartvit. Gult betyder nära gränsen och rött betyder över gränsen. Allt som är som det ska vara är neutralt. Om allt har färg sticker ingenting ut.
+Ytan är vit med svala skiffergrå toner och en blå accentfärg för det man har valt, det som är aktivt och staplar som visar mängd. Gult betyder nära gränsen och rött betyder över gränsen. Allt som är som det ska vara är lugnt. Om allt har varningsfärg sticker ingenting ut.
 
 **3. Siffror i klartext.**
 Timmar är den gemensamma valutan. Varje vy börjar med det viktigaste. Översikten sammanfattar läget i en mening som går att säga högt på ett möte. Siffror står alltid med enhet och period.
@@ -31,20 +31,20 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Datum | Alltid skrivna som "1 sep 2026", aldrig som 2026-09-01. Perioder som "oktober 2026". |
 | Uppgifter | Etikett och värde på en rad med hårfin linje emellan. I smala spalter står etiketten ovanför värdet. |
 | Avvikelser | Ljust tonad ruta med gul eller röd kant, överst på sidan. Texten säger vad som är fel och vad man kan göra. |
-| Färger | Bläcksvart på vitt. Grå i tre nivåer för sekundär text. Gult och rött bara för avvikelser. |
-| Primär knapp | Svart, en per vy. Övriga knappar är neutrala. |
+| Färger | Nästan svart text på vitt, svala skiffergrå toner i tre nivåer för sekundär text och linjer. Blått (`--accent`) för val, aktiv flik, vald sida, fokus och staplar. Ljusblått (`--accent-soft`, `--accent-line`) för ytor och ramar som hör till ett val. Gult och rött bara för avvikelser. All text klarar 4,5:1 i båda lägena. |
+| Primär knapp | Blå, en per vy. Övriga knappar är neutrala. |
 | Ytor | Ljusgrå botten. Varje sektion är ett vitt kort med 1 px kant och rundade hörn, 24 px luft inuti. I mörkt läge är botten mörkare än korten. |
 | Nyckeltal | Egna små kort i ett rutnät som bryts efter bredden. Etikett, tal och förklaring hör synligt ihop. |
 | Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
 | Tabeller | Går kant i kant i kortet. Hårfina linjer mellan raderna, ingen bakgrund i rubrikraden. Texten linjerar med kortets rubrik. |
-| Staplar | Tunna och mörka. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
+| Staplar | Tunna och blå. Allokering visas ljusare än belastning, eftersom 100 % allokering är normalt. |
 | Kapacitetsstaplar | Stapelns längd är kapaciteten. Mörk del är belastat, ljus del ledigt och randig röd del det som är planerat utöver kapaciteten. Talen står i klartext med rubrik bredvid stapeln. Det finns inga markeringar som man måste gissa betydelsen av. |
-| Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har grå bakgrund, fet text och ett streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. Menyn får plats utan att rulla ned till 680 px skärmhöjd: på låga skärmar blir raderna tätare och undertexten vid logotypen döljs. Är skärmen ännu lägre rullar bara grupperna, med en skugga i kanten, medan sök, inställningar och period står kvar. |
-| Arbetstyper | Utveckling, förvaltning och utredning skiljs åt med tre gråtoner, inte med färg. Förvaltningen står först på teamets arbetskort. Saknas den visas en streckad rad med en knapp för att lägga till den. Färgen är reserverad för det som är över kapaciteten. |
+| Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har ljusblå bakgrund, fet text och ett blått streck vid kanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. Menyn får plats utan att rulla ned till 680 px skärmhöjd: på låga skärmar blir raderna tätare och undertexten vid logotypen döljs. Är skärmen ännu lägre rullar bara grupperna, med en skugga i kanten, medan sök, inställningar och period står kvar. |
+| Arbetstyper | Utveckling, förvaltning och utredning skiljs åt med tre toner av blått, från mörkt till ljust, och står alltid med förklaring. Förvaltningen står först på teamets arbetskort. Saknas den visas en streckad rad med en knapp för att lägga till den. Färgen är reserverad för det som är över kapaciteten. |
 | Tidslinje | Rader i html med tunna staplar på en tolv månaders axel. Standard är att gruppera efter beroendekedja: det som hänger ihop står under varandra, det som måste bli klart först överst, och kedjan med störst risk först. Epiker utan beroenden är hopfällda sist. Ett beroende är en romb på den väntande epikens rad, där det den väntar på blir klart, med en lodrät linje upp till stapeln. Grå romb är i fas, gul har risk, röd blir klar för sent och då ritas glappet som en röd streckad linje. En röd prick efter namnet betyder att teamet är fullt i ett område som epiken behöver. Ett klick fäller ut epikens beroenden, risker och kompetensläge direkt under raden. Grupperat per team eller initiativ står det som hänger ihop långt isär, så där syns linjerna bara för den epik man pekar på eller har fällt ut. I en smal ruta står namnet ovanför stapeln. |
-| Kopplingar | Tre listor i stället för ett flödesdiagram: varifrån arbetet kommer (störst först), team och kompetensområden (mest belagt först, så att flaskhalsarna står överst). Varje rad har tal i klartext och en stapel mot kapaciteten. Ett val filtrerar de andra listorna till det som hänger ihop med valet och sorterar dem efter det de visar. Staplarna glider till valets del: mörk del hör till valet, grå del är annat arbete. Väljer man ett team visas dess kompetensområden med ledigt och för mycket, väljer man ett område visas varje teams läge i det, också team som har ledig tid där. Linjer ritas bara för valet, med tjocklek efter timmar och rött till ett område som är fullt. I en smal ruta staplas listorna och bara valet står kvar i sin lista. |
+| Kopplingar | Tre listor i stället för ett flödesdiagram: varifrån arbetet kommer (störst först), team och kompetensområden (mest belagt först, så att flaskhalsarna står överst). Varje rad har tal i klartext och en stapel mot kapaciteten. Ett val filtrerar de andra listorna till det som hänger ihop med valet och sorterar dem efter det de visar. Staplarna glider till valets del: blå del hör till valet, ljusblå del är annat arbete. Väljer man ett team visas dess kompetensområden med ledigt och för mycket, väljer man ett område visas varje teams läge i det, också team som har ledig tid där. Linjer ritas bara för valet, med tjocklek efter timmar och rött till ett område som är fullt. I en smal ruta staplas listorna och bara valet står kvar i sin lista. |
 | Beroendekedja | Det epiken väntar på, epiken och det som väntar på den, som rutor med pilar emellan. Risken står i klartext i rutan, med gul eller röd kant. I en smal ruta staplas kolumnerna och pilarna pekar nedåt. |
-| Period för period | En tabell med en stapel per period: längden är teamets kapacitet, mörk del epiken, grå del annat arbete och randig röd del det som går över. Ett förslag ritas streckat, som beläggningen skulle bli om det beslutas. |
+| Period för period | En tabell med en stapel per period: längden är teamets kapacitet, blå del epiken, ljusblå del annat arbete och randig röd del det som går över. Ett förslag ritas streckat, som beläggningen skulle bli om det beslutas. |
 | Flaskhalsmatris | Team × kompetensområde med beläggning i procent. Neutral som standard, gul ruta från 90 % och röd över 100 % eller där teamet saknar kompetensen. Matrisen är till för att hitta avvikelser, inte för att läsa varje tal. |
 | Rullistor | Egen komponent i stället för webbläsarens. Bock för valt alternativ, grupper med rubrik, undertext i grått och sökfält när listan har fler än åtta alternativ. |
 
@@ -63,7 +63,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Del | Regel |
 |---|---|
-| Sidhuvud | Namnet på sidan, en mening om vad den visar och högst en svart knapp till höger. |
+| Sidhuvud | Namnet på sidan, en mening om vad den visar och högst en blå knapp till höger. |
 | Nyckeltal | Fyra rutor. Etiketten är ett substantiv ("Team", "Beläggning"), aldrig "Totalt antal …". Varje ruta har en förklaring under talet. |
 | Listor | Kortet heter "Alla …" och upprepar inte sidrubriken. Sökfältet står till höger i kortets huvud. |
 | Tabeller | Sifferkolumner har rubriken till höger, ovanför talen. Sorteringspilen följer sista ordet och hamnar aldrig ensam på en rad. Namn står i halvfet stil med en grå undertext. |
@@ -115,7 +115,7 @@ Alla detaljsidor har samma ordning, så att man vet var man ska titta:
 
 Den utfällda raden och detaljerna under den (lådan, `C.drawer`) har samma mall överallt:
 
-- **Ingen grå yta, inget som går ut kant i kant.** Raden och lådan ligger på kortets vita botten utan linje emellan, och raden blir inte grå när pekaren står kvar efter klicket. Lådan håller sig inom kortets marginaler och linjerar med namnet. En tunn linje från pilen och ned längs lådan visar vilken rad den hör till. Inget kort i kortet.
+- **En vit ram inom kortet.** Raden står kvar på vitt, med pil och namn i blått. Detaljerna ligger i en vit ram med tunn blå kant och rundade hörn, inom kortets marginaler, så att inget går ut kant i kant. Ramens huvud är ljusblått och håller flikarna och handlingarna. Tabeller i ramen går kant i kant i ramen, inte utanför den. Ingen grå yta, och raden blir inte grå när pekaren står kvar efter klicket.
 - **Raden är rubriken.** Lådan upprepar inte namnet synligt, bara för skärmläsare. Det som redan står i en synlig kolumn, som beskrivningen eller kapaciteten, står inte en gång till. Döljs kolumnen på en smal skärm visas det i lådan i stället.
 - **Överst** flikar eller en ingress till vänster och handlingarna till höger. Redigera är en vanlig knapp. Ta bort är röd text utan ram och frågar alltid först.
 - **Kopplingar** står som listor med en etikett för rollen: mörk för den viktigaste (Ansvarar, Primär), ljus för resten (Bidrar, Stödjande). Knappen för att koppla bort syns när man pekar på raden eller ger den fokus, och alltid på pekskärm. Att lägga till är en knapp med text, till exempel "Koppla team", aldrig ett ensamt plustecken.
@@ -182,7 +182,8 @@ Regler:
 
 Lugn får inte betyda svårläst. Kraven är:
 
-- All text klarar WCAG 2.1 AA, det vill säga minst 4,5:1 i kontrast, i både ljust och mörkt läge. Det gäller även den gråa hjälptexten.
+- All text klarar WCAG 2.1 AA, det vill säga minst 4,5:1 i kontrast, i både ljust och mörkt läge. Det gäller även den grå hjälptexten och blå text på ljusblå yta.
+- Fokusramen är blå och visas när man använder tangentbordet. Efter ett klick visas ingen ram, även om appen flyttar fokus i koden (`data-input` på `html`).
 - Allt går att nå med tangentbordet. Tabellrader, flikar och sorterbara kolumner tar emot fokus. Piltangenterna flyttar mellan flikar.
 - Dialoger håller kvar fokus medan de är öppna och lämnar tillbaka det när de stängs. Esc stänger dem.
 - Vid sidbyte flyttas fokus till sidans rubrik och webbläsarens bakåtknapp fungerar.

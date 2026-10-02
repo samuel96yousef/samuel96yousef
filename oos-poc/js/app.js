@@ -355,6 +355,17 @@
     }
   });
 
+  /*
+   * Fokusramen är till för den som använder tangentbordet. Efter ett klick flyttar appen ibland
+   * fokus i koden, till exempel tillbaka till fliken efter en omritning. Det ska inte se ut som
+   * tangentbordsfokus, så sidan håller reda på hur man senast använde den.
+   */
+  var root = document.documentElement;
+  document.addEventListener('pointerdown', function () { root.setAttribute('data-input', 'pointer'); }, true);
+  document.addEventListener('keydown', function (ev) {
+    if (!ev.ctrlKey && !ev.metaKey && !ev.altKey) root.setAttribute('data-input', 'keyboard');
+  }, true);
+
   document.addEventListener('keydown', function (ev) {
     /* Global sökning: Ctrl+K eller ⌘K var som helst, / när man inte skriver i ett fält. */
     var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName) || ev.target.isContentEditable;
