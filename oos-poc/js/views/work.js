@@ -436,23 +436,36 @@
     });
     h += '</tbody></table></div></section>';
 
-    /* Matris: team och kompetensområden. Färg bara där det avviker. */
-    var cols = org.filter(function (c) { return c.supply > 0.5 || c.demand > 0.5; }).sort(function (a, b) { return b.supply - a.supply; }).map(function (c) { return c.category; });
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Team och kompetensområden</div>' +
-      '<div class="card-sub">Beläggning per område i ' + esc(p.inText) + '. Gult från 90 %, rött över 100 % eller när teamet saknar kompetensen.</div></div></div>';
-    h += '<div class="table-wrap"><table class="tbl heat lmx" data-fit="scroll"><thead><tr><th>Team</th>';
-    cols.forEach(function (c) { h += '<th class="num heat-col">' + esc(c) + '</th>'; });
-    h += '</tr></thead><tbody>';
-    S.db.teams.slice().sort(U.byName).forEach(function (t) {
+    /*
+     * Matris: team och kompetensområden. En liten beläggningsstapel per cell, samma som i resten
+     * av appen, så att det trånga syns utan att man läser talen. Teamen står mest ansträngt först
+     * och områdena i samma ordning som tabellen ovanför. Har teamet inte området är rutan tom.
+     */
+    var cols = org.slice().sort(function (a, b) { return b.loadPct - a.loadPct; })
+      .filter(function (c) { return c.supply > 0.5 || c.demand > 0.5; }).map(function (c) { return c.category; });
+    var mtx = S.db.teams.map(function (t) {
       var by = {};
-      e.teamCategoryLoad(t.id, p).rows.forEach(function (r) { by[r.category] = r; });
-      h += '<tr><td>' + C.link('teams:' + t.id, t.name) + '</td>';
+      e.teamCategoryLoad(t.id, p).rows.forEach(function (r) { if (r.supply >= 0.5 || r.demand >= 0.5) by[r.category] = r; });
+      var strain = -1;
+      Object.keys(by).forEach(function (k) { strain = Math.max(strain, by[k].gap ? Infinity : by[k].loadPct); });
+      return { t: t, by: by, strain: strain };
+    }).sort(function (a, b) { return b.strain - a.strain || U.byName(a.t, b.t); });
+    var mtxOver = mtx.some(function (x) { return Object.keys(x.by).some(function (k) { return x.by[k].gap || x.by[k].loadPct > 100.5; }); });
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Team och kompetensområden</div>' +
+      '<div class="card-sub">Beläggning per område i ' + esc(p.inText) + '. Mest ansträngt team först, områdena i samma ordning som tabellen ovanför.</div></div></div>';
+    h += UI.barLegend(mtxOver).replace('class="legend-line"', 'class="legend-line chart-legend"').replace(/<\/div>$/, '<span>Tom ruta: teamet har inte området</span></div>');
+    h += '<div class="table-wrap"><table class="tbl lmx" data-fit="scroll"><thead><tr><th>Team</th>';
+    cols.forEach(function (c) { h += '<th class="lmx-th">' + esc(c) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    mtx.forEach(function (x) {
+      h += '<tr><td>' + C.link('teams:' + x.t.id, x.t.name) + '</td>';
       cols.forEach(function (c) {
-        var r = by[c];
-        if (!r || (r.supply < 0.5 && r.demand < 0.5)) { h += '<td class="num heat-cell"><span class="heat-empty">–</span></td>'; return; }
-        var cls = r.gap || r.loadPct > 100.5 ? ' lx-crit' : r.loadPct >= 90 ? ' lx-warn' : '';
-        var tip = t.name + ' · ' + c + '\n' + (r.gap ? U.fmtH(r.demand) + ' arbete, ingen kapacitet' : U.fmtH(r.demand) + ' arbete av ' + U.fmtH(r.supply) + ' (' + U.fmtPct(r.loadPct) + ')');
-        h += '<td class="num heat-cell' + cls + '" data-tip="' + esc(tip) + '">' + (r.gap ? 'Saknas' : U.fmtNum(Math.round(r.loadPct)) + ' %') + '</td>';
+        var r = x.by[c];
+        if (!r) { h += '<td class="lmx-td"><span class="sr-only">Inte i teamet</span></td>'; return; }
+        var cls = r.gap ? ' lx-gap' : r.loadPct > 100.5 ? ' lx-crit' : r.loadPct >= 90 ? ' lx-warn' : '';
+        var tip = x.t.name + ' · ' + c + '\n' + (r.gap ? U.fmtH(r.demand) + ' arbete, ingen i teamet har kompetensen' : U.fmtH(r.demand) + ' arbete av ' + U.fmtH(r.supply) + ', ' + U.fmtPct(r.loadPct));
+        h += '<td class="lmx-td' + cls + '" data-tip="' + esc(tip) + '"><span class="lmx-cell"><span class="lmx-val">' + (r.gap ? 'Saknas' : U.fmtPct(r.loadPct)) + '</span>' +
+          UI.loadTrack(r.demand, 0, r.gap ? 0 : r.supply) + '</span></td>';
       });
       h += '</tr>';
     });

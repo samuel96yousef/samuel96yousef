@@ -78,8 +78,9 @@ var OOSUI = (function () {
     var band = opts.band ? '<span class="lb-band" style="left:' + opts.band[0] + '%;width:' + Math.max(0, opts.band[1] - opts.band[0]) + '%"></span>' : '';
     return '<span class="lbar' + (opts.proposal ? ' proposal' : '') + (opts.soft ? ' soft' : '') + (opts.share ? ' share' : '') + (cap > 0 ? '' : ' none') + '" aria-hidden="true">' +
       '<span class="lb-room" style="width:' + room.toFixed(2) + '%">' + band + seg('lb-part', p, 'p') + seg('lb-rest', r, 'r') + '</span>' +
-      seg('lb-over', (over / max) * 100, 'o') +
-      (opts.share ? '' : '<span class="lb-cap" style="left:' + room.toFixed(2) + '%"></span>') + '</span>';
+      /* Utan kapacitet är hela stapeln över, och det finns inget streck att mäta mot. */
+      seg('lb-over', cap > 0 ? (over / max) * 100 : (over ? 100 : 0), 'o') +
+      (opts.share || !(cap > 0) ? '' : '<span class="lb-cap" style="left:' + room.toFixed(2) + '%"></span>') + '</span>';
   }
 
   /*

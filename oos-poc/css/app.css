@@ -4377,26 +4377,93 @@ p,
   margin: 6px 0 0;
 }
 
-.lmx th.heat-col {
-  max-width: 112px;
+/*
+ * Flaskhalsmatris: team × kompetensområde med en liten beläggningsstapel per cell och talet
+ * ovanför. Talet är grått som standard och får färg först när det avviker. Bara Saknas har
+ * bakgrund. Tomma rutor är tomma, så att det som finns syns.
+ */
+.lmx th,
+.lmx td {
+  padding-inline: 6px;
+}
+
+.lmx th.lmx-th {
+  width: 70px;
+  min-width: 60px;
+  max-width: 88px;
+  text-align: center;
+  vertical-align: bottom;
+  white-space: normal;
   overflow-wrap: normal;
-  word-break: normal;
+  hyphens: manual;
+  line-height: 1.25;
 }
 
-.lmx td.heat-cell {
-  color: var(--fg-2);
+.lmx td.lmx-td {
+  width: 70px;
+  min-width: 60px;
+  vertical-align: middle;
 }
 
-.lmx td.lx-warn {
-  background: var(--warn-soft);
-  color: var(--fg);
+/* Teamnamnet på en rad, så att alla rader blir lika höga och lätta att följa. */
+.lmx tbody td:first-child {
+  white-space: nowrap;
+}
+
+/* På smal yta får namnet brytas, annars tar den fasta kolumnen nästan hela bredden. */
+@container main (max-width: 700px) {
+  .lmx tbody td:first-child {
+    white-space: normal;
+    min-width: 112px;
+    max-width: 140px;
+  }
+}
+
+.lmx-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lmx-val {
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.lmx .lbar {
+  height: 6px;
+}
+
+.lmx .lb-cap {
+  top: -2px;
+  bottom: -2px;
+}
+
+.lmx td.lx-warn .lmx-val {
+  color: var(--warn);
   font-weight: 600;
 }
 
-.lmx td.lx-crit {
-  background: var(--crit-soft);
+.lmx td.lx-crit .lmx-val,
+.lmx td.lx-gap .lmx-val {
   color: var(--crit);
   font-weight: 600;
+}
+
+.lmx td.lx-gap {
+  background: var(--crit-soft);
+}
+
+/* Raden man pekar på markeras, så att den går att följa över alla områden. */
+.lmx tbody tr:hover > td {
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--bg));
+}
+
+.lmx tbody tr:hover > td.lx-gap {
+  background: var(--crit-soft);
 }
 
 /* ---------- Utfällbara rader: detaljerna visas direkt under raden man klickar på ---------- */
