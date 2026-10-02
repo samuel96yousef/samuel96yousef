@@ -240,7 +240,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   C.needsField = function () {
     return {
       key: 'needs', label: 'Kompetensbehov', type: 'custom',
-      help: 'Hur epikens timmar fördelas på kompetensområden, i procent. Ledigt visar vad teamet har kvar i perioden.',
+      help: 'Andel av epikens timmar per område. Ledigt är vad teamet har kvar.',
       render: function (value) { return needsHtml(null, value || []); },
       read: function (box) { return readNeeds(box, false); },
       bind: function (box, form) {
@@ -309,7 +309,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   C.depsField = function (selfId) {
     return {
       key: 'dependsOn', label: 'Beror på', type: 'custom',
-      help: 'Andra epiker som måste leverera innan den här kan bli klar. Risker visas på epiken och som signal.',
+      help: 'Epiker som måste bli klara först. Risker syns på epiken.',
       render: function (value) { return depsHtml(value || [], selfId); },
       read: readDeps,
       bind: function (box, form) {
@@ -1032,14 +1032,19 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     var p = OOS.period();
     UI.openForm({
       title: opts.title || (isNew ? 'Lägg till epik' : 'Ändra ' + r.name),
-      intro: opts.intro || 'En epik är ett avgränsat eller löpande arbete som ett team gör. Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
+      intro: opts.intro || 'Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
+      /* Långt formulär: bred dialog med konsekvensen, kompetensbehovet och beroendena till höger. */
+      wide: true,
+      side: ['needs', 'dependsOn'],
+      previewEmpty: 'Välj team för att se vad epiken betyder för teamets beläggning.',
       values: r || Object.assign({ type: 'development', status: 'planned', effort: 'total', hours: 200, from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end, needs: [], dependsOn: [] }, defaults || {}),
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'teamId', label: 'Team', type: 'select', required: true, placeholder: 'Välj team …', options: C.opts.teams() },
-        { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes, help: 'Förvaltning rymmer drift, rättningar, utbildning och kompetensspridning. En per team.' },
-        { key: 'initiativeId', label: 'Initiativ', type: 'select', placeholder: 'Inget initiativ', options: C.opts.initiatives(), help: 'Utvecklingsarbete bör höra till ett beslutat initiativ.' },
-        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: 'Förslag belastar inte teamet. Klara epiker räknas för den tid de pågick.' },
+        /* Hjälptexterna syns när de gäller, inte hela tiden. */
+        { key: 'type', label: 'Arbetstyp', type: 'select', required: true, options: C.opts.epicTypes, help: function (v) { return v.type === 'maintenance' ? 'Förvaltning rymmer drift, rättningar, utbildning och kompetensspridning. En per team.' : ''; } },
+        { key: 'initiativeId', label: 'Initiativ', type: 'select', placeholder: 'Inget initiativ', options: C.opts.initiatives(), help: function (v) { return v.type === 'development' && !v.initiativeId ? 'Utveckling bör höra till ett beslutat initiativ.' : ''; } },
+        { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus, help: function (v) { return v.status === 'proposed' ? 'Ett förslag belastar inte teamet förrän det beslutas.' : v.status === 'done' ? 'Klara epiker räknas för den tid de pågick.' : ''; } },
         { key: 'effort', label: 'Ram', type: 'select', required: true, options: C.opts.effort },
         { key: 'hours', label: 'Timmar', type: 'number', min: 1, max: 100000, required: true },
         { key: 'from', label: 'Från', type: 'date', required: true },

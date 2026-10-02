@@ -138,6 +138,22 @@ Ett förslag belastar inte teamet. Dess detaljsida visar ändå vad beläggninge
 
 Konsekvensen visas också per kompetensområde. Har teamet plats totalt men inte i test eller krav, säger rutan det: "Teamet har plats totalt, men Test & QA blir en flaskhals". En flaskhals ska synas där beslutet fattas, inte först när arbetet har kört fast.
 
+## Skrollning och formulär
+
+Man ska skrolla på ett ställe i taget och aldrig för att hitta det viktigaste. Reglerna gäller hela appen:
+
+| Var | Regel |
+|---|---|
+| Sidan | Sidan skrollar lodrätt. Inget annat skrollar i onödan. |
+| Korta formulär | Dialog på 540 px. Den ska rymmas utan att skrolla på en skärm från 1280 × 720. Ett formulär som inte ryms har för många fält och ska delas eller bli brett. |
+| Långa formulär | Bred dialog, i dag bara epiken. På breda skärmar tre spalter: fälten, det som påverkar kapaciteten (kompetensbehov och beroenden) och konsekvensen. Mellanbrett två spalter med konsekvensen överst till höger, smalt en spalt med konsekvensen sist. Utan team står en uppmaning där konsekvensen kommer. |
+| När en dialog ändå skrollar | Bara innehållet skrollar. Rubrik och knappar står kvar, fälten till vänster står still, och en skugga i kanten visar att det finns mer. |
+| Sidan bakom | Står still när en dialog är öppen, så att man inte skrollar två saker. |
+| Hjälptexter | En rad, och bara när de gäller. Till exempel syns förklaringen av förvaltning först när man väljer Förvaltning, och att förslag inte belastar först när man väljer Förslag. |
+| Mobil | Dialogen är ett ark som fyller skärmen. Där är skrollning i arket naturlig. |
+| I sidled | Bara breda matriser, till exempel flaskhalsmatrisen och mätvärdena. Första kolumnen står kvar och kanten skuggas. Flikar som inte ryms rullar i sidled och tonas ut i kanten. |
+| Skrollister | Tunna och i appens toner, överallt. |
+
 ## Layout
 
 Appen ska fungera i alla fönster, från en mobil till en bred skärm och från helskärm till ett halvt fönster bredvid något annat. Därför följer layouten ytan som finns, inte vilken sorts enhet det är.

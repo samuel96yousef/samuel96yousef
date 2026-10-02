@@ -180,6 +180,21 @@ th.num {
   border-radius: 4px;
 }
 
+/* Sidan bakom står still när en dialog är öppen, så att man bara skrollar på ett ställe. */
+html {
+  scrollbar-gutter: stable;
+}
+
+html:has(#modal-root:not(:empty)) {
+  overflow: hidden;
+}
+
+/* Skrollister i hela appen: tunna och i appens toner. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
 /* Efter ett klick visas ingen fokusram, bara när man använder tangentbordet (data-input i js/app.js). */
 html[data-input='pointer'] :focus-visible {
   outline: none;
@@ -2378,6 +2393,7 @@ mark {
 .modal-body {
   padding: 12px 24px 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -2385,6 +2401,195 @@ mark {
 
 .modal-body .full {
   grid-column: 1 / -1;
+}
+
+/*
+ * Skrollar dialogens innehåll står rubrik och knappar kvar. En skugga i över- och underkant visar
+ * att det finns mer, och skrollisten är tunn i appens färger.
+ */
+.modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  background:
+    linear-gradient(var(--bg) 30%, transparent) center top / 100% 28px no-repeat local,
+    linear-gradient(transparent, var(--bg) 70%) center bottom / 100% 28px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(16, 24, 40, 0.14), transparent) center top / 100% 10px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(16, 24, 40, 0.14), transparent) center bottom / 100% 10px no-repeat scroll;
+}
+
+/*
+ * Bred dialog för långa formulär. På breda skärmar tre spalter: fälten, det som påverkar
+ * kapaciteten och konsekvensen. Mellanbrett två spalter med konsekvensen överst till höger.
+ * Smalt en spalt. Fälten till vänster står still om innehållet skrollar.
+ */
+.modal.wide {
+  width: min(1200px, 100%);
+}
+
+.modal-body.wide {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 0.95fr);
+  grid-template-areas: "main mid side";
+  gap: 0 24px;
+  align-items: start;
+}
+
+.form-main {
+  grid-area: main;
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+.form-main .full {
+  grid-column: 1 / -1;
+}
+
+.form-mid,
+.form-side {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.form-mid {
+  grid-area: mid;
+}
+
+.form-side {
+  grid-area: side;
+}
+
+.form-mid > .fld,
+.form-side > .fld {
+  grid-column: auto;
+}
+
+.preview-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.form-main textarea {
+  min-height: 64px;
+}
+
+@media (max-width: 1180px) {
+  .modal.wide {
+    width: min(1000px, 100%);
+  }
+  .modal-body.wide {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-areas: "main side" "main mid";
+    gap: 16px 24px;
+  }
+}
+
+@media (max-width: 860px) {
+  .modal-body.wide {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "main" "mid" "side";
+    gap: 16px;
+  }
+  .form-main {
+    position: static;
+  }
+  .form-mid,
+  .form-side {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .form-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* I de smala spalterna är behovsraderna och konsekvenstabellen tätare, så att mer syns på en gång. */
+.form-mid .need-row {
+  grid-template-columns: minmax(0, 1fr) 84px minmax(0, 108px);
+  gap: 8px;
+  padding: 3px 10px;
+}
+
+.form-mid .need-cat {
+  font-size: 13.5px;
+}
+
+.form-mid .fld .need-in input,
+.form-mid .need-in input {
+  height: 28px;
+  width: 56px;
+}
+
+.form-mid .need-free {
+  font-size: 12.5px;
+}
+
+.form-mid .need-foot {
+  padding: 6px 10px;
+}
+
+.form-side .impact {
+  padding: 10px 12px;
+}
+
+.form-side .impact-head {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.form-side .impact-tbl {
+  font-size: 12.5px;
+}
+
+.form-side .impact-tbl th,
+.form-side .impact-tbl td {
+  padding: 3px 6px 3px 0;
+}
+
+.preview-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.form-main textarea {
+  min-height: 64px;
+}
+
+@media (max-width: 860px) {
+  .modal-body.wide {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .form-main {
+    position: static;
+  }
+  .form-side {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .form-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .modal-body.single {
@@ -3755,6 +3960,17 @@ p,
     left: 16px;
     right: 16px;
     transform: none;
+  }
+}
+
+/* Laptopskärmar på 768–800 px höjd: lite mindre luft i dialogens över- och underkant. */
+@media (max-height: 800px) and (min-width: 561px) {
+  .modal-head {
+    padding-top: 16px;
+  }
+  .modal-foot {
+    padding-top: 10px;
+    padding-bottom: 16px;
   }
 }
 
@@ -5920,5 +6136,17 @@ p,
 @media (prefers-reduced-motion: reduce) {
   .dp {
     animation: none;
+  }
+}
+
+/* I formulärets mittspalt får område, andel och ledigt plats på en rad ned till 300 px. */
+@container (min-width: 301px) {
+  .form-mid .need-row {
+    grid-template-columns: minmax(0, 1fr) 76px minmax(0, 96px);
+  }
+  .form-mid .need-free {
+    grid-column: auto;
+    text-align: right;
+    margin-top: 0;
   }
 }

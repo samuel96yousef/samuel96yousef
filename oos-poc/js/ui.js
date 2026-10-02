@@ -344,7 +344,12 @@ var OOSUI = (function () {
     return modalRoot;
   }
 
-  function fieldHtml(f, value) {
+  /* Hjälptext kan vara en funktion av formulärets värden. Då syns den bara när den gäller. */
+  function helpText(f, values) {
+    return typeof f.help === 'function' ? f.help(values || {}) || '' : f.help || '';
+  }
+
+  function fieldHtml(f, value, values) {
     var id = 'f-' + f.key;
     /*
      * Eget fält: vyn ritar innehållet (render) och läser värdet (read). Används för listor som
@@ -353,7 +358,7 @@ var OOSUI = (function () {
     if (f.type === 'custom') {
       return '<div class="fld full custom" data-field="' + esc(f.key) + '" role="group" aria-labelledby="' + id + '-label">' +
         '<span id="' + id + '-label">' + esc(f.label) + '</span><div class="custom-body" id="' + id + '">' + f.render(value) + '</div>' +
-        (f.help ? '<span class="help">' + esc(f.help) + '</span>' : '') + '<span class="err" hidden></span></div>';
+        (f.help ? '<span class="help" data-help="' + esc(f.key) + '"' + (helpText(f, values) ? '' : ' hidden') + '>' + esc(helpText(f, values)) + '</span>' : '') + '<span class="err" hidden></span></div>';
     }
     var cls = 'fld' + (f.full || f.type === 'textarea' ? ' full' : '') + (f.type === 'checkbox' ? ' check' : '');
     var req = f.required ? ' required' : '';
@@ -374,25 +379,41 @@ var OOSUI = (function () {
         if (f.datalist) extra += ' data-suggest="' + esc(JSON.stringify(f.datalist)) + '" autocomplete="off"';
         h += '<input type="' + (f.type || 'text') + '" id="' + id + '" name="' + esc(f.key) + '" value="' + esc(value) + '"' + req + extra + '>';
       }
-      if (f.help) h += '<span class="help">' + esc(f.help) + '</span>';
+      if (f.help) h += '<span class="help" data-help="' + esc(f.key) + '"' + (helpText(f, values) ? '' : ' hidden') + '>' + esc(helpText(f, values)) + '</span>';
     }
     h += '<span class="err" hidden></span></label>';
     return h;
   }
 
+  /*
+   * Formulär i dialog. Två storlekar (se DESIGN.md, Skrollning):
+   *  - vanlig, 540 px: korta formulär som ryms utan att skrolla.
+   *  - bred (cfg.wide): långa formulär med konsekvens, i tre spalter på breda skärmar: fälten,
+   *    det som påverkar kapaciteten (cfg.side) och konsekvensen. Skrollar något är det bara
+   *    dialogens innehåll, och fälten till vänster står still.
+   */
   function openForm(cfg) {
     var values = cfg.values || {};
-    var body = cfg.fields
-      .map(function (f) {
+    var side = cfg.wide ? cfg.side || [] : [];
+    function render(list) {
+      return list.map(function (f) {
         var v = values[f.key];
         if (v === undefined || v === null) v = f.default !== undefined ? f.default : '';
-        return fieldHtml(f, v);
-      })
-      .join('');
+        return fieldHtml(f, v, values);
+      }).join('');
+    }
+    var mainFields = cfg.fields.filter(function (f) { return side.indexOf(f.key) < 0; });
+    var sideFields = cfg.fields.filter(function (f) { return side.indexOf(f.key) >= 0; });
+    var intro = cfg.intro ? '<p class="full muted small">' + cfg.intro + '</p>' : '';
+    var bodyHtml = cfg.wide
+      ? '<div class="modal-body wide"><div class="form-main">' + intro + render(mainFields) + '</div>' +
+        (sideFields.length ? '<div class="form-mid">' + render(sideFields) + '</div>' : '') +
+        (cfg.preview ? '<div class="form-side"></div>' : '') + '</div>'
+      : '<div class="modal-body">' + intro + render(cfg.fields) + '</div>';
     var h =
-      '<div class="modal-back" data-action="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form class="modal-form" novalidate>' +
+      '<div class="modal-back" data-action="modal-backdrop"><div class="modal' + (cfg.wide ? ' wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form class="modal-form" novalidate>' +
       '<div class="modal-head"><h2 class="modal-title" id="modal-title">' + esc(cfg.title) + '</h2>' + iconBtn('x', 'modal-close', {}, 'Stäng') + '</div>' +
-      '<div class="modal-body">' + (cfg.intro ? '<p class="full muted small">' + cfg.intro + '</p>' : '') + body + '</div>' +
+      bodyHtml +
       '<div class="modal-foot">' +
       (cfg.onDelete ? '<button type="button" class="btn btn-danger" data-action="modal-delete" style="margin-right:auto">Ta bort</button>' : '') +
       '<button type="button" class="btn" data-action="modal-close">Avbryt</button>' +
@@ -418,13 +439,33 @@ var OOSUI = (function () {
       var box = document.createElement('div');
       box.className = 'full form-preview';
       box.setAttribute('aria-live', 'polite');
-      form.querySelector('.modal-body').appendChild(box);
+      var sideBox = form.querySelector('.form-side');
+      if (sideBox) sideBox.insertBefore(box, sideBox.firstChild);
+      else form.querySelector('.modal-body').appendChild(box);
       var update = function () {
-        try { box.innerHTML = cfg.preview(readForm(form)) || ''; } catch (e) { box.innerHTML = ''; }
+        var html = '';
+        try { html = cfg.preview(readForm(form)) || ''; } catch (e) { html = ''; }
+        box.innerHTML = html || (cfg.previewEmpty ? '<p class="preview-empty">' + esc(cfg.previewEmpty) + '</p>' : '');
       };
       form.addEventListener('input', update);
       form.addEventListener('change', update);
       update();
+    }
+    /* Hjälptexter som beror på andra fält uppdateras när man ändrar något. */
+    if (cfg.fields.some(function (f) { return typeof f.help === 'function'; })) {
+      var helps = function () {
+        var v = readForm(form);
+        cfg.fields.forEach(function (f) {
+          if (typeof f.help !== 'function') return;
+          var el = form.querySelector('[data-help="' + f.key + '"]');
+          if (!el) return;
+          var t = helpText(f, v);
+          el.textContent = t;
+          el.hidden = !t;
+        });
+      };
+      form.addEventListener('change', helps);
+      form.addEventListener('input', helps);
     }
     var first = form.querySelector('input:not([type=checkbox]), .sel-btn, textarea');
     if (first) first.focus();
@@ -505,6 +546,7 @@ var OOSUI = (function () {
   /* Stänger dialogen, svarar nej på en öppen fråga och återställer fokus. */
   function closeModal() {
     OOSSelect.close();
+    if (window.OOSDate) OOSDate.close();
     if (root()) root().innerHTML = '';
     activeForm = null;
     if (pendingConfirm) {
