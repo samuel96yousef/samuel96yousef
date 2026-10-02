@@ -91,7 +91,7 @@
     h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Krav</th><th class="num">Uppfyllt</th><th>Andel</th></tr></thead><tbody>';
     cov.parts.sort(function (a, b) { return a.ok / a.total - b.ok / b.total; }).forEach(function (p) {
       var pct = (p.ok / p.total) * 100;
-      h += '<tr><td>' + esc(p.what) + '</td><td class="num">' + p.ok + ' av ' + p.total + '</td><td>' + UI.bar(pct, { warnAt: 1000, soft: pct >= 99.5 }) + '</td></tr>';
+      h += '<tr><td>' + esc(p.what) + '</td><td class="num">' + p.ok + ' av ' + p.total + '</td><td>' + UI.bar(pct, { share: true, soft: pct >= 99.5 }) + '</td></tr>';
     });
     h += '</tbody></table></div></section>';
     h += '<p class="muted small">Målnivåerna är förslag. Vilka nivåer som gäller är ett beslut för ledningen och sparas med Ändra mål.</p>';
@@ -153,17 +153,13 @@
     var teams = S.db.teams.map(function (t) { return { t: t, c: e.teamCapacity(t.id, ctx.period) }; })
       .sort(function (a, b) { return b.c.loadPct - a.c.loadPct; });
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Beläggning per team</div>' +
-      '<div class="card-sub">Det skuggade fältet är målet ' + (target.min !== undefined ? U.fmtNum(target.min) : 0) + '–' + U.fmtPct(target.max !== undefined ? target.max : 100) + '. Gult från 90 %.</div></div></div>';
+      '<div class="card-sub">Det skuggade fältet är målet ' + (target.min !== undefined ? U.fmtNum(target.min) : 0) + '–' + U.fmtPct(target.max !== undefined ? target.max : 100) + ', strecket är 100 % av teamets kapacitet. Gult från 90 %.</div></div></div>';
     h += '<div class="loadbars">';
+    var band = target.min !== undefined || target.max !== undefined ? [target.min || 0, target.max !== undefined ? target.max : 100] : null;
     teams.forEach(function (x) {
       var v = x.c.loadPct;
-      var cls = v > 100.5 ? ' crit' : v >= 90 ? ' warn' : '';
       h += '<div class="loadbar" role="link" tabindex="0" data-go="teams:' + esc(x.t.id) + '" aria-label="' + esc(x.t.name + ', ' + U.fmtPct(v)) + '" data-tip="' + esc(x.t.name + '\n' + U.fmtPct(v) + ' planerat\n' + U.fmtH(x.c.free) + ' ledigt av ' + U.fmtH(x.c.capacity)) + '">' +
-        '<span class="loadbar-name">' + esc(x.t.name) + '</span>' +
-        '<div class="loadbar-track">' +
-        (target.min !== undefined || target.max !== undefined ? '<div class="loadbar-band" style="left:' + (target.min || 0) + '%;width:' + ((target.max !== undefined ? target.max : 100) - (target.min || 0)) + '%"></div>' : '') +
-        '<div class="loadbar-fill' + cls + '" style="width:' + Math.min(100, v) + '%"></div></div>' +
-        '<span class="loadbar-val' + cls + '">' + U.fmtPct(v) + '</span></div>';
+        '<span class="loadbar-name">' + esc(x.t.name) + '</span>' + UI.bar(v, { band: band, title: '' }) + '</div>';
     });
     h += '</div></section>';
 

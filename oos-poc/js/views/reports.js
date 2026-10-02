@@ -205,26 +205,23 @@
   }
 
   /*
-   * Diagram: en stapel per grupp. Stapelns längd är kapaciteten, mörk del är belastat och ljus del
-   * ledigt. Det som är planerat utöver kapaciteten sticker ut i rött. Talen står i egna kolumner
-   * med rubrik, så att man aldrig behöver gissa vad ett tal betyder.
+   * Diagram: en stapel per grupp, mest belagd först. Stapeln är appens standard: alltid lika lång,
+   * 0–120 % av gruppens egen kapacitet med ett streck vid 100 %. Timmarna står i egna kolumner,
+   * så att stapeln bara behöver svara på en sak: hur full är gruppen.
    */
   function chart(rep, r, lvl, ctx) {
     var items = r.level === 'competence'
       ? rep.byCompetence.map(function (x) { return Object.assign({ id: x.key, go: pageOf(lvl, x.key) }, x); })
       : rep.groups.map(function (g) { return Object.assign({}, g.total, { id: g.key, key: g.key, name: g.name, go: pageOf(lvl, g.key), quiet: g.isCloud }); });
     if (!items.length) return '<div class="empty">Inget i urvalet. Prova att rensa filtren.</div>';
-    var max = Math.max.apply(null, items.map(function (x) { return Math.max(x.capacity, x.loaded); })) || 1;
     var anyOver = items.some(function (x) { return x.loaded > x.capacity + 0.5; });
-    var legend = '<div class="legend-line" aria-hidden="true"><span><span class="sw loaded"></span>Belastat</span><span><span class="sw free"></span>Ledigt</span>' +
-      (anyOver ? '<span><span class="sw over"></span>Över kapaciteten</span>' : '') + '<span class="muted">Stapelns längd är kapaciteten</span></div>';
     return UI.table({
       id: 'tbl-report-chart',
       rows: items,
       pageSize: 0,
-      tools: legend,
+      tools: UI.barLegend(anyOver),
       rowGo: function (x) { return x.go; },
-      defaultSort: 'cap',
+      defaultSort: 'bar',
       defaultDir: -1,
       columns: [
         {
@@ -232,20 +229,16 @@
           render: function (x) { return '<span class="name">' + esc(x.name) + '</span><div class="muted small">' + U.plural(x.peopleCount, 'person', 'personer') + '</div>'; }
         },
         {
-          key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (x) { return x.capacity; },
-          render: function (x) { return U.fmtH(x.capacity); }
+          key: 'bar', label: 'Beläggning', cls: 'cbar-col', sort: function (x) { return x.loadPct; },
+          render: function (x) { return C.capBar(x, { soft: x.quiet }); }
         },
         {
-          key: 'bar', label: 'Belastat och ledigt', cls: 'cbar-col',
-          render: function (x) { return C.capBar(x, max); }
-        },
-        {
-          key: 'pct', label: 'Beläggning', cls: 'num', sort: function (x) { return x.loadPct; },
-          render: function (x) { var tn = x.quiet ? null : loadTone(x.loadPct); return '<span class="' + (tn ? tn + '-text' : '') + '">' + U.fmtPct(x.loadPct) + '</span>'; }
-        },
-        {
-          key: 'free', label: 'Ledigt', cls: 'num', opt: 1, sort: function (x) { return x.free; },
+          key: 'free', label: 'Ledigt', cls: 'num', sort: function (x) { return x.free; },
           render: freeCell
+        },
+        {
+          key: 'cap', label: 'Kapacitet', cls: 'num', opt: 1, sort: function (x) { return x.capacity; },
+          render: function (x) { return U.fmtH(x.capacity); }
         },
         {
           key: 'change', label: 'Förändring', cls: 'num', opt: 2, sort: function (x) { return x.change; },

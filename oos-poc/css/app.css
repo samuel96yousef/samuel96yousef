@@ -1486,43 +1486,28 @@ mark {
 .bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 100px;
+  gap: 8px;
+  min-width: 104px;
 }
 
-.bar-track {
+.bar .lbar {
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--track);
-  overflow: hidden;
-  min-width: 44px;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--bar);
-}
-
-.bar-fill.soft {
-  background: var(--fg-3);
-}
-
-.bar-fill.warn {
-  background: var(--warn-mark);
-}
-
-.bar-fill.crit {
-  background: var(--crit);
+  min-width: 52px;
+  max-width: 360px;
 }
 
 .bar-val {
-  width: 38px;
+  flex: none;
+  width: 44px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--fg-2);
+}
+
+.bar-val.warn {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 .bar-val.crit {
@@ -2858,7 +2843,7 @@ mark {
 
 .loadbar {
   display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
   gap: 16px;
   align-items: center;
   cursor: pointer;
@@ -2877,51 +2862,14 @@ mark {
   white-space: nowrap;
 }
 
-.loadbar-track {
-  position: relative;
+.loadbar .lbar {
   height: 10px;
-  border-radius: 3px;
-  background: var(--track);
+  max-width: 640px;
 }
 
-.loadbar-band {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: color-mix(in srgb, var(--bar) 16%, var(--track));
-}
-
-.loadbar-fill {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  border-radius: 2px;
-  background: var(--bar);
-}
-
-.loadbar-fill.warn {
-  background: var(--warn-mark);
-}
-
-.loadbar-fill.crit {
-  background: var(--crit);
-}
-
-.loadbar-val {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-2);
-}
-
-.loadbar-val.warn {
-  color: var(--warn);
-  font-weight: 600;
-}
-
-.loadbar-val.crit {
-  color: var(--crit);
-  font-weight: 600;
+.loadbar .bar-val {
+  width: 48px;
+  font-size: 14px;
 }
 
 /* Sammansättning och kompetensdjup: gråskala med direkta etiketter */
@@ -3852,12 +3800,8 @@ p,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .loadbar {
-    grid-template-columns: minmax(0, 1fr) 48px;
-    gap: 4px 12px;
-  }
-  .loadbar-track {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
   }
 }
 
@@ -4036,8 +3980,6 @@ p,
 }
 
 /* Staplar växer från sin bas när de animeras (js/motion.js). */
-.bar-fill,
-.loadbar-fill,
 .stack100-seg,
 .depth-seg {
   transform-origin: left center;
@@ -4151,45 +4093,10 @@ p,
   color: var(--warn);
 }
 
-/* Stapeldiagrammet i rapporten: en tabell med en stapel per rad. */
+/* Beläggningsstapel i en tabellkolumn: rapportens diagram och kompetensområdena. */
 .tbl td.cbar-col {
   width: 42%;
   min-width: 140px;
-}
-
-.cbar {
-  display: flex;
-  gap: 2px;
-  height: 12px;
-  min-width: 4px;
-  transform-origin: left center;
-}
-
-.cbar > span {
-  height: 100%;
-  min-width: 2px;
-}
-
-.cbar-load {
-  background: var(--bar);
-  border-radius: 3px 0 0 3px;
-}
-
-.cbar-free {
-  background: var(--track);
-}
-
-.cbar-over {
-  background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
-}
-
-.cbar > span:last-child {
-  border-top-right-radius: 3px;
-  border-bottom-right-radius: 3px;
-}
-
-.cbar > span:only-child {
-  border-radius: 3px;
 }
 
 .table-tools .legend-line {
@@ -4459,6 +4366,11 @@ p,
 .spot-bar {
   margin: 10px 0 6px;
   max-width: 560px;
+}
+
+/* Team där ett område är fullt: ett per rad, så att ett namn aldrig delas av ett kommatecken. */
+.full-in + .full-in {
+  margin-top: 4px;
 }
 
 .spot p {
@@ -4923,26 +4835,39 @@ p,
   background: var(--crit);
 }
 
-/* Stapel för belastning mot kapacitet: valets del, annat arbete, ledigt och över kapaciteten. */
+/*
+ * Beläggningsstapel (UI.loadTrack), samma i hela appen. Stapeln är alltid lika lång: 0–120 % av
+ * radens egen kapacitet. Den ljusa delen är kapaciteten fram till strecket vid 100 %, blå del är
+ * belastat, ljusblå annat arbete och randig röd del det som går över kapaciteten.
+ */
 .lbar {
+  position: relative;
   display: flex;
-  gap: 2px;
   width: 100%;
   height: 8px;
-  border-radius: 3px;
-  overflow: hidden;
   transform-origin: left center;
 }
 
-.lbar > span {
-  flex: 0 1 auto;
-  min-width: 0;
+.lb-room {
+  position: relative;
+  display: flex;
+  flex: none;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.lb-part,
+.lb-rest,
+.lb-over {
+  position: relative;
+  flex: none;
   height: 100%;
 }
 
 /* Tomma delar tas bort, så att mellanrummen bara står mellan delar som syns. */
-.lbar > span[style^="width:0.00%"],
-.lbar > span[style*="width: 0%"] {
+.lbar span[style^="width:0.00%"] {
   display: none;
 }
 
@@ -4950,22 +4875,74 @@ p,
   background: var(--bar);
 }
 
+/* 2 px luft mellan valets del och annat arbete. */
 .lb-rest {
   background: color-mix(in srgb, var(--bar) 35%, var(--bg));
-}
-
-.lb-free {
-  background: var(--track);
+  box-shadow: inset 2px 0 0 var(--bg);
 }
 
 .lb-over {
+  margin-left: 1px;
+  border-radius: 0 3px 3px 0;
   background: repeating-linear-gradient(135deg, var(--crit) 0 3px, color-mix(in srgb, var(--crit) 35%, transparent) 3px 6px);
+}
+
+/* Utan kapacitet (kompetensen saknas) är allt arbete över kapaciteten. */
+.lbar.none .lb-room {
+  display: none;
+}
+
+.lbar.none .lb-over {
+  margin-left: 0;
+  border-radius: 3px;
+}
+
+.lb-cap {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--fg) 55%, transparent);
+}
+
+.lb-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--bar) 18%, var(--track));
+}
+
+.lbar.soft .lb-part {
+  background: var(--fg-3);
 }
 
 .lbar.proposal .lb-part {
   background: none;
   border: 1px dashed var(--fg-3);
   box-sizing: border-box;
+}
+
+/* Storlek utan kapacitet: bara längden, utan ljus del och streck. */
+.lbar.size .lb-part {
+  border-radius: 3px 0 0 3px;
+}
+
+.lbar.size .lb-rest {
+  border-radius: 0 3px 3px 0;
+}
+
+.lbar.size .lb-part:has(+ .lb-rest[style^="width:0.00%"]) {
+  border-radius: 3px;
+}
+
+.sw-cap {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--fg) 55%, transparent);
 }
 
 /* Tidslinje: rader i html, linjer för beroenden i svg ovanpå rutnätet och under staplarna. */

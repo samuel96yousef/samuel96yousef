@@ -38,26 +38,22 @@
   }
 
   /*
-   * Stapel för belastning mot kapacitet. Längden är kapaciteten, eller arbetet om det är större.
-   * Mörk del är det som hör till valet, grå del annat arbete, ljus del ledigt och randig röd
-   * del det som går över kapaciteten. key gör att delarna glider till nya värden vid ett nytt val.
+   * Belastning mot kapacitet: appens standardstapel (UI.loadTrack). Mörk del hör till valet, ljusblå
+   * är annat arbete. key gör att delarna glider till nya värden vid ett nytt val.
    */
   function loadBar(part, rest, cap, key, opts) {
-    opts = opts || {};
-    var loaded = part + rest;
-    /* Utan kapacitet (kompetensen saknas) är allt arbete över kapaciteten. */
-    var limit = Math.max(0, cap);
-    var total = Math.max(cap, loaded, 0.0001);
-    var inside = Math.min(loaded, limit);
-    var pIn = Math.min(part, inside);
-    var rIn = Math.max(0, inside - pIn);
-    var free = Math.max(0, cap - loaded);
-    var over = Math.max(0, loaded - limit);
+    return UI.loadTrack(part, rest, cap, Object.assign({ key: key }, opts || {}));
+  }
+
+  /*
+   * Storlek utan kapacitet, för varifrån arbetet kommer: längden är timmar mot den största källan.
+   * Ingen ljus del och inget streck, eftersom det inte finns någon kapacitet att jämföra med.
+   */
+  function sizeBar(part, rest, max, key) {
     function seg(cls, v, k) {
-      return '<span class="' + cls + '" data-morph="' + esc(key + '|' + k) + '" style="width:' + ((v / total) * 100).toFixed(2) + '%"></span>';
+      return '<span class="' + cls + '" data-morph="' + esc(key + '|' + k) + '" style="width:' + (max ? (v / max) * 100 : 0).toFixed(2) + '%"></span>';
     }
-    return '<span class="lbar' + (opts.proposal ? ' proposal' : '') + '" aria-hidden="true">' +
-      seg('lb-part', pIn, 'p') + seg('lb-rest', rIn, 'r') + seg('lb-free', free, 'f') + seg('lb-over', over, 'o') + '</span>';
+    return '<span class="lbar size" aria-hidden="true">' + seg('lb-part', part, 'p') + seg('lb-rest', rest, 'r') + '</span>';
   }
 
   /* ---------- Tidslinje ---------- */
@@ -394,7 +390,7 @@
       var filtered = kind && kind !== 's';
       if (filtered && part <= 0.5) return;
       var value = esc(U.fmtH(part)) + (filtered ? '<span class="lk-of"> av ' + esc(U.fmtH(x.hours)) + '</span>' : '');
-      colS.push(rowHtml(x.key, x.name, value, loadBar(part, filtered ? x.hours - part : 0, maxSrc, x.key), {
+      colS.push(rowHtml(x.key, x.name, value, sizeBar(part, filtered ? x.hours - part : 0, maxSrc, x.key), {
         col: 's', say: U.fmtH(part) + (filtered ? ' av ' + U.fmtH(x.hours) : '')
       }));
     });
@@ -478,7 +474,7 @@
       '<div class="lk-gutter" aria-hidden="true"></div>' +
       col('c', 'Kompetensområde', kind === 't' ? 'Läget i teamet, mest belagt först' : kind === 's' ? 'Timmar som hör till valet, flest först' : 'Hela organisationen, mest belagt först', colC, kind === 's' ? catList.length - colC.length : 0) +
       '</div>' +
-      '<p class="card-note">' + U.fmtH(total) + ' beslutat arbete i ' + esc(p.inText) + '. Mörk del av stapeln är det som hör till valet, grå del annat arbete, ljus del ledigt och randig röd del det som går över kapaciteten.</p>';
+      '<p class="card-note">' + U.fmtH(total) + ' beslutat arbete i ' + esc(p.inText) + '. Stapeln för team och kompetensområden är 0–120 % av kapaciteten, och strecket är 100 %. Mörk del hör till valet, ljusblå är annat arbete, ljus del ledigt och randig röd det som går över.</p>';
   }
 
   /* ---------- Beroendekedja för en epik ---------- */
@@ -528,18 +524,18 @@
   /* ---------- Period för period ---------- */
 
   /*
-   * En stapel per period i tabellen: längden är teamets kapacitet, mörk del epiken, grå del annat
-   * arbete och randig röd del det som går över. Ett förslag ritas streckat, som det skulle bli.
+   * En stapel per period i tabellen, i appens standard: 0–120 % av teamets kapacitet i perioden.
+   * Mörk del är epiken, ljusblå annat arbete i teamet och randig röd del det som går över.
+   * Ett förslag ritas streckat, som det skulle bli.
    */
   function periodBar(mine, other, cap, max, proposal, key, label) {
-    var total = Math.max(cap, mine + other);
-    var width = max ? (total / max) * 100 : 0;
-    return '<span class="pbar" role="img" aria-label="' + esc(label) + '" style="width:' + width.toFixed(2) + '%">' + loadBar(mine, other, cap, key, { proposal: proposal }) + '</span>';
+    return '<span class="pbar" role="img" aria-label="' + esc(label) + '">' + loadBar(mine, other, cap, key, { proposal: proposal }) + '</span>';
   }
 
   function periodLegend(proposal) {
     return '<div class="legend-line chart-legend" aria-hidden="true"><span><span class="' + (proposal ? 'sw-k proposal' : 'sw loaded') + '"></span>Epiken' + (proposal ? ' om den beslutas' : '') + '</span>' +
-      '<span><span class="sw other"></span>Annat arbete i teamet</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw over"></span>Över kapaciteten</span></div>';
+      '<span><span class="sw other"></span>Annat arbete i teamet</span><span><span class="sw free"></span>Ledigt</span><span><span class="sw over"></span>Över kapaciteten</span>' +
+      '<span><span class="sw-cap"></span>Teamets kapacitet</span></div>';
   }
 
   OOS.epicViz = { timeline: timeline, links: links, chain: chain, periodBar: periodBar, periodLegend: periodLegend };

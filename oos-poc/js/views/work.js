@@ -187,7 +187,6 @@
       h += '<div class="note">Kompetensbehovet är inte angivet. Timmarna fördelas som teamets sammansättning, och då syns inga flaskhalsar för just den här epiken.</div>';
       needs = cl.rows.filter(function (r) { return r.supply > 0.5; }).map(function (r) { return { category: r.category, share: r.supply / (tc.capacity || 1), derived: true }; });
     }
-    var max = Math.max.apply(null, needs.map(function (n) { var r = byCat[n.category]; return r ? Math.max(r.supply, r.demand) : 0; }).concat([1]));
     needs.slice().sort(function (a, b) { return b.share - a.share; }).forEach(function (n) {
       var r = byCat[n.category] || { supply: 0, demand: 0, free: 0, loadPct: 0, gap: true, people: [] };
       var tight = r.gap || r.loadPct > 100.5;
@@ -197,7 +196,7 @@
       if (r.gap) {
         h += '<p class="small">Ingen i teamet har ' + esc(n.category) + ' som primär kompetens. ' + freeIn(n.category, team.id, e, p) + '</p>';
       } else {
-        h += '<div class="need-block-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }, max) +
+        h += '<div class="need-block-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }) +
           '<span class="small' + (r.free < -0.5 ? ' crit-text' : ' muted') + '">' + (r.free < -0.5 ? U.fmtH(-r.free) + ' för mycket' : U.fmtH(r.free) + ' ledigt') + ' av ' + U.fmtH(r.supply) + '</span></div>';
         if (r.free < -0.5) h += '<p class="small muted">' + freeIn(n.category, team.id, e, p) + '</p>';
         h += '<div class="need-people">';
@@ -306,8 +305,8 @@
       var after = {};
       if (imp) imp.rows.forEach(function (r) { after[r.period.start] = r.after; });
       /*
-       * En rad per period med en stapel: längden är teamets kapacitet, mörk del epiken och grå
-       * del annat arbete. Ett förslag ritas streckat ovanpå, som beläggningen skulle bli.
+       * En rad per period med appens standardstapel mot teamets kapacitet: mörk del epiken och
+       * ljusblå del annat arbete. Ett förslag ritas streckat, som beläggningen skulle bli.
        */
       var rowsP = periods.map(function (pp) {
         var t = e.teamCapacity(team.id, pp);
@@ -315,7 +314,6 @@
         var other = Math.max(0, t.loaded - (counts ? mine : 0));
         return { pp: pp, t: t, mine: mine, other: other, after: after[pp.start] };
       });
-      var maxP = Math.max.apply(null, rowsP.map(function (r) { return Math.max(r.t.capacity, r.mine + r.other); }).concat([1]));
       main += OOS.epicViz.periodLegend(!counts);
       main += '<div class="table-wrap"><table class="tbl period-tbl"><thead><tr><th>Period</th><th class="pbar-col">Teamets arbete mot kapaciteten</th><th class="num">' + (counts ? 'Beläggning' : 'Om beslutad') + '</th>' +
         '<th class="num" data-opt="1">Epiken</th><th class="num" data-opt="2">Annat arbete</th><th class="num" data-opt="2">Kapacitet</th></tr></thead><tbody>';
@@ -325,7 +323,7 @@
         var tone = shown > 100.5 ? ' class="crit-text"' : '';
         var say = r.pp.label + ': epiken ' + U.fmtH(r.mine) + ', annat arbete ' + U.fmtH(r.other) + ', kapacitet ' + U.fmtH(r.t.capacity) + ', ' + U.fmtPct(shown) + (counts ? ' belagt' : ' belagt om den beslutas');
         main += '<tr' + (r.pp.start === p.start ? ' class="selected"' : '') + ' data-id="' + esc('pp-' + r.pp.start) + '"><td>' + esc(r.pp.label) + '</td>' +
-          '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, maxP, !counts, 'pp-' + r.pp.start, say) + '</td>' +
+          '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, null, !counts, 'pp-' + r.pp.start, say) + '</td>' +
           '<td class="num"><strong' + tone + '>' + U.fmtPct(shown) + '</strong></td>' +
           '<td class="num">' + (counts ? U.fmtH(r.mine) : '<span class="muted">(' + U.fmtH(r.mine) + ')</span>') + '</td>' +
           '<td class="num">' + U.fmtH(r.other) + '</td><td class="num">' + U.fmtH(r.t.capacity) + '</td></tr>';
@@ -420,22 +418,21 @@
       h += '<div class="spot"><div class="spot-head"><span><strong>' + esc(r.category) + '</strong> i ' + C.link('teams:' + x.team.id, x.team.name) + ' ' +
         (r.gap ? UI.badge('Saknas i teamet', 'crit') : UI.badge(U.fmtPct(r.loadPct), 'crit')) + '</span>' +
         '<span class="crit-text">' + U.fmtH(x.over) + ' för mycket</span></div>' +
-        (r.gap ? '' : '<div class="spot-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }, Math.max(r.supply, r.demand)) + '</div>') +
+        (r.gap ? '' : '<div class="spot-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }, { noValue: true }) + '</div>') +
         '<p class="small">' + (drivers.length ? 'Arbete som behöver ' + esc(r.category) + ': ' + drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') + '. ' : '') + freeIn(r.category, x.team.id, e, p) + '</p></div>';
     });
     h += '</section>';
 
     /* Hela organisationen per kompetensområde. */
-    var maxOrg = Math.max.apply(null, org.map(function (c) { return Math.max(c.supply, c.demand); }).concat([1]));
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Kompetensområden i hela organisationen</div>' +
       '<div class="card-sub">Ett område kan ha tid över totalt men vara fullt i enskilda team. Då handlar det om att flytta arbete eller låna kompetens.</div></div></div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetensområde</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Belastat</th><th class="num">Ledigt</th><th class="cbar-col">Belastat och ledigt</th><th data-opt="2">Fullt i</th></tr></thead><tbody>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Kompetensområde</th><th class="num">Kapacitet</th><th class="num" data-opt="1">Belastat</th><th class="num">Ledigt</th><th class="cbar-col">Beläggning</th><th data-opt="2">Fullt i</th></tr></thead><tbody>';
     org.slice().sort(function (a, b) { return b.loadPct - a.loadPct; }).forEach(function (c) {
       var full = c.teams.filter(function (x) { return x.row.gap || x.row.loadPct > 100.5; });
       h += '<tr><td>' + esc(c.category) + '</td><td class="num">' + U.fmtH(c.supply) + '</td><td class="num">' + U.fmtH(c.demand) + '</td>' +
         '<td class="num">' + (c.free < -0.5 ? '<span class="crit-text">' + U.fmtSigned(c.free, ' h') + '</span>' : U.fmtH(c.free)) + '</td>' +
-        '<td class="cbar-col">' + C.capBar({ capacity: c.supply, loaded: c.demand }, maxOrg) + '</td>' +
-        '<td class="small">' + (full.length ? full.map(function (x) { return C.link('teams:' + x.team.id, x.team.name); }).join(', ') : '<span class="muted">–</span>') + '</td></tr>';
+        '<td class="cbar-col">' + C.capBar({ capacity: c.supply, loaded: c.demand }) + '</td>' +
+        '<td class="small">' + (full.length ? full.map(function (x) { return '<div class="full-in">' + C.link('teams:' + x.team.id, x.team.name) + '</div>'; }).join('') : '<span class="muted">–</span>') + '</td></tr>';
     });
     h += '</tbody></table></div></section>';
 

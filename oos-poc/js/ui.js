@@ -47,14 +47,59 @@ var OOSUI = (function () {
     return status === 'active' || status === 'production' ? '' : statusBadge(status);
   }
 
-  /* Stapel för andel. Varning från 90 %, kritisk över 100 % (t.ex. överallokering). */
+  /*
+   * Beläggningsstapel. Samma i hela appen, så att den går att läsa utan att tänka efter:
+   *  - Stapeln är alltid lika lång och betyder 0–120 % av radens egen kapacitet. Korta och långa
+   *    staplar finns inte; storleken i timmar står i egna kolumner.
+   *  - Ljus del upp till strecket är kapaciteten (100 %). Blå del är belastat. Det som går över
+   *    kapaciteten står randigt rött efter strecket.
+   *  - part och rest delar det belastade: mörk del hör till ett val, ljusblå är annat arbete.
+   * opts: key (delarna glider till nya värden vid ett nytt val), proposal (mörk del streckad),
+   * soft (grå i stället för blå, för det som inte är teamarbete), band [min, max] i procent
+   * (målet), share (en andel som inte kan gå över 100 %: hela stapeln är 100 %, inget streck).
+   */
+  var SCALE = 120;
+  function loadTrack(part, rest, cap, opts) {
+    opts = opts || {};
+    var key = opts.key;
+    var max = opts.share ? 100 : SCALE;
+    var room = (100 / max) * 100;
+    var p = 0, r = 0, over = 0;
+    if (cap > 0) {
+      p = Math.max(0, Math.min(part, cap)) / cap * 100;
+      r = Math.max(0, Math.min(part + rest, cap) - Math.min(part, cap)) / cap * 100;
+      over = opts.share ? 0 : Math.min(max - 100, Math.max(0, (part + rest - cap) / cap * 100));
+    } else if (part + rest > 0) {
+      over = max - 100;
+    }
+    function seg(cls, w, k, extra) {
+      return '<span class="' + cls + '"' + (key ? ' data-morph="' + esc(key + '|' + k) + '"' : '') + ' style="width:' + w.toFixed(2) + '%' + (extra || '') + '"></span>';
+    }
+    var band = opts.band ? '<span class="lb-band" style="left:' + opts.band[0] + '%;width:' + Math.max(0, opts.band[1] - opts.band[0]) + '%"></span>' : '';
+    return '<span class="lbar' + (opts.proposal ? ' proposal' : '') + (opts.soft ? ' soft' : '') + (opts.share ? ' share' : '') + (cap > 0 ? '' : ' none') + '" aria-hidden="true">' +
+      '<span class="lb-room" style="width:' + room.toFixed(2) + '%">' + band + seg('lb-part', p, 'p') + seg('lb-rest', r, 'r') + '</span>' +
+      seg('lb-over', (over / max) * 100, 'o') +
+      (opts.share ? '' : '<span class="lb-cap" style="left:' + room.toFixed(2) + '%"></span>') + '</span>';
+  }
+
+  /*
+   * Beläggning i procent med talet före stapeln, så att det står i linje i en tabell och aldrig
+   * hamnar långt från stapeln. Talet blir gult från 90 % och rött över 100 %.
+   * opts.label ersätter talet, opts.title är en längre förklaring vid pekaren.
+   */
   function bar(pct, opts) {
     opts = opts || {};
     var v = isNaN(pct) ? 0 : pct;
-    var cls = v > 100.5 ? ' crit' : v >= (opts.warnAt || 90) ? ' warn' : opts.soft ? ' soft' : '';
-    var w = Math.max(0, Math.min(100, v));
+    var tone = opts.share ? '' : v > 100.5 ? ' crit' : v >= (opts.warnAt || 90) ? ' warn' : '';
     var label = opts.label !== undefined ? opts.label : U.fmtPct(v);
-    return '<div class="bar" title="' + esc(opts.title || label) + '"><div class="bar-track"><div class="bar-fill' + cls + '" style="width:' + w + '%"></div></div><span class="bar-val' + (cls === ' crit' ? ' crit' : '') + '">' + esc(label) + '</span></div>';
+    return '<div class="bar"' + (opts.title === '' ? '' : ' title="' + esc(opts.title || label) + '"') + '>' +
+      '<span class="bar-val' + tone + '">' + esc(label) + '</span>' + loadTrack(v, 0, 100, opts) + '</div>';
+  }
+
+  /* Förklaring till beläggningsstaplarna, för diagram där det inte står i rubriken. */
+  function barLegend(withOver) {
+    return '<div class="legend-line" aria-hidden="true"><span><span class="sw loaded"></span>Belastat</span><span><span class="sw free"></span>Ledigt</span>' +
+      (withOver ? '<span><span class="sw over"></span>Över kapaciteten</span>' : '') + '<span><span class="sw-cap"></span>100 % av kapaciteten</span></div>';
   }
 
   var LEVELS = ['', 'Grundläggande', 'Erfaren', 'Avancerad', 'Expert'];
@@ -661,6 +706,8 @@ var OOSUI = (function () {
     statusBadge: statusBadge,
     statusFlag: statusFlag,
     bar: bar,
+    loadTrack: loadTrack,
+    barLegend: barLegend,
     level: level,
     LEVELS: LEVELS,
     donut: donut,
