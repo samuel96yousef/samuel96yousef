@@ -240,16 +240,6 @@
       (f.teams ? 'Ledigt i andra team: ' + f.teams + '.' : 'Inget annat team har ledig tid inom ' + esc(category) + ' i ' + esc(p.inText) + '.');
   }
 
-  /* Som lista med etiketter, för det som behöver lösas: lättare att läsa än ett stycke. */
-  function freeList(category, exceptTeamId, e, p, drivers) {
-    var f = freeParts(category, exceptTeamId, e, p);
-    var rows = [];
-    if (drivers) rows.push(['Arbete som behöver ' + category, drivers]);
-    rows.push(['Inte fördelad tid', f.people || '<span class="muted">Ingen med ' + esc(category) + '</span>']);
-    rows.push(['Ledigt i andra team', f.teams || '<span class="muted">Inget annat team har ledig tid</span>']);
-    return '<dl class="spot-list">' + rows.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
-  }
-
   /* Beroenden åt båda hållen, med de risker som gör att arbetet kan bli försenat. */
   function dependencyCard(ep, ctx) {
     var e = ctx.e;
@@ -431,21 +421,67 @@
         noNeeds.slice(0, 4).map(function (ep) { return C.epicRef(ep); }).join(', ') + (noNeeds.length > 4 ? ' med flera' : '') + '.</div>';
     }
 
-    /* Det som behöver lösas, störst först. */
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Det som behöver lösas</div>' +
-      '<div class="card-sub">Kompetensområden där beslutat arbete kräver mer än teamet har, och var samma kompetens finns ledig.</div></div></div>';
-    if (!spots.length) h += '<div class="empty">Inga flaskhalsar i ' + esc(p.inText) + '. Alla kompetensområden har plats för det beslutade arbetet.</div>';
+    /*
+     * Det som behöver lösas, ett block per kompetensområde: vilka team som saknar tid i området
+     * (behöver) och var samma kompetens finns att hämta (kan hämtas från), med ett besked om det
+     * räcker. Tid som inte är fördelad står först, eftersom den inte tar tid från något annat team.
+     * Ett område som saknas i flera team visas en gång, så att samma förslag inte upprepas.
+     */
+    var areas = [];
+    var byArea = {};
     spots.forEach(function (x) {
-      var r = x.row;
-      var drivers = e.teamDemand(x.team.id, p).epics.filter(function (d) {
-        var nn = E.normNeeds(d.epic.needs);
-        return d.counts && nn && nn.some(function (n) { return n.category === r.category; });
-      }).slice(0, 3);
-      h += '<div class="spot"><div class="spot-head"><span><strong>' + esc(r.category) + '</strong> i ' + C.link('teams:' + x.team.id, x.team.name) + ' ' +
-        (r.gap ? UI.badge('Saknas i teamet', 'crit') : UI.badge(U.fmtPct(r.loadPct), 'crit')) + '</span>' +
-        '<span class="crit-text">' + U.fmtH(x.over) + ' för mycket</span></div>' +
-        (r.gap ? '' : '<div class="spot-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }, { noValue: true }) + '</div>') +
-        freeList(r.category, x.team.id, e, p, drivers.length ? drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') : '') + '</div>';
+      var c = x.row.category;
+      if (!byArea[c]) { byArea[c] = { category: c, needs: [], short: 0 }; areas.push(byArea[c]); }
+      byArea[c].needs.push(x);
+      byArea[c].short += x.over;
+    });
+    areas.sort(function (a, b) { return b.short - a.short; });
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Det som behöver lösas</div>' +
+      '<div class="card-sub">Kompetens som beslutat arbete kräver mer av än teamet har, och var den finns att hämta.</div></div></div>';
+    if (!areas.length) h += '<div class="empty">Inga flaskhalsar i ' + esc(p.inText) + '. Alla kompetensområden har plats för det beslutade arbetet.</div>';
+    areas.forEach(function (a) {
+      var needTeams = a.needs.map(function (x) { return x.team.id; });
+      var people = e.unallocatedIn(a.category, p);
+      var teamsFree = [];
+      S.db.teams.forEach(function (t) {
+        if (needTeams.indexOf(t.id) >= 0) return;
+        e.teamCategoryLoad(t.id, p).rows.forEach(function (r) {
+          if (r.category === a.category && !r.gap && r.free > 20) teamsFree.push({ team: t, free: r.free });
+        });
+      });
+      teamsFree.sort(function (x, y) { return y.free - x.free; });
+      var supply = U.sum(people, function (x) { return x.hours; }) + U.sum(teamsFree, function (x) { return x.free; });
+      var enough = supply >= a.short - 0.5;
+
+      h += '<div class="need-area"><div class="need-area-head"><h2 class="need-area-title">' + esc(a.category) + '</h2>' +
+        '<span class="need-area-sum"><span class="crit-text">' + U.fmtH(a.short) + ' saknas</span> · ' + U.fmtH(supply) + ' finns att hämta</span>' +
+        (enough ? UI.badge('Räcker') : UI.badge('Räcker inte, ' + U.fmtH(a.short - supply) + ' kvar', 'crit')) + '</div>';
+
+      h += '<div class="na-cols"><div class="na-col"><div class="na-col-label">Behöver</div><ul class="na-rows">';
+      a.needs.forEach(function (x) {
+        var drivers = e.teamDemand(x.team.id, p).epics.filter(function (d) {
+          var nn = E.normNeeds(d.epic.needs);
+          return d.counts && nn && nn.some(function (n) { return n.category === a.category; });
+        }).slice(0, 3);
+        h += '<li><div class="na-row"><span class="na-name">' + C.link('teams:' + x.team.id, x.team.name) + ' ' +
+          (x.row.gap ? UI.badge('Saknas i teamet', 'crit') : UI.badge(U.fmtPct(x.row.loadPct), 'crit')) + '</span>' +
+          '<span class="na-h crit-text">' + U.fmtH(x.over) + '</span></div>' +
+          (drivers.length ? '<div class="na-sub"><span class="na-for">Epiker</span> ' + drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') + '</div>' : '') + '</li>';
+      });
+      h += '</ul></div><div class="na-col"><div class="na-col-label">Kan hämtas från</div><ul class="na-rows">';
+      people.slice(0, 3).forEach(function (x) {
+        h += '<li><div class="na-row"><span class="na-name">' + C.link('workers:' + x.worker.id, x.worker.name) + ' <span class="na-kind">inte fördelad</span></span>' +
+          '<span class="na-h">' + U.fmtH(x.hours) + '</span></div></li>';
+      });
+      teamsFree.slice(0, 3).forEach(function (x) {
+        h += '<li><div class="na-row"><span class="na-name">' + C.link('teams:' + x.team.id, x.team.name) + ' <span class="na-kind">ledigt i teamet</span></span>' +
+          '<span class="na-h">' + U.fmtH(x.free) + '</span></div></li>';
+      });
+      var more = Math.max(0, people.length - 3) + Math.max(0, teamsFree.length - 3);
+      if (more) h += '<li class="na-more">' + U.plural(more, 'till', 'till') + ' med ' + esc(a.category) + ' och tid kvar</li>';
+      if (!enough && (people.length || teamsFree.length)) h += '<li class="na-more">Resten kräver att arbete flyttas eller minskas.</li>';
+      if (!people.length && !teamsFree.length) h += '<li class="na-more">Ingen har ' + esc(a.category) + ' och tid kvar i ' + esc(p.inText) + '. Flytta eller minska arbete.</li>';
+      h += '</ul></div></div></div>';
     });
     h += '</section>';
 

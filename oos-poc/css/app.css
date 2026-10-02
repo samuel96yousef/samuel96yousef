@@ -4405,69 +4405,127 @@ p,
 
 /* ---------- Flaskhalsar ---------- */
 
-.spot {
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
-}
-
-.card-head + .spot {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.spot-head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px 16px;
-}
-
-.spot-head > span:first-child {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.spot-bar {
-  margin: 10px 0 6px;
-  max-width: 560px;
-}
-
 /* Team där ett område är fullt: ett per rad, så att ett namn aldrig delas av ett kommatecken. */
 .full-in + .full-in {
   margin-top: 4px;
 }
 
-.spot p {
-  margin: 6px 0 0;
+/*
+ * Det som behöver lösas: ett block per kompetensområde. Rubrik med det som saknas, det som finns
+ * och ett besked om det räcker. Under det två kolumner: behöver och kan hämtas från.
+ */
+.need-area {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
 }
 
-/* Det som kan lösa en flaskhals: en rad per slag med etikett, i stället för ett stycke. */
-.spot-list {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+.card-head + .need-area {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.need-area-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   gap: 4px 14px;
-  margin: 8px 0 0;
-  font-size: 13.5px;
+  margin-bottom: 12px;
 }
 
-.spot-list dt {
+.need-area-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.need-area-sum {
+  font-size: 14px;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.need-area-head .badge {
+  margin-left: auto;
+}
+
+.na-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 32px;
+}
+
+.na-col-label {
+  margin-bottom: 4px;
+  font-size: 12.5px;
   color: var(--fg-3);
 }
 
-.spot-list dd {
+.na-rows {
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-@container main (max-width: 640px) {
-  .spot-list {
+.na-rows > li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.na-rows > li:last-child {
+  border-bottom: 0;
+}
+
+.na-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.na-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.na-kind {
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.na-h {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+}
+
+.na-sub {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+.na-for {
+  margin-right: 4px;
+  color: var(--fg-3);
+}
+
+.na-more {
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+@container main (max-width: 720px) {
+  .na-cols {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
   }
-  .spot-list dd {
-    margin-bottom: 6px;
+  .need-area-title {
+    flex-basis: 100%;
+  }
+  .need-area-head .badge {
+    margin-left: 0;
   }
 }
 
