@@ -316,6 +316,8 @@ var OOSSelect = (function () {
   function enhance(scope) {
     (scope || document).querySelectorAll('select:not([data-enhanced])').forEach(enhanceSelect);
     (scope || document).querySelectorAll('input[data-suggest]:not([data-enhanced])').forEach(enhanceSuggest);
+    /* Datumfälten får appens egen kalender (js/datepicker.js). */
+    if (window.OOSDate) OOSDate.enhance(scope);
   }
 
   /* Stäng vid klick utanför, och följ med när sidan scrollar eller ändrar storlek. */

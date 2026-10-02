@@ -5602,3 +5602,323 @@ p,
     transition: none;
   }
 }
+
+/* ---------- Datumväljare (js/datepicker.js) ---------- */
+
+/* Det riktiga datumfältet ligger kvar för formuläret men syns inte. */
+.date-native {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.date-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.fld .date-field .date-text {
+  padding-right: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fld .date-text[aria-invalid='true'] {
+  border-color: var(--crit);
+  box-shadow: 0 0 0 3px var(--crit-soft);
+}
+
+.fld .date-text[aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.date-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--fg-3);
+  cursor: pointer;
+}
+
+.date-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.date-btn:hover,
+.date-text[aria-expanded='true'] + .date-btn {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.dp {
+  position: fixed;
+  z-index: 80;
+  padding: 10px 10px 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  animation: sel-pop 0.12s ease-out;
+}
+
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.dp-title {
+  flex: 1;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.dp-title::first-letter {
+  text-transform: uppercase;
+}
+
+.dp-title:hover,
+.dp-nav:hover {
+  background: var(--hover);
+}
+
+.dp-nav {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+
+.dp-nav svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dp-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 3px;
+  table-layout: fixed;
+}
+
+.dp-grid th {
+  height: 26px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--fg-3);
+  text-align: center;
+}
+
+.dp-grid abbr {
+  text-decoration: none;
+}
+
+.dp-grid .dp-wk {
+  width: 26px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.dp-grid tbody .dp-wk {
+  border-right: 1px solid var(--line);
+}
+
+.dp-grid td {
+  padding: 0;
+  text-align: center;
+}
+
+/*
+ * Perioden mellan Från och Till ligger som ett svagt blått band bakom dagarna, rundat där
+ * perioden börjar och slutar och i varje rads ändar, så att det läses som rader och inte som ett block.
+ */
+.dp-grid td.band {
+  background: color-mix(in srgb, var(--accent-soft) 75%, var(--bg));
+}
+
+.dp-grid td.band:nth-child(2),
+.dp-grid td.band-start {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.dp-grid td.band:last-child,
+.dp-grid td.band-end {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+.dp-day {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.dp-day:hover {
+  background: var(--hover);
+}
+
+.dp-day.out {
+  color: var(--fg-3);
+}
+
+.dp-day.today {
+  font-weight: 650;
+  color: var(--accent);
+}
+
+/* I dag har en liten prick under siffran. */
+.dp-day.today::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dp-day.partner {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.dp-day.sel,
+.dp-day.sel:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+
+.dp-day[aria-disabled='true'] {
+  color: var(--fg-3);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dp-day[aria-disabled='true']:hover {
+  background: none;
+}
+
+.dp-day:focus-visible,
+.dp-month:focus-visible,
+.dp-chip:focus-visible,
+.dp-nav:focus-visible,
+.dp-title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dp-months {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px 2px 6px;
+}
+
+.dp-month {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.dp-month:hover {
+  background: var(--hover);
+}
+
+.dp-month.today {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.dp-month.sel {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+
+.dp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.dp-chip {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.dp-chip:hover {
+  border-color: var(--accent);
+}
+
+.dp-chip.quiet {
+  margin-left: auto;
+  border-color: transparent;
+  background: none;
+  color: var(--fg-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp {
+    animation: none;
+  }
+}

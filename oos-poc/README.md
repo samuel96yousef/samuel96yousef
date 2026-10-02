@@ -125,6 +125,7 @@ js/engine.js          relationer, kapacitet, rapport och signaler (testbar i Nod
 js/store.js           lagring, CRUD och ändringslogg
 js/ui.js              komponenter: tabeller, formulär, dialoger, staplar
 js/select.js          rullistor och förslagslistor som ersätter webbläsarens
+js/datepicker.js      datumväljare som ersätter webbläsarens, med veckonummer, period och snabbval
 js/motion.js          rörelse vid sidbyte, ändrad data, i kopplingskartan och i bilderna av arbetet
 js/layout.js          anpassar tabeller, flikar och text efter den yta som finns, markerar sökträffar, ritar linjer mellan rutor
 js/views/work.js      initiativ, epiker, flaskhalsar och teamets arbetskort
