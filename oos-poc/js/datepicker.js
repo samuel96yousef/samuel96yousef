@@ -257,7 +257,9 @@ var OOSDate = (function () {
       h += '<table class="dp-grid" role="grid" aria-labelledby="' + titleId + '"><thead><tr><th scope="col" class="dp-wk"><span class="sr-only">Vecka</span><span aria-hidden="true">v</span></th>';
       DAYS.forEach(function (d, i) { h += '<th scope="col"><abbr title="' + DAYS_LONG[i] + '">' + d + '</abbr></th>'; });
       h += '</tr></thead><tbody>';
-      for (var w = 0; w < 6; w++) {
+      /* Bara de veckor månaden har, så att kalendern inte blir högre än den behöver. */
+      var weeks = Math.ceil((weekday(first) + daysIn(y, m)) / 7);
+      for (var w = 0; w < weeks; w++) {
         h += '<tr><th scope="row" class="dp-wk">' + isoWeek(day) + '</th>';
         for (var i = 0; i < 7; i++) {
           var inMonth = day.slice(0, 7) === cur.month;
@@ -372,7 +374,8 @@ var OOSDate = (function () {
     var p = cur.panel;
     var vw = window.innerWidth;
     var vh = window.innerHeight;
-    var width = Math.min(316, vw - 16);
+    /* Lika bred som fältet, men aldrig så smal att dagarna trängs eller så bred att den dominerar. */
+    var width = Math.min(Math.max(r.width, 248), 268, vw - 16);
     p.style.width = width + 'px';
     p.style.left = Math.max(8, Math.min(r.left, vw - width - 8)) + 'px';
     var h = p.offsetHeight;
