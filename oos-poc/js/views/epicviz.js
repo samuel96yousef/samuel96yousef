@@ -27,7 +27,7 @@
   /* Områden som epiken behöver och som är fulla eller saknas i teamet. */
   function tightAreas(e, ep, p) {
     var needs = E.normNeeds(ep.needs);
-    if (!needs || !E.epicCounts(ep.status) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0) return [];
+    if (!needs || !e.counts(ep) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0) return [];
     return e.teamCategoryLoad(ep.teamId, p).rows.filter(function (r) {
       return (r.gap || r.loadPct > 100.5) && needs.some(function (n) { return n.category === r.category; });
     });

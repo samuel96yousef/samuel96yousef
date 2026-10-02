@@ -154,6 +154,16 @@ var OOSEngine = (function () {
       return (byId[coll] && byId[coll].get(id)) || null;
     }
 
+    /*
+     * Om en epik belastar teamet: epiken ska vara beslutad, och hör den till ett initiativ ska också
+     * initiativet vara beslutat. Ett initiativ som bara är ett förslag gör alla dess epiker till förslag.
+     */
+    function counts(ep) {
+      if (!ep || !COUNTS[ep.status]) return false;
+      var x = ep.initiativeId ? get('initiatives', ep.initiativeId) : null;
+      return !(x && x.status === 'proposed');
+    }
+
     function where(coll, key, value) {
       return (db[coll] || []).filter(function (x) {
         return x[key] === value;
@@ -478,12 +488,12 @@ var OOSEngine = (function () {
       where('epics', 'teamId', teamId).forEach(function (ep) {
         var h = epicHoursInPeriod(ep, period);
         if (h <= 0) return;
-        var counts = !!COUNTS[ep.status];
-        list.push({ epic: ep, hours: h, counts: counts });
-        if (counts) {
+        var c = counts(ep);
+        list.push({ epic: ep, hours: h, counts: c });
+        if (c) {
           hours += h;
           byType[ep.type] = (byType[ep.type] || 0) + h;
-        } else if (ep.status === 'proposed') {
+        } else if (ep.status !== 'done') {
           proposed += h;
         }
       });
@@ -500,7 +510,7 @@ var OOSEngine = (function () {
      */
     function teamMaintenance(teamId, period) {
       return where('epics', 'teamId', teamId).filter(function (ep) {
-        return ep.type === 'maintenance' && COUNTS[ep.status] && ep.from <= period.end && ep.to >= period.start;
+        return ep.type === 'maintenance' && counts(ep) && ep.from <= period.end && ep.to >= period.start;
       });
     }
 
@@ -667,8 +677,8 @@ var OOSEngine = (function () {
     function dependencyRisks(ep, dep, period) {
       var risks = [];
       if (dep.to > ep.to) risks.push({ kind: 'late', text: 'Blir klar efter att epiken ska vara klar' });
-      if (COUNTS[ep.status] && !COUNTS[dep.status]) risks.push({ kind: 'undecided', text: 'Är bara ett förslag' });
-      if (COUNTS[dep.status] && dep.status !== 'done' && epicHoursInPeriod(dep, period) > 0) {
+      if (counts(ep) && !counts(dep)) risks.push({ kind: 'undecided', text: 'Är bara ett förslag' });
+      if (counts(dep) && dep.status !== 'done' && epicHoursInPeriod(dep, period) > 0) {
         var cl = teamCategoryLoad(dep.teamId, period);
         var needs = normNeeds(dep.needs);
         var cats = needs ? needs.map(function (n) { return n.category; }) : cl.rows.map(function (r) { return r.category; });
@@ -699,7 +709,7 @@ var OOSEngine = (function () {
       var x = get('initiatives', initiativeId);
       var investment = x && Number(x.investment) > 0 ? Number(x.investment) : null;
       var eps = initiativeEpics(initiativeId);
-      var decided = eps.filter(function (ep) { return COUNTS[ep.status]; });
+      var decided = eps.filter(counts);
       var teams = new Map();
       decided.forEach(function (ep) {
         var t = get('teams', ep.teamId);
@@ -711,7 +721,8 @@ var OOSEngine = (function () {
         teams.set(t.id, cur);
       });
       var frame = U.sum(decided, epicFrame);
-      var proposed = U.sum(eps.filter(function (ep) { return ep.status === 'proposed'; }), epicFrame);
+      /* Förslag är epiker som inte belastar ännu: egna förslag, eller alla epiker i ett initiativ som är ett förslag. */
+      var proposed = U.sum(eps.filter(function (ep) { return !counts(ep) && ep.status !== 'done'; }), epicFrame);
       return {
         epics: eps,
         decided: decided,
@@ -777,11 +788,11 @@ var OOSEngine = (function () {
       var wh = workerHours(workerId, period);
       var teams = workerTeams(workerId).map(function (x) {
         var hours = (available * x.tw.allocation) / 100;
-        /* Med epiker: personens tid i teamet (efter nedskalning och teamavdrag) gånger teamets beläggning. */
-        var loaded = epicMode
-          ? memberLoaded(x.tw, hours * wh.scale * (1 - teamReductionShare(x.team.id, period).share), period)
-          : (hours * (x.tw.plannedLoad || 0)) / 100;
-        return { tw: x.tw, team: x.team, hours: hours, loaded: loaded };
+        /* Personens tid i teamet efter nedskalning och teamavdrag, som på teamsidan. */
+        var effective = hours * wh.scale * (1 - teamReductionShare(x.team.id, period).share);
+        /* Med epiker: tiden i teamet gånger beläggningen i personens kompetensområden. */
+        var loaded = epicMode ? memberLoaded(x.tw, effective, period) : (effective * (x.tw.plannedLoad || 0)) / 100;
+        return { tw: x.tw, team: x.team, hours: hours, effective: effective, loaded: loaded };
       });
       var roles = workerDomainRoles(workerId).map(function (r) {
         return { role: r, hours: monthlyHoursInPeriod(r.ext.hoursPerMonth || 0, r.ext.from, r.ext.to, period) };
@@ -789,7 +800,12 @@ var OOSEngine = (function () {
       var teamHours = U.sum(teams, function (t) { return t.hours; });
       var domainHours = U.sum(roles, function (r) { return r.hours; });
       var committed = teamHours + domainHours;
-      var loaded = U.sum(teams, function (t) { return t.loaded; }) + domainHours;
+      /*
+       * Beläggningen gäller tiden i team, där arbetet mäts, så att den är samma tal som på teamsidan.
+       * Domänroller är reserverad tid och tid som inte är fördelad syns i unallocated.
+       */
+      var teamEffective = U.sum(teams, function (t) { return t.effective; });
+      var loaded = U.sum(teams, function (t) { return t.loaded; });
       var result = {
         worker: w,
         baseWeek: baseWeek,
@@ -806,17 +822,29 @@ var OOSEngine = (function () {
         allocationPct: available ? (committed / available) * 100 : 0,
         scale: committed > available ? available / committed : 1,
         unallocated: Math.max(0, available - committed),
+        teamEffective: teamEffective,
         loaded: loaded,
-        loadPct: available ? (loaded / available) * 100 : 0
+        loadPct: teamEffective ? (loaded / teamEffective) * 100 : 0
       };
       workerCache.set(key, result);
       return result;
     }
 
+    /*
+     * Kapacitet, belastning och beläggning räknas på teamens tid, där beslutat arbete mäts. Domänmoln
+     * och nyckelroller är tid som är reserverad för domänerna (reserved). Den räknas inte in i
+     * beläggning eller ledigt, så att beläggningen är samma tal på alla sidor.
+     */
+    function isReserved(x) {
+      return !!x.source && x.source !== 'team';
+    }
+
     function summarize(items) {
-      var capacity = U.sum(items, function (x) { return x.capacity; });
-      var loaded = U.sum(items, function (x) { return x.loaded; });
-      return { capacity: capacity, loaded: loaded, free: capacity - loaded, loadPct: capacity ? (loaded / capacity) * 100 : 0 };
+      var planned = items.filter(function (x) { return !isReserved(x); });
+      var capacity = U.sum(planned, function (x) { return x.capacity; });
+      var loaded = U.sum(planned, function (x) { return x.loaded; });
+      var reserved = U.sum(items.filter(isReserved), function (x) { return x.capacity; });
+      return { capacity: capacity, loaded: loaded, free: capacity - loaded, loadPct: capacity ? (loaded / capacity) * 100 : 0, reserved: reserved };
     }
 
     function aggregateBy(facts, keyFn, metaFn) {
@@ -1116,28 +1144,36 @@ var OOSEngine = (function () {
         var map = new Map();
         function slot(f) {
           var k = keyFn(f);
-          if (!map.has(k)) map.set(k, { key: k, name: nameFn(f), capacity: 0, loaded: 0, nextCapacity: 0, people: new Set() });
+          if (!map.has(k)) map.set(k, { key: k, name: nameFn(f), capacity: 0, loaded: 0, nextCapacity: 0, reserved: 0, nextReserved: 0, people: new Set() });
           return map.get(k);
         }
         curFacts.forEach(function (f) {
           var s = slot(f);
-          s.capacity += f.capacity;
-          s.loaded += f.loaded;
+          if (isReserved(f)) s.reserved += f.capacity;
+          else {
+            s.capacity += f.capacity;
+            s.loaded += f.loaded;
+          }
           if (f.workerId) s.people.add(f.workerId);
         });
         nxtFacts.forEach(function (f) {
           var s = slot(f);
-          s.nextCapacity += f.capacity;
+          if (isReserved(f)) s.nextReserved += f.capacity;
+          else s.nextCapacity += f.capacity;
           if (f.workerId) s.people.add(f.workerId);
         });
         return Array.from(map.values()).map(finishRow);
       }
 
       function finishRow(r) {
+        r.reserved = r.reserved || 0;
+        r.nextReserved = r.nextReserved || 0;
         r.free = r.capacity - r.loaded;
         r.loadPct = r.capacity ? (r.loaded / r.capacity) * 100 : 0;
-        r.change = r.nextCapacity - r.capacity;
-        r.changePct = r.capacity ? (r.change / r.capacity) * 100 : 0;
+        /* En rad med bara domänroller jämförs på den reserverade tiden. */
+        var onlyReserved = !r.capacity && r.reserved > 0;
+        r.change = onlyReserved ? r.nextReserved - r.reserved : r.nextCapacity - r.capacity;
+        r.changePct = onlyReserved ? (r.change / r.reserved) * 100 : r.capacity ? (r.change / r.capacity) * 100 : 0;
         r.peopleCount = r.people instanceof Set ? r.people.size : r.peopleCount;
         delete r.people;
         return r;
@@ -1169,7 +1205,7 @@ var OOSEngine = (function () {
         });
       }
       var byCompetence = rowsFor(cur, nxt, compKey, compName).sort(function (a, b) { return b.capacity - a.capacity; });
-      var grand = rowsFor(cur, nxt, function () { return 'total'; }, function () { return 'Totalt'; })[0] || finishRow({ key: 'total', name: 'Totalt', capacity: 0, loaded: 0, nextCapacity: 0, people: new Set() });
+      var grand = rowsFor(cur, nxt, function () { return 'total'; }, function () { return 'Totalt'; })[0] || finishRow({ key: 'total', name: 'Totalt', capacity: 0, loaded: 0, nextCapacity: 0, reserved: 0, nextReserved: 0, people: new Set() });
       return { period: period, next: next, level: level, groups: groups, byCompetence: byCompetence, total: grand };
     }
 
@@ -1300,7 +1336,7 @@ var OOSEngine = (function () {
       }
       /* Beroenden med risk, för beslutat arbete som pågår nu eller senare. */
       (db.epics || []).forEach(function (ep) {
-        if (!COUNTS[ep.status] || ep.status === 'done' || ep.to < period.start || !(ep.dependsOn || []).length) return;
+        if (!counts(ep) || ep.status === 'done' || ep.to < period.start || !(ep.dependsOn || []).length) return;
         var risky = epicDependencies(ep.id, period).filter(function (d) { return d.risks.length; });
         if (!risky.length) return;
         var first = risky[0];
@@ -1313,7 +1349,7 @@ var OOSEngine = (function () {
         });
       });
       (db.epics || []).forEach(function (ep) {
-        if (ep.type !== 'development' || ep.initiativeId || !COUNTS[ep.status] || !epicHoursInPeriod(ep, period)) return;
+        if (ep.type !== 'development' || ep.initiativeId || !counts(ep) || !epicHoursInPeriod(ep, period)) return;
         var t = get('teams', ep.teamId);
         out.push({
           kind: 'untraced',
@@ -1420,7 +1456,8 @@ var OOSEngine = (function () {
       var nextCap = summarize(allFacts(next)).capacity;
       var sig = signals(period);
       var targets = Object.assign({}, DEFAULT_TARGETS, settings.kpiTargets || {});
-      var total = org.capacity || 1;
+      /* Andelar räknas på all fördelad tid, också domänroller, eftersom de beskriver sammansättningen. */
+      var total = org.capacity + org.reserved || 1;
       function workerOf(f) { return get('workers', f.workerId) || {}; }
       var producing = sumCap(facts, function (f) { var t = f.teamId && get('teams', f.teamId); return t && t.category === 'producing'; });
       var consultant = sumCap(facts, function (f) { var w = workerOf(f); return w.type !== 'ai' && w.consultant; });
@@ -1428,7 +1465,7 @@ var OOSEngine = (function () {
       var cov = coverage();
       var list = [
         { key: 'load', label: 'Beläggning', value: org.loadPct, unit: '%', scale: [0, 100],
-          definition: 'Beslutat arbete delat med kapacitet. För lågt betyder outnyttjad tid, för högt betyder att ingen marginal finns.' },
+          definition: 'Beslutat arbete delat med teamens kapacitet. Domänroller räknas inte in. För lågt betyder outnyttjad tid, för högt betyder att ingen marginal finns.' },
         { key: 'overallocated', label: 'Överallokerade arbetare', value: sig.filter(function (x) { return x.kind === 'overallocated'; }).length, unit: 'st', severity: 'critical',
           definition: 'Arbetare vars team och domänroller kräver mer tid än de har.' },
         { key: 'producingShare', label: 'Kapacitet i producerande team', value: (producing / total) * 100, unit: '%', scale: [0, 100],
@@ -1523,7 +1560,8 @@ var OOSEngine = (function () {
     /* Kapacitetens sammansättning efter källa och anställningsform. */
     function composition(period) {
       var facts = allFacts(period);
-      var total = summarize(facts).capacity || 1;
+      var sum = summarize(facts);
+      var total = sum.capacity + sum.reserved || 1;
       function part(label, pred) {
         var v = sumCap(facts, pred);
         return { label: label, value: v, pct: (v / total) * 100 };
@@ -1662,6 +1700,7 @@ var OOSEngine = (function () {
       teamSupply: teamSupply,
       initiativeEpics: initiativeEpics,
       initiativeSummary: initiativeSummary,
+      counts: counts,
       workByType: workByType,
       epicMode: epicMode,
       domainCapacity: domainCapacity,

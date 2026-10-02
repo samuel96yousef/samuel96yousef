@@ -81,6 +81,7 @@
     }, [])).size;
     var totalCap = U.sum(rows, function (r) { return r.cap.capacity; });
     var totalLoaded = U.sum(rows, function (r) { return r.cap.loaded; });
+    var totalReserved = U.sum(rows, function (r) { return r.cap.reserved || 0; });
 
     var cols = [
       {
@@ -109,7 +110,7 @@
     h += '<div class="kpis">' +
       UI.kpi(k.title, rows.length, isDd(kind) ? U.plural(S.db.domains.length, 'domän', 'domäner') + ' under dem' : U.plural(rows.filter(function (r) { return r.dd; }).length, 'med leveransdomän', 'med leveransdomän')) +
       UI.kpi('Team', totalTeams, isDd(kind) ? 'Alla team hör till en leveransdomän' : 'Med en av domänerna som primär') +
-      UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Team och domänmoln, efter avdrag') +
+      UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Teamen, efter avdrag' + (totalReserved > 0.5 ? ' · ' + U.fmtH(totalReserved) + ' i domänroller' : '')) +
       UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), U.fmtH(totalLoaded) + ' belastat, ' + U.fmtH(Math.max(0, totalCap - totalLoaded)) + ' ledigt') +
       '</div>';
     h += '<section class="card">' + UI.table({
@@ -299,7 +300,8 @@
       '<div class="field-block"><span class="label">Belastat</span><span class="big">' + U.fmtH(cur.loaded) + '</span></div>' +
       '<div class="field-block"><span class="label">Ledigt</span><span class="big">' + U.fmtH(cur.free) + '</span></div>' +
       '<div class="field-block"><span class="label">' + esc(ctx.next.label) + '</span><span class="big">' + U.fmtH(nxt.capacity) + '</span><span class="muted small">' + U.fmtSigned(nxt.capacity - cur.capacity, ' h') + ' mot denna period</span></div></div>';
-    h += '<div class="grid-2"><div><h3 class="card-title" style="margin-bottom:8px">Per team och domänmoln</h3>' + capTable(cur.byTeam, true) + '</div>' +
+    if (cur.reserved > 0.5) h += '<p class="muted small" style="margin:-4px 0 14px">' + U.fmtH(cur.reserved) + ' är reserverat i domänroller. Den tiden räknas inte i beläggning eller ledigt.</p>';
+    h += '<div class="grid-2"><div><h3 class="card-title" style="margin-bottom:8px">Per team och domänroll</h3>' + capTable(cur.byTeam, true) + '</div>' +
       '<div><h3 class="card-title" style="margin-bottom:8px">Per kompetens</h3>' + capTable(cur.byCompetence, false) + '</div></div>';
     return h;
   }
@@ -308,6 +310,11 @@
     var h = '<div class="table-wrap"><table class="tbl"><thead><tr><th>' + (isTeam ? 'Team' : 'Kompetens') + '</th><th class="num" data-opt="1">Pers.</th><th class="num">Kapacitet</th><th class="num" data-opt="2">Ledigt</th><th>Beläggning</th></tr></thead><tbody>';
     rows.forEach(function (r) {
       var name = isTeam ? (r.team ? C.teamRef(r.team) : '<span class="name-cell"><span>' + esc(r.name) + '</span></span>') : C.compRef(r.competence);
+      /* Domänroller är reserverad tid: timmarna står med, men ingen beläggning eller ledig tid. */
+      if (!r.capacity && r.reserved > 0.5) {
+        h += '<tr><td>' + name + '</td><td class="num">' + r.people + '</td><td class="num">' + U.fmtH(r.reserved) + '</td><td class="num"><span class="muted">–</span></td><td><span class="muted small">Reserverad</span></td></tr>';
+        return;
+      }
       h += '<tr><td>' + name + '</td><td class="num">' + r.people + '</td><td class="num">' + U.fmtH(r.capacity) + '</td><td class="num">' + U.fmtH(r.free) + '</td><td>' + UI.bar(r.loadPct) + '</td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="5"><div class="empty">Ingen kapacitet i perioden.</div></td></tr>';

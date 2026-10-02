@@ -100,11 +100,11 @@
       };
     });
     var rows = all.filter(function (r) { return filter === 'all' || r.ep.type === filter; });
-    var org = e.orgCapacity(p);
+    var teamCap = U.sum(S.db.teams, function (t) { return e.teamCapacity(t.id, p).capacity; });
     var byType = e.workByType(p);
     var decided = U.sum(Object.keys(byType), function (k) { return byType[k]; });
     var proposals = all.filter(function (r) { return r.ep.status === 'proposed'; });
-    var untraced = all.filter(function (r) { return r.ep.type === 'development' && !r.ep.initiativeId && E.epicCounts(r.ep.status) && r.hours > 0; });
+    var untraced = all.filter(function (r) { return r.ep.type === 'development' && !r.ep.initiativeId && e.counts(r.ep) && r.hours > 0; });
 
     var h = UI.pageHead({
       title: 'Epiker',
@@ -115,7 +115,7 @@
     var view = OOS.tab('epics-view', 'list');
     h += UI.tabs('epics-view', [{ key: 'list', label: 'Lista' }, { key: 'timeline', label: 'Tidslinje' }, { key: 'flow', label: 'Kopplingar' }], view);
     h += UI.facts([
-      { label: 'Beslutat arbete i ' + p.inText, value: U.fmtH(decided), note: U.fmtPct(org.capacity ? (decided / org.capacity) * 100 : 0) + ' av teamens kapacitet' },
+      { label: 'Beslutat arbete i ' + p.inText, value: U.fmtH(decided), note: U.fmtPct(teamCap ? (decided / teamCap) * 100 : 0) + ' av teamens kapacitet' },
       { label: 'Utveckling', value: U.fmtPct(decided ? ((byType.development || 0) / decided) * 100 : 0), note: U.fmtH(byType.development || 0) + ' av arbetet' },
       { label: 'Förvaltning', value: U.fmtPct(decided ? ((byType.maintenance || 0) / decided) * 100 : 0), note: U.fmtH(byType.maintenance || 0) + ' av arbetet' },
       { label: 'Förslag', value: proposals.length, note: proposals.length ? 'Väntar på beslut, belastar inte' : 'Inga förslag just nu' }
@@ -131,7 +131,6 @@
 
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Var tiden går i ' + esc(p.inText) + '</div>' +
       '<div class="card-sub">Beslutat arbete per typ mot alla teams kapacitet. Domänmoln och nyckelroller ingår inte.</div></div></div>';
-    var teamCap = U.sum(S.db.teams, function (t) { return e.teamCapacity(t.id, p).capacity; });
     h += workSplit(byType, teamCap, 'Teamens kapacitet') + '</section>';
 
     var segs = [{ key: 'all', label: 'Alla' }].concat(TYPE_ORDER.map(function (t) { return { key: t, label: C.EPIC_TYPE[t] }; }));
@@ -160,7 +159,7 @@
         { key: 'frame', label: 'Ram', cls: 'num', opt: 2, sort: function (r) { return r.frame; }, render: function (r) { return C.epicFrameText(r.ep); } },
         {
           key: 'hours', label: 'I perioden', cls: 'num', sort: function (r) { return r.hours; },
-          render: function (r) { return r.hours ? (E.epicCounts(r.ep.status) ? U.fmtH(r.hours) : '<span class="muted">(' + U.fmtH(r.hours) + ')</span>') : '<span class="muted">–</span>'; }
+          render: function (r) { return r.hours ? (e.counts(r.ep) ? U.fmtH(r.hours) : '<span class="muted">(' + U.fmtH(r.hours) + ')</span>') : '<span class="muted">–</span>'; }
         }
       ]
     }) + '</section>';
@@ -248,7 +247,7 @@
     var hrs = E.epicHoursInPeriod(ep, p);
     var frame = E.epicFrame(ep);
     var tc = team ? e.teamCapacity(team.id, p) : null;
-    var counts = E.epicCounts(ep.status);
+    var counts = e.counts(ep);
 
     var h = UI.pageHead({
       crumbs: C.link('epics', 'Epiker') + '<span>›</span><span>' + esc(ep.name) + '</span>',
@@ -258,7 +257,9 @@
       actions: UI.btn('Redigera', 'epic-edit', { data: { id: ep.id } }) + UI.btn('Ta bort', 'epic-delete', { cls: 'btn-danger', data: { id: ep.id } })
     });
 
-    if (ep.status === 'proposed') {
+    if (E.epicCounts(ep.status) && !counts && init && init.status === 'proposed') {
+      h += '<div class="note warn"><strong>Initiativet är inte beslutat.</strong> Epiken belastar inte ' + (team ? esc(team.name) : 'teamet') + ' förrän ' + C.initiativeRef(init) + ' beslutas av leveransdomänen.</div>';
+    } else if (ep.status === 'proposed') {
       var imp = C.epicImpact(ep, ep);
       var worst = imp && imp.rows.length ? imp.rows.reduce(function (m, r) { return r.after > m.after ? r : m; }, imp.rows[0]) : null;
       h += '<div class="note' + (worst && worst.after > 100.5 ? ' crit' : '') + '"><strong>Förslag som väntar på beslut.</strong> Epiken belastar inte teamet ännu.' +
@@ -379,14 +380,14 @@
     var gaps = spots.filter(function (x) { return x.row.gap; });
     var risks = [];
     S.db.epics.forEach(function (ep) {
-      if (!E.epicCounts(ep.status) || ep.status === 'done' || ep.to < p.start) return;
+      if (!e.counts(ep) || ep.status === 'done' || ep.to < p.start) return;
       e.epicDependencies(ep.id, p).forEach(function (d) { if (d.risks.length) risks.push({ epic: ep, dep: d }); });
     });
     var org = e.orgCategoryLoad(p);
     var free = U.sum(org, function (c) { return Math.max(0, c.free); });
     /* Behov spelar roll när teamet har flera kompetensområden. Utbildning gäller hela teamet. */
     var noNeeds = S.db.epics.filter(function (ep) {
-      if (!E.epicCounts(ep.status) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0 || E.normNeeds(ep.needs)) return false;
+      if (!e.counts(ep) || ep.status === 'done' || E.epicHoursInPeriod(ep, p) <= 0 || E.normNeeds(ep.needs)) return false;
       return e.teamCategoryLoad(ep.teamId, p).rows.filter(function (r) { return r.supply > 0.5; }).length > 1;
     });
 
@@ -598,6 +599,11 @@
     if (over.length) {
       h += '<div class="note crit"><strong>' + over.map(function (t) { return esc(t.team.name); }).join(' och ') + (over.length === 1 ? ' är' : ' är') + ' överplanerat i ' + esc(p.inText) + '.</strong> Initiativet konkurrerar med annat arbete om samma tid.</div>';
     }
+    /* Ett initiativ som bara är ett förslag gör sina epiker till förslag, också de som är beslutade. */
+    var waiting = x.status === 'proposed' ? sum.epics.filter(function (ep) { return E.epicCounts(ep.status) && ep.status !== 'done'; }) : [];
+    if (waiting.length) {
+      h += '<div class="note warn"><strong>Initiativet är ett förslag.</strong> ' + U.plural(waiting.length, 'beslutad epik', 'beslutade epiker') + ' belastar inte teamen förrän initiativet beslutas.</div>';
+    }
     var invested = sum.investment !== null;
     h += UI.facts([
       { label: 'Investering', value: invested ? U.fmtH(sum.investment) : '–', note: invested ? 'Beslutad av leveransdomänen' : 'Inte beslutad' },
@@ -627,7 +633,7 @@
       var t = e.get('teams', ep.teamId);
       var hrs = E.epicHoursInPeriod(ep, p);
       main += '<tr class="clickable' + (ep.status === 'done' ? ' is-past' : '') + '" data-go="epics:' + ep.id + '" tabindex="0"><td>' + esc(ep.name) + '<div class="muted small">' + [t ? esc(t.name) : '', esc(C.EPIC_TYPE[ep.type] || ''), monthSpan(ep)].filter(Boolean).join(' · ') + '</div></td><td>' + C.epicStatus(ep.status) + '</td>' +
-        '<td class="num">' + C.epicFrameText(ep) + '</td><td class="num">' + (hrs ? (E.epicCounts(ep.status) ? U.fmtH(hrs) : '<span class="muted">(' + U.fmtH(hrs) + ')</span>') : '<span class="muted">–</span>') + '</td></tr>';
+        '<td class="num">' + C.epicFrameText(ep) + '</td><td class="num">' + (hrs ? (e.counts(ep) ? U.fmtH(hrs) : '<span class="muted">(' + U.fmtH(hrs) + ')</span>') : '<span class="muted">–</span>') + '</td></tr>';
     });
     if (!sum.epics.length) main += '<tr><td colspan="4"><div class="empty">Initiativet har inga epiker ännu.</div></td></tr>';
     main += '</tbody></table></div></section>';

@@ -122,7 +122,7 @@
     var t = rep.total;
     var tone = loadTone(t.loadPct);
     h += UI.facts([
-      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(t.capacity), note: U.plural(t.peopleCount, 'person', 'personer') + ' i urvalet' },
+      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(t.capacity), note: 'Teamen, ' + U.plural(t.peopleCount, 'person', 'personer') + (t.reserved > 0.5 ? ' · ' + U.fmtH(t.reserved) + ' i domänroller' : '') },
       { label: 'Belastat', value: U.fmtH(t.loaded), note: U.fmtPct(t.loadPct) + ' beläggning', tone: tone },
       t.free < 0
         ? { label: 'Överplanerat', value: U.fmtH(-t.free), note: 'Mer än kapaciteten', tone: 'crit' }
@@ -138,7 +138,8 @@
       '</div>';
     h += r.view === 'chart' ? chart(rep, r, lvl, ctx) : tableView(rep, r, lvl, ctx);
     h += '<p class="card-note">Förändring är kapaciteten i ' + esc(ctx.next.inText) + ' jämfört med ' + esc(ctx.period.inText) + ', utan hänsyn till belastning. ' +
-      'Den beror på antal arbetsdagar, teamavdrag och domänroller som börjar eller slutar.</p>';
+      'Den beror på antal arbetsdagar, teamavdrag och domänroller som börjar eller slutar.' +
+      (t.reserved > 0.5 ? ' Domänmoln och nyckelroller är reserverad tid (' + U.fmtH(t.reserved) + ') och räknas inte i totalens beläggning.' : '') + '</p>';
     h += '</section>';
     return h;
   };
@@ -158,8 +159,12 @@
   }
 
   /* Tal för en rad. Ledig och nästa periods kapacitet är mindre viktiga och döljs först på smal yta. */
-  /* Domänmoln och nyckelroller räknas alltid som fullt belagda. Det är ingen avvikelse, så ingen varning. */
+  /* Domänmoln och nyckelroller är reserverad tid: timmarna står med, men ingen beläggning eller ledig tid. */
   function numCells(x, quiet) {
+    if (!x.capacity && x.reserved > 0.5) {
+      return '<td class="num">' + U.fmtH(x.reserved) + '</td><td class="num"><span class="muted">–</span></td><td class="num"><span class="muted">–</span></td>' +
+        '<td><span class="muted small">Reserverad</span></td><td class="num">' + U.fmtH(x.nextReserved) + '</td><td class="num">' + U.fmtSigned(x.change, ' h') + '</td>';
+    }
     return '<td class="num">' + U.fmtH(x.capacity) + '</td><td class="num">' + U.fmtH(x.loaded) + '</td><td class="num">' + freeCell(x) + '</td>' +
       '<td>' + UI.bar(x.loadPct, quiet ? { warnAt: 101, soft: true } : undefined) + '</td><td class="num">' + U.fmtH(x.nextCapacity) + '</td>' +
       '<td class="num">' + U.fmtSigned(x.change, ' h') + '</td>';
@@ -230,15 +235,15 @@
         },
         {
           key: 'bar', label: 'Beläggning', cls: 'cbar-col', sort: function (x) { return x.loadPct; },
-          render: function (x) { return C.capBar(x, { soft: x.quiet }); }
+          render: function (x) { return !x.capacity && x.reserved > 0.5 ? '<span class="muted small">Reserverad tid för domänerna</span>' : C.capBar(x); }
         },
         {
           key: 'free', label: 'Ledigt', cls: 'num', sort: function (x) { return x.free; },
-          render: freeCell
+          render: function (x) { return !x.capacity && x.reserved > 0.5 ? '<span class="muted">–</span>' : freeCell(x); }
         },
         {
-          key: 'cap', label: 'Kapacitet', cls: 'num', opt: 1, sort: function (x) { return x.capacity; },
-          render: function (x) { return U.fmtH(x.capacity); }
+          key: 'cap', label: 'Kapacitet', cls: 'num', opt: 1, sort: function (x) { return x.capacity + x.reserved; },
+          render: function (x) { return U.fmtH(x.capacity || x.reserved); }
         },
         {
           key: 'change', label: 'Förändring', cls: 'num', opt: 2, sort: function (x) { return x.change; },
@@ -251,9 +256,9 @@
   function csv(ctx) {
     var r = rs();
     var rep = build(ctx);
-    var lines = [['Grupp', 'Kompetens', 'Kapacitet (h)', 'Belastat (h)', 'Ledigt (h)', 'Kapacitet nästa period (h)', 'Beläggning (%)', 'Förändring (h)', 'Förändring (%)'].join(';')];
+    var lines = [['Grupp', 'Kompetens', 'Kapacitet (h)', 'Belastat (h)', 'Ledigt (h)', 'Kapacitet nästa period (h)', 'Beläggning (%)', 'Förändring (h)', 'Förändring (%)', 'Reserverat i domänroller (h)'].join(';')];
     function line(g, x) {
-      return [g, x.name, Math.round(x.capacity), Math.round(x.loaded), Math.round(x.free), Math.round(x.nextCapacity), Math.round(x.loadPct), Math.round(x.change), Math.round(x.changePct)].join(';');
+      return [g, x.name, Math.round(x.capacity), Math.round(x.loaded), Math.round(x.free), Math.round(x.nextCapacity), Math.round(x.loadPct), Math.round(x.change), Math.round(x.changePct), Math.round(x.reserved || 0)].join(';');
     }
     if (r.level === 'competence') rep.byCompetence.forEach(function (x) { lines.push(line('Alla', x)); });
     else rep.groups.forEach(function (g) { g.rows.forEach(function (x) { lines.push(line(g.name, x)); }); lines.push(line(g.name, g.total)); });

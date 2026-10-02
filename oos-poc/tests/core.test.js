@@ -78,6 +78,49 @@ test('en PI:s kapacitet och belastning är summan av dess månader', () => {
   near(e.orgCapacity(pi).loaded, load, 0.5);
 });
 
+test('beläggningen är samma tal i organisationen, rapporten och teamen', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const pi = E.periodOf('2026-10-02', 'pi', db.pis);
+  const org = e.orgCapacity(pi);
+  const teams = db.teams.map((t) => e.teamCapacity(t.id, pi));
+  const cap = teams.reduce((a, t) => a + t.capacity, 0);
+  const load = teams.reduce((a, t) => a + t.loaded, 0);
+  near(org.capacity, cap, 0.5);
+  near(org.loaded, load, 0.5);
+  /* Domänroller är reserverad tid utanför beläggningen. */
+  assert.ok(org.reserved > 0);
+  const rep = e.report({ period: pi, level: 'team' });
+  near(rep.total.loadPct, org.loadPct, 0.01);
+  const kpi = e.kpis(pi).find((k) => k.key === 'load');
+  near(kpi.value, org.loadPct, 0.01);
+});
+
+test('en persons beläggning är samma tal som i teamet', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  const pi = E.periodOf('2026-10-02', 'pi', db.pis);
+  e.teamCapacity('t_utbetalning', pi).members.forEach((m) => {
+    if (e.workerCapacity(m.worker.id, pi).teams.length === 1) near(e.workerCapacity(m.worker.id, pi).loadPct, m.loadPct, 0.01);
+  });
+});
+
+test('epiker under ett initiativ som är ett förslag belastar inte teamen', () => {
+  const db = Seed.build();
+  const before = E.create(db);
+  const pi = E.periodOf('2026-10-02', 'pi', db.pis);
+  const ep = db.epics.find((x) => x.initiativeId === 'in_dora' && x.status !== 'proposed');
+  const loadBefore = before.teamCapacity(ep.teamId, pi).loaded;
+  db.initiatives.find((x) => x.id === 'in_dora').status = 'proposed';
+  const after = E.create(db);
+  assert.equal(after.counts(ep), false);
+  const theirs = db.epics.filter((x) => x.initiativeId === 'in_dora' && x.teamId === ep.teamId && x.status !== 'proposed');
+  near(loadBefore - after.teamCapacity(ep.teamId, pi).loaded, theirs.reduce((a, x) => a + E.epicHoursInPeriod(x, pi), 0), 0.5);
+  const s = after.initiativeSummary('in_dora', pi);
+  assert.equal(s.frame, 0);
+  assert.ok(s.proposedFrame > 0);
+});
+
 test('arbetarens tillgängliga kapacitet är grundkapacitet minus grundavdrag', () => {
   const db = Seed.build();
   const e = E.create(db);
@@ -201,7 +244,10 @@ test('KPI:er har värde, mål och status som stämmer med målen', () => {
   assert.equal(byKey.overallocated.value, 1);
   assert.equal(byKey.overallocated.status, 'above');
   assert.equal(byKey.overallocated.severity, 'critical');
-  assert.equal(byKey.load.status, 'ok');
+  /* Statusen följer målet: under, inom eller över. */
+  const t = byKey.load.target;
+  const v = byKey.load.value;
+  assert.equal(byKey.load.status, v < t.min ? 'below' : v > t.max ? 'above' : 'ok');
   assert.equal(byKey.aiShare.status, 'none');
   const org = e.orgCapacity(SEP);
   near(byKey.load.value, org.loadPct);
@@ -221,8 +267,10 @@ test('kompetensmatrisen summerar till teamens kapacitet', () => {
   const m = e.competenceMatrix(SEP, 'team');
   const teamSum = db.teams.reduce((s, t) => s + e.teamCapacity(t.id, SEP).capacity, 0);
   near(m.total, teamSum, 0.5);
+  /* Per leveransdomän ingår domänrollerna, som är reserverad tid utanför teamen. */
   const byDd = e.competenceMatrix(SEP, 'delivery');
-  near(byDd.total, e.orgCapacity(SEP).capacity, 0.5);
+  const org = e.orgCapacity(SEP);
+  near(byDd.total, org.capacity + org.reserved, 0.5);
 });
 
 test('sammansättningen summerar till 100 procent', () => {

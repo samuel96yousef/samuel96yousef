@@ -134,7 +134,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   /* Hjälptext till initiativets investering, en rad: vad som blir kvar när epikerna och förslagen räknas in. */
   C.investmentFormHelp = function (v, original) {
     var eps = original ? S.db.epics.filter(function (ep) { return ep.initiativeId === original.id; }) : [];
-    var decided = U.sum(eps.filter(function (ep) { return OOSEngine.epicCounts(ep.status); }), OOSEngine.epicFrame);
+    var decided = U.sum(eps.filter(function (ep) { return S.engine().counts(ep); }), OOSEngine.epicFrame);
     var used = U.sum(eps, OOSEngine.epicFrame);
     if (!used) return 'Ett beslut, inte ett estimat.';
     if (!(v.investment > 0)) return 'Epikerna är ' + U.fmtH(used) + ' i dag.';
