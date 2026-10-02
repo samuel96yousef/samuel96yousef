@@ -2407,18 +2407,6 @@ mark {
   top: 24px;
 }
 
-.panel-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding-bottom: 20px;
-}
-
-.panel-head .grow {
-  flex: 1;
-  min-width: 0;
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -3275,14 +3263,10 @@ kbd {
 
 .kpi-value,
 .big,
-.facts-mini strong {
-  overflow-wrap: anywhere;
-}
 
 h1,
 h2,
 .card-title,
-.detail-title,
 .kpi-label,
 .aside-title,
 .tier-head,
@@ -3389,41 +3373,6 @@ p,
 
 .aside-list .list-item {
   padding: 8px 0;
-}
-
-/* Detaljkort under en lista: liten rubrik om vad det är, sedan namnet. */
-.detail-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px 20px;
-  flex-wrap: wrap;
-  padding-bottom: 16px;
-}
-
-.eyebrow {
-  font-size: 13px;
-  color: var(--fg-3);
-  margin-bottom: 2px;
-}
-
-.detail-title {
-  font-size: 22px;
-  font-size: clamp(19px, 1cqi + 12px, 24px);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.detail-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: clamp(28px, 4vw, 56px);
-  align-items: start;
 }
 
 .prose {
@@ -3577,31 +3526,6 @@ p,
   white-space: nowrap;
 }
 
-.facts-mini {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 14px;
-}
-
-.facts-mini > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.facts-mini strong {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.facts-mini strong.warn {
-  color: var(--warn);
-}
-
 .level-cell {
   display: inline-flex;
   align-items: center;
@@ -3648,8 +3572,7 @@ p,
 }
 
 @container main (max-width: 900px) {
-  .detail,
-  .detail-cols {
+  .detail {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -4341,24 +4264,48 @@ p,
   }
 }
 
-/* Raden med detaljerna: en grå yta med detaljkortet i, som en låda som dragits ut ur listan. */
+/*
+ * Utfälld rad: ingen grå yta och inget som går ut kant i kant. Raden och lådan ligger på kortets
+ * vita botten, utan linje emellan. Lådan håller sig inom kortets marginaler och linjerar med
+ * namnet. En tunn linje från pilen och ned längs lådan visar vilken rad den hör till.
+ */
+/* Också när pekaren står kvar på raden efter klicket. Pilen visar att den går att fälla ihop. */
+.tbl > tbody > tr.is-open > td,
+.tbl tbody tr.selected.is-open td,
+.tbl tbody tr.clickable.is-open:hover td,
+.tbl tbody tr.clickable.is-open:focus-visible td {
+  background: transparent;
+}
+
+.tbl tr.is-open .name {
+  font-weight: 600;
+}
+
 .card .tbl > tbody > tr.row-open > td.row-open-cell {
   padding: 0;
-  background: var(--canvas);
+  background: transparent;
   border-bottom: 1px solid var(--line);
 }
 
 /* width: 0 + min-width: 100 % gör att innehållet inte kan göra tabellen bredare. */
 .row-open-body {
+  position: relative;
   width: 0;
   min-width: 100%;
   box-sizing: border-box;
-  padding: 12px clamp(8px, 1.4vw, 16px) 16px;
+  padding: 0 var(--card-pad, 24px) 24px calc(var(--card-pad, 24px) + 20px);
   white-space: normal;
 }
 
-.row-open-body > .card {
-  margin: 0;
+/* Linjen under pilen, från raden och ned längs lådan. */
+.row-open-body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 24px;
+  left: calc(var(--card-pad, 24px) + 4px);
+  border-left: 2px solid var(--line-strong);
+  border-radius: 1px;
 }
 
 .tbl.stacked > tbody > tr.row-open,
@@ -4375,6 +4322,23 @@ p,
 
 .tbl.stacked > tbody > tr.row-open > td.row-open-cell::before {
   content: none;
+}
+
+.tbl.stacked > tbody > tr.is-open,
+.tbl.stacked > tbody > tr.selected.is-open,
+.tbl.stacked > tbody > tr.clickable.is-open:hover,
+.tbl.stacked > tbody > tr.clickable.is-open:focus-visible {
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.card .tbl.stacked > tbody > tr.row-open > td.row-open-cell .row-open-body {
+  padding: 0 var(--card-pad, 16px) 20px calc(var(--card-pad, 16px) + 16px);
+}
+
+.card .tbl.stacked > tbody > tr.row-open > td.row-open-cell .row-open-body::before {
+  left: var(--card-pad, 16px);
+  bottom: 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5380,6 +5344,245 @@ p,
   .tl-track > *,
   .tl-link .cline,
   .lk-row {
+    transition: none;
+  }
+}
+
+/* ---------- Lådan under en utfälld rad (C.drawer i js/views/common.js) ---------- */
+
+.drawer {
+  container: drawer / inline-size;
+}
+
+.drawer-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 14px 0 16px;
+  border-bottom: 1px solid var(--line-strong);
+  margin-bottom: 20px;
+}
+
+/* Med flikar står handlingarna bredvid flikarna, eller under dem när raden inte räcker. */
+.drawer-bar.has-tabs {
+  align-items: center;
+  padding: 2px 0 0;
+  border-bottom: 0;
+}
+
+.drawer-bar.has-tabs .tabs {
+  border-bottom-color: var(--line-strong);
+  margin: 0;
+}
+
+/* Flikarna får sin fulla bredd. Räcker inte raden flyttar handlingarna ned i stället. */
+.drawer-bar.has-tabs .drawer-lead {
+  flex: 1 1 auto;
+}
+
+.drawer-lead {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.drawer-text {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Ta bort är den lugna knappen: röd text utan ram, en ton bakom när man pekar. */
+.btn.btn-quiet-danger {
+  color: var(--crit);
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn.btn-quiet-danger:hover,
+.btn.btn-quiet-danger:focus-visible {
+  background: var(--crit-soft);
+  border-color: transparent;
+}
+
+.drawer-actions .btn.btn-quiet-danger {
+  background: transparent;
+}
+
+.drawer-actions .btn.btn-quiet-danger:hover {
+  background: var(--crit-soft);
+}
+
+.drawer > .note {
+  margin-bottom: 18px;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px clamp(24px, 3.5vw, 48px);
+  align-items: start;
+}
+
+.drawer-grid.two {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+
+@container drawer (max-width: 760px) {
+  .drawer-grid,
+  .drawer-grid.two {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+.drawer-sec {
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.drawer-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  margin-bottom: 4px;
+}
+
+.drawer-sec-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg-2);
+}
+
+/* Det som redan står i en synlig kolumn på raden visas inte en gång till i lådan. */
+.tbl:not(.hide-2) .drawer .dup-2 {
+  display: none;
+}
+
+/* Står ingressen redan på raden blir handlingarna kvar överst till höger, utan egen linje. */
+.tbl:not(.hide-2) .drawer-bar:not(.has-tabs):has(.drawer-lead > .dup-2:only-child) {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Knapp med text för att lägga till en koppling, i stället för ett ensamt plustecken. */
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+
+.btn-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-add:hover,
+.btn-add:focus-visible {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.drawer-empty {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--fg-3);
+}
+
+.rel-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rel-item:last-child {
+  border-bottom: 0;
+}
+
+.rel-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.rel-tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.rel-tag.strong {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* Koppla bort syns när man pekar på raden eller ger den fokus. På pekskärm syns den alltid. */
+.rel-item .rel-remove {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rel-item:hover .rel-remove,
+.rel-item:focus-within .rel-remove {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rel-item .rel-remove {
+    opacity: 1;
+  }
+}
+
+/* Uppgifter i lådan: etikett och värde, linjerna i lådans ton. */
+.drawer .kv dt,
+.drawer .kv dd {
+  border-bottom-color: var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rel-item .rel-remove {
     transition: none;
   }
 }

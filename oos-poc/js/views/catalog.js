@@ -87,46 +87,49 @@
     return h;
   };
 
+  /*
+   * Lådan under en kompetens: flikar för översikt, nivåer och arbetare. Risken att kunskapen bara
+   * finns hos en person står först.
+   */
   function panel(c, ctx, cap) {
     var e = ctx.e;
     var holders = e.competenceHolders(c.id);
     var adv = holders.filter(function (h) { return h.wc.level >= 3; });
     var tab = OOS.tab('comp-panel', 'overview');
-    var h = '<section class="card"><div class="panel-head">' + UI.avatar(c.name, c.category, { size: 'lg' }) +
-      '<div class="grow"><h2 style="font-size:18px">' + esc(c.name) + '</h2><span class="muted">' + esc(c.category) + ' · ' + (c.type === 'business' ? 'Verksamhet' : 'IT') + '</span></div>' +
-      UI.btn('Redigera', 'comp-edit', { cls: 'btn-sm', data: { id: c.id } }) + '</div>';
-    h += UI.tabs('comp-panel', [{ key: 'overview', label: 'Översikt' }, { key: 'levels', label: 'Nivåer' }, { key: 'workers', label: 'Arbetare (' + holders.length + ')' }], tab);
-    h += '<div class="card-body stack">';
+    var body = '';
+    var note = '';
     if (tab === 'overview') {
       if (adv.length === 1) {
-        h += '<div class="note warn">' + esc(adv[0].worker.name) + ' är ensam om nivå 3–4. Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</div>';
+        note = '<div class="note warn">' + esc(adv[0].worker.name) + ' är ensam om nivå 3–4. Kunskapen riskerar att försvinna vid rollbyte eller frånvaro.</div>';
       } else if (holders.length && !adv.length) {
-        h += '<div class="note">Ingen har kompetensen på nivå 3–4 ännu.</div>';
+        note = '<div class="note">Ingen har kompetensen på nivå 3–4 ännu.</div>';
       }
-      h += '<div class="facts-mini"><div><span class="label">Arbetare</span><strong>' + holders.length + '</strong></div><div><span class="label">På nivå 3–4</span><strong' + (adv.length === 1 ? ' class="warn"' : '') + '>' + adv.length + '</strong></div>' +
-        '<div><span class="label">Kapacitet</span><strong>' + U.fmtH(cap) + '</strong></div></div>';
-      if (c.description) h += '<p class="aside-text">' + esc(c.description) + '</p>';
-      if (c.details) h += '<p class="aside-text muted">' + esc(c.details) + '</p>';
-      h += UI.props([['Kategori', esc(c.category)], ['Område', c.type === 'business' ? 'Verksamhet' : 'IT'], ['Kapacitet räknas på', 'Primär kompetens, ' + esc(ctx.period.inText)]]);
+      /* Arbetare, nivå 3–4 och kapacitet står redan på raden ovanför. */
+      body += '<div class="drawer-grid two">' +
+        C.drawerSection('Beskrivning', '<div class="prose">' + (c.description ? '<p>' + esc(c.description) + '</p>' : '<p class="muted">Ingen beskrivning.</p>') + (c.details ? '<p class="muted">' + esc(c.details) + '</p>' : '') + '</div>') +
+        C.drawerSection('Uppgifter', UI.props([['Kategori', esc(c.category)], ['Område', c.type === 'business' ? 'Verksamhet' : 'IT'], ['Kapacitet räknas på', 'Primär kompetens, ' + esc(ctx.period.inText)]])) +
+        '</div>';
     } else if (tab === 'levels') {
-      h += '<table class="tbl"><thead><tr><th>Nivå</th><th>Namn</th><th>Beskrivning</th><th class="num">Antal</th></tr></thead><tbody>';
+      body += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nivå</th><th>Namn</th><th>Beskrivning</th><th class="num">Antal</th></tr></thead><tbody>';
       var desc = ['', 'Har grundläggande kunskap och kan utföra enklare uppgifter med stöd.', 'Kan arbeta självständigt med vanliga uppgifter.', 'Har djup kunskap och kan hantera komplexa uppgifter.', 'Mycket hög kompetens och kan leda och coacha andra.'];
       [1, 2, 3, 4].forEach(function (n) {
-        h += '<tr><td>' + UI.level(n) + '</td><td>' + UI.LEVELS[n] + '</td><td class="small">' + desc[n] + '</td><td class="num">' + holders.filter(function (x) { return x.wc.level === n; }).length + '</td></tr>';
+        body += '<tr><td>' + UI.level(n) + '</td><td>' + UI.LEVELS[n] + '</td><td class="small">' + desc[n] + '</td><td class="num">' + holders.filter(function (x) { return x.wc.level === n; }).length + '</td></tr>';
       });
-      h += '</tbody></table><p class="muted small">Nivåerna är gemensamma för alla kompetenser i Prototyp 1.</p>';
+      body += '</tbody></table></div><p class="muted small">Nivåerna är gemensamma för alla kompetenser i Prototyp 1.</p>';
     } else {
-      h += '<div class="list">';
-      holders.forEach(function (x) {
+      var items = holders.slice().sort(function (a, b) { return b.wc.level - a.wc.level || U.byName(a.worker, b.worker); }).map(function (x) {
         var pd = e.workerPrimaryDomains(x.worker.id);
-        h += '<div class="list-item"><div class="grow">' + C.workerRef(x.worker, (pd.team ? pd.team.name : x.worker.title) || '') + '</div>' +
-          (x.wc.weight === 'primary' ? UI.badge('Primär', 'accent') : '') + UI.level(x.wc.level) + '</div>';
+        return { ref: C.workerRef(x.worker, (pd.team ? pd.team.name : x.worker.title) || ''), tag: x.wc.weight === 'primary' ? 'Primär' : '', strong: true, remove: UI.level(x.wc.level) };
       });
-      if (!holders.length) h += '<div class="empty">Ingen har kompetensen ännu.</div>';
-      h += '</div>';
+      body += C.relList(items, 'Ingen har kompetensen ännu.');
     }
-    h += '</div><div class="card-body" style="border-top:1px solid var(--line)">' + UI.btn('Ta bort kompetens', 'comp-delete', { cls: 'btn-sm btn-danger', data: { id: c.id } }) + '</div></section>';
-    return h;
+    return C.drawer({
+      title: c.name,
+      tabs: UI.tabs('comp-panel', [{ key: 'overview', label: 'Översikt' }, { key: 'levels', label: 'Nivåer' }, { key: 'workers', label: 'Arbetare (' + holders.length + ')' }], tab),
+      actions: C.drawerActions({ action: 'comp-edit', data: { id: c.id } }, { action: 'comp-delete', data: { id: c.id } }),
+      note: note,
+      body: body
+    });
   }
 
   /* ---------- System ---------- */
@@ -179,41 +182,53 @@
     return h;
   };
 
-  /* Detaljkort för ett system: vad det är, vem som ansvarar och var det hör hemma. */
+  /*
+   * Lådan under ett system: beskrivningen överst, sedan vilka team som ansvarar och bidrar, vilka
+   * IT-domäner systemet hör till och de övriga uppgifterna. Det ansvariga teamet står bara en gång,
+   * först i listan med en mörk etikett.
+   */
   function systemDetail(s, ctx) {
     var e = ctx.e;
-    var teams = e.systemTeams(s.id);
-    var doms = e.systemItDomains(s.id);
+    var teams = e.systemTeams(s.id).slice().sort(function (a, b) {
+      return (b.link.objective === 'owner') - (a.link.objective === 'owner') || U.byName(a.team, b.team);
+    });
+    var doms = e.systemItDomains(s.id).slice().sort(function (a, b) {
+      return (b.relationship === 'primary') - (a.relationship === 'primary') || U.byName(a.domain, b.domain);
+    });
     var owner = e.systemResponsibleTeam(s.id);
-    var h = '<section class="card" id="detail" aria-labelledby="detail-title">';
-    h += '<div class="detail-head"><div><div class="eyebrow">System</div><h2 class="detail-title" id="detail-title">' + esc(s.name) + ' ' + UI.statusFlag(s.status) + '</h2></div><div class="row">' +
-      UI.btn('Redigera', 'system-edit', { data: { id: s.id } }) + UI.btn('Ta bort', 'system-delete', { cls: 'btn-danger', data: { id: s.id } }) + '</div></div>';
-    if (!owner) h += '<div class="note warn" style="margin-bottom:24px"><strong>Systemet saknar ansvarigt team.</strong> Koppla ett team och ange att det ansvarar.</div>';
-    h += '<div class="detail-cols">';
-
-    var tl = '<div class="aside-list">';
-    teams.forEach(function (x) {
-      tl += '<div class="list-item"><div class="grow">' + C.teamRef(x.team) + '<div class="muted small">' + (x.link.objective === 'owner' ? 'Ansvarar för systemet' : 'Bidrar') + '</div></div>' +
-        UI.iconBtn('x', 'link-remove', { coll: 'teamSystems', id: x.link.id, msg: x.team.name + ' kopplas bort från ' + s.name + '.' }, 'Koppla bort ' + x.team.name, 'danger') + '</div>';
+    var CATEGORY = { system: 'System', service: 'Tjänst', interface: 'Gränssnitt', function: 'Funktion' };
+    var category = CATEGORY[s.category] || '';
+    var teamItems = teams.map(function (x) {
+      var own = x.link.objective === 'owner';
+      return {
+        ref: C.teamRef(x.team), tag: own ? 'Ansvarar' : 'Bidrar', strong: own,
+        remove: UI.iconBtn('x', 'link-remove', { coll: 'teamSystems', id: x.link.id, msg: x.team.name + ' kopplas bort från ' + s.name + '.' }, 'Koppla bort ' + x.team.name, 'danger rel-remove')
+      };
     });
-    if (!teams.length) tl += '<span class="muted small">Inga team kopplade.</span>';
-    h += '<div class="stack-lg" style="gap:28px"><div class="prose"><div class="field-block"><span class="label">Beskrivning</span><p>' + esc(s.description || '–') + '</p></div></div>' +
-      UI.asideBlock('Team', tl + '</div>', UI.iconBtn('plus', 'system-team-add', { id: s.id }, 'Koppla team')) + '</div>';
-
-    var dl = '<div class="aside-list">';
-    doms.forEach(function (x) {
-      dl += '<div class="list-item"><div class="grow">' + C.domainRef(x.domain) + '<div class="muted small">' + (x.relationship === 'primary' ? 'Primär' : 'Stödjande') + '</div></div>' +
-        UI.iconBtn('x', 'link-remove', { coll: 'itDomainSystems', id: x.link.id, msg: s.name + ' kopplas bort från ' + x.domain.name + '.' }, 'Koppla bort ' + x.domain.name, 'danger') + '</div>';
+    var domItems = doms.map(function (x) {
+      var primary = x.relationship === 'primary';
+      return {
+        ref: C.domainRef(x.domain), tag: primary ? 'Primär' : 'Stödjande', strong: primary,
+        remove: UI.iconBtn('x', 'link-remove', { coll: 'itDomainSystems', id: x.link.id, msg: s.name + ' kopplas bort från ' + x.domain.name + '.' }, 'Koppla bort ' + x.domain.name, 'danger rel-remove')
+      };
     });
-    if (!doms.length) dl += '<span class="muted small">Ingen IT-domän kopplad.</span>';
-    h += '<div class="stack-lg" style="gap:28px">' + UI.props([
-      ['Ansvarigt team', owner ? C.teamRef(owner) : UI.badge('Saknas', 'warn')],
-      ['Typ', esc(s.kind || '')],
-      ['Kategori', { system: 'System', service: 'Tjänst', interface: 'Gränssnitt', function: 'Funktion' }[s.category] || ''],
-      ['Status', s.status === 'production' ? 'I drift' : UI.statusBadge(s.status)]
-    ]) + UI.asideBlock('IT-domäner', dl + '</div>', UI.iconBtn('plus', 'system-it-add', { id: s.id }, 'Koppla IT-domän')) + '</div>';
-    h += '</div></section>';
-    return h;
+    /* Typ och kategori står bara båda när de säger olika saker. */
+    var facts = [['Typ', esc(s.kind || '')]];
+    if (category && category !== s.kind) facts.push(['Kategori', category]);
+    facts.push(['Status', UI.statusBadge(s.status)]);
+    var body = '<div class="drawer-grid">' +
+      C.drawerSection('Team', C.relList(teamItems, 'Inga team kopplade.'), { label: 'Koppla team', action: 'system-team-add', data: { id: s.id } }) +
+      C.drawerSection('IT-domäner', C.relList(domItems, 'Ingen IT-domän kopplad.'), { label: 'Koppla IT-domän', action: 'system-it-add', data: { id: s.id } }) +
+      C.drawerSection('Uppgifter', UI.props(facts)) +
+      '</div>';
+    return C.drawer({
+      title: s.name,
+      /* Beskrivningen står i en kolumn på raden när det finns plats. Annars står den här. */
+      lead: '<p class="drawer-text dup-2">' + esc(s.description || 'Ingen beskrivning.') + '</p>',
+      actions: C.drawerActions({ action: 'system-edit', data: { id: s.id } }, { action: 'system-delete', data: { id: s.id } }),
+      note: owner ? '' : '<div class="note warn"><strong>Systemet saknar ansvarigt team.</strong> Koppla ett team och ange att det ansvarar.</div>',
+      body: body
+    });
   }
 
   var A = OOS.actions;

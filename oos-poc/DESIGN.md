@@ -111,7 +111,15 @@ Alla detaljsidor har samma ordning, så att man vet var man ska titta:
 4. **Huvudinnehåll** till vänster: det man arbetar med, till exempel var tiden går, medlemmar eller kompetenser.
 5. **Uppgifter** i en smalare spalt till höger: egenskaper, kopplingar och ägare. Under 900 px hamnar spalten under huvudinnehållet.
 
-**Listor med detaljer** (domäner, system och kompetenser) fäller ut detaljerna direkt under raden man klickar på. Raden rullas upp överst, så att detaljerna syns utan att man letar längre ned på sidan. Ett klick till fäller ihop raden, och bara en rad är öppen åt gången. En pil framför namnet visar att raden går att fälla ut. Detaljerna ligger som ett kort på en grå yta, som en låda som dragits ut ur listan. En länk från en annan sida öppnar rätt rad, på rätt sida i listan. Team, arbetare, epiker och initiativ har egna detaljsidor, eftersom de innehåller mer.
+**Listor med detaljer** (domäner, system och kompetenser) fäller ut detaljerna direkt under raden man klickar på. Raden rullas upp överst, så att detaljerna syns utan att man letar längre ned på sidan. Ett klick till fäller ihop raden, och bara en rad är öppen åt gången. En pil framför namnet visar att raden går att fälla ut. En länk från en annan sida öppnar rätt rad, på rätt sida i listan.
+
+Den utfällda raden och detaljerna under den (lådan, `C.drawer`) har samma mall överallt:
+
+- **Ingen grå yta, inget som går ut kant i kant.** Raden och lådan ligger på kortets vita botten utan linje emellan, och raden blir inte grå när pekaren står kvar efter klicket. Lådan håller sig inom kortets marginaler och linjerar med namnet. En tunn linje från pilen och ned längs lådan visar vilken rad den hör till. Inget kort i kortet.
+- **Raden är rubriken.** Lådan upprepar inte namnet synligt, bara för skärmläsare. Det som redan står i en synlig kolumn, som beskrivningen eller kapaciteten, står inte en gång till. Döljs kolumnen på en smal skärm visas det i lådan i stället.
+- **Överst** flikar eller en ingress till vänster och handlingarna till höger. Redigera är en vanlig knapp. Ta bort är röd text utan ram och frågar alltid först.
+- **Kopplingar** står som listor med en etikett för rollen: mörk för den viktigaste (Ansvarar, Primär), ljus för resten (Bidrar, Stödjande). Knappen för att koppla bort syns när man pekar på raden eller ger den fokus, och alltid på pekskärm. Att lägga till är en knapp med text, till exempel "Koppla team", aldrig ett ensamt plustecken.
+- **Uppgifter** som etikett och värde, i en egen spalt. Lådan delas i tre spalter när det finns plats och staplas i en smal ruta. Team, arbetare, epiker och initiativ har egna detaljsidor, eftersom de innehåller mer.
 
 Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den tillgängliga tiden" och fälls ut när någon vill veta.
 

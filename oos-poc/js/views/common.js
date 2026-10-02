@@ -40,6 +40,46 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     );
   };
 
+  /*
+   * Utfälld rad i en lista (en låda). Samma mall överallt: raden ovanför är rubriken, så lådan
+   * upprepar inte namnet synligt (bara för skärmläsare). Överst flikar eller en ingress till
+   * vänster och handlingarna till höger, sedan innehållet. Ytan och kanten sätts i app.css.
+   */
+  C.drawer = function (o) {
+    return '<section class="drawer" id="detail" aria-labelledby="detail-title">' +
+      '<h2 class="sr-only" id="detail-title">' + esc(o.title) + '</h2>' +
+      '<div class="drawer-bar' + (o.tabs ? ' has-tabs' : '') + '"><div class="drawer-lead">' + (o.tabs || o.lead || '') + '</div>' +
+      '<div class="drawer-actions">' + (o.actions || '') + '</div></div>' +
+      (o.note || '') + '<div class="drawer-body">' + o.body + '</div></section>';
+  };
+
+  /* Redigera och Ta bort i lådan. Att ta bort är den lugnare knappen, den frågar ändå först. */
+  C.drawerActions = function (edit, remove) {
+    return UI.btn('Redigera', edit.action, { cls: 'btn-sm', data: edit.data }) +
+      (remove ? UI.btn(remove.label || 'Ta bort', remove.action, { cls: 'btn-sm btn-quiet-danger', data: remove.data }) : '');
+  };
+
+  /* En del av lådan med rubrik och en knapp med text, till exempel Koppla team. */
+  C.drawerSection = function (title, body, add) {
+    return '<section class="drawer-sec"><div class="drawer-sec-head"><h3 class="drawer-sec-title">' + esc(title) + '</h3>' +
+      (add ? '<button type="button" class="btn-add" data-action="' + esc(add.action) + '"' +
+        Object.keys(add.data || {}).map(function (k) { return ' data-' + k + '="' + esc(add.data[k]) + '"'; }).join('') + '>' +
+        UI.icon('plus') + '<span>' + esc(add.label) + '</span></button>' : '') + '</div>' + body + '</section>';
+  };
+
+  /*
+   * Kopplingar i lådan: namn, en etikett för rollen (mörk för den viktigaste, till exempel
+   * Ansvarar eller Primär) och en knapp för att koppla bort som syns när man pekar eller fokuserar.
+   */
+  C.relList = function (items, empty) {
+    if (!items.length) return '<p class="drawer-empty">' + esc(empty) + '</p>';
+    return '<ul class="rel-list">' + items.map(function (x) {
+      return '<li class="rel-item">' + '<span class="rel-name">' + x.ref + '</span>' +
+        (x.tag ? '<span class="rel-tag' + (x.strong ? ' strong' : '') + '">' + esc(x.tag) + '</span>' : '') +
+        (x.remove || '') + '</li>';
+    }).join('') + '</ul>';
+  };
+
   C.systemRef = function (s) {
     if (!s) return '<span class="muted">–</span>';
     return C.link('systems:' + s.id, s.name);

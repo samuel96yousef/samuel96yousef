@@ -145,51 +145,45 @@
       { key: 'experts', label: isDd(kind) ? 'Nyckelroller' : 'Domänmoln' },
       { key: 'capacity', label: 'Kapacitet' }
     ];
-    var k = KINDS[kind];
-    var h = '<section class="card" id="detail" aria-labelledby="detail-title">';
-    h += '<div class="detail-head"><div><div class="eyebrow">' + esc(k.singular.charAt(0).toUpperCase() + k.singular.slice(1)) + '</div>' +
-      '<h2 class="detail-title" id="detail-title">' + esc(d.name) + ' ' + UI.statusFlag(d.status) + '</h2></div><div class="row">' +
-      UI.btn('Redigera', 'domain-edit', { data: { kind: kind, id: d.id } }) + UI.btn('Ta bort', 'domain-delete', { cls: 'btn-danger', data: { kind: kind, id: d.id } }) + '</div></div>';
-    h += UI.tabs(kind + '-detail', tabsList, tab);
-    h += '<div class="card-body">';
-    if (tab === 'overview') h += overview(kind, d, ctx);
-    else if (tab === 'links') h += links(kind, d, ctx);
-    else if (tab === 'teams') h += teams(kind, d, ctx);
-    else if (tab === 'systems') h += systems(kind, d, ctx);
-    else if (tab === 'experts') h += experts(kind, d, ctx);
-    else h += capacity(kind, d, ctx);
-    h += '</div></section>';
-    return h;
+    var body;
+    if (tab === 'overview') body = overview(kind, d, ctx);
+    else if (tab === 'links') body = links(kind, d, ctx);
+    else if (tab === 'teams') body = teams(kind, d, ctx);
+    else if (tab === 'systems') body = systems(kind, d, ctx);
+    else if (tab === 'experts') body = experts(kind, d, ctx);
+    else body = capacity(kind, d, ctx);
+    return C.drawer({
+      title: d.name,
+      tabs: UI.tabs(kind + '-detail', tabsList, tab),
+      actions: C.drawerActions({ action: 'domain-edit', data: { kind: kind, id: d.id } }, { action: 'domain-delete', data: { kind: kind, id: d.id } }),
+      body: body
+    });
   }
 
-  /* Översikten: de viktigaste talen, sedan vad domänen är till för och vem som äger den. */
+  /* Översikten: vad domänen är till för, vem som äger den och hur kapaciteten fördelar sig. */
   function overview(kind, d, ctx) {
     var e = ctx.e;
     var owner = d.ownerId ? e.get('workers', d.ownerId) : null;
     var cap = capOf(kind, d.id, ctx.period);
-    var t = teamsOf(kind, d.id).filter(function (x) { return x.relationship !== 'supportive'; });
     var ownerLabel = isDd(kind) ? 'Leveransdomänägare' : kind === 'itDomains' ? 'Domänansvarig' : 'Verksamhetsdomänansvarig';
-    var h = UI.facts([
-      { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(cap.capacity), note: 'Team och domänmoln, efter avdrag' },
-      { label: 'Beläggning', value: cap.capacity ? U.fmtPct(cap.loadPct) : '–', note: U.fmtH(cap.loaded) + ' belastat, ' + U.fmtH(cap.free) + ' ledigt', tone: cap.loadPct > 100.5 ? 'crit' : cap.loadPct >= 90 ? 'warn' : null },
-      { label: 'Team', value: t.length, note: 'Med domänen som primär' },
-      { label: 'Arbetare', value: headcount(kind, d.id), note: 'I teamen och domänmolnet' }
-    ]);
-    h += '<div class="detail-cols" style="margin-top:28px">';
-    h += '<div class="prose">' +
-      '<div class="field-block"><span class="label">Syfte</span><p>' + esc(d.purpose || 'Inget syfte angivet.') + '</p></div>' +
-      '<div class="field-block"><span class="label">Beskrivning</span><p>' + esc(d.description || '–') + '</p></div></div>';
+    /*
+     * Kapacitet, beläggning, team och arbetare står redan på raden ovanför. Här står det raden
+     * inte visar: syfte, ägare och hur kapaciteten fördelar sig. Beskrivningen visas bara när
+     * kolumnen är dold (klassen dup-2, se app.css).
+     */
     var rows = [[ownerLabel, owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')]];
     if (isDd(kind)) rows.push(['Primärt uppdrag', d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans']);
     else {
       var dd = e.deliveryDomainOfDomain(d.id);
       rows.push(['Leveransdomän', dd ? C.ddRef(dd) : UI.badge('Saknas', 'warn')]);
     }
+    rows.push(['Kapacitet i ' + ctx.period.inText, cap.capacity ? U.fmtH(cap.loaded) + ' belastat av ' + U.fmtH(cap.capacity) + (cap.free >= 0 ? ', ' + U.fmtH(cap.free) + ' ledigt' : '') : '–']);
     rows.push(['Status', d.status === 'inactive' ? UI.statusBadge(d.status) : 'Aktiv']);
     rows.push(['Senast ändrad', d.updated ? U.fmtDate(d.updated) : '']);
-    h += '<div>' + UI.props(rows) + '</div>';
-    h += '</div>';
-    return h;
+    return '<div class="drawer-grid two">' +
+      '<div>' + C.drawerSection('Syfte', '<p class="drawer-text">' + esc(d.purpose || 'Inget syfte angivet.') + '</p>') +
+      '<div class="dup-2">' + C.drawerSection('Beskrivning', '<p class="drawer-text">' + esc(d.description || '–') + '</p>') + '</div></div>' +
+      C.drawerSection('Uppgifter', UI.props(rows)) + '</div>';
   }
 
   function links(kind, d, ctx) {

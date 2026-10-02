@@ -191,7 +191,7 @@ var OOSLayout = (function () {
   var STEMS = /^(verksamhets|leverans|kompetens|kapacitets|belastnings|beläggnings|allokerings|utvecklings|rapporterings|förändrings|utbetalnings|organisations|notifikations|integrations|automations|säkerhets|arbetsgivar|medarbetar|pensions|plattforms|infrastruktur|kunskaps|ansvars|produkt|analys|arbets|domän|nyckel|standard|grund|system|avtals|kund)/i;
   var SHY = '\u00ad';
   /* Bara etiketter och rubriker. Knappar och flikar lämnas orörda, de bryts aldrig och läses upp. */
-  var HYPHENATE = '.kpi-label, .kpi-note, .tbl th, .kv dt, .label, .aside-title, .eyebrow, .tier-head, .card-title, .page-title, .detail-title';
+  var HYPHENATE = '.kpi-label, .kpi-note, .tbl th, .kv dt, .label, .aside-title, .tier-head, .card-title, .page-title';
 
   function softHyphens(word) {
     if (word.length < 12 || word.indexOf(SHY) >= 0) return word;
