@@ -209,46 +209,88 @@
 
   /*
    * Kartans mått räknas fram ur den bredd som finns, så att den alltid får plats utan att rulla.
-   * Smala rutor får två rader text i stället för att namnen kortas.
+   * Namnen mäts i det typsnitt kartan har och bryts på så många rader som behövs, högst tre.
+   * Alla rutor får samma höjd, efter det namn som behöver flest rader.
    */
-  function geometry(avail, cols) {
+  function geometry(avail, cols, nodes, selId) {
     var gap = Math.round(Math.max(28, Math.min(64, avail * 0.05)));
     var w = Math.floor(Math.min(220, (avail - (cols - 1) * gap) / cols));
-    var chars = Math.floor((w - 22) / 6.6);
-    var lines = chars < 22 ? 2 : 1;
-    var nh = lines === 2 ? 40 : 26;
-    return { W: w, GAP: gap, NH: nh, ROW: nh + 8, TOP: 36, chars: chars, lines: lines };
+    var size = w >= 130 ? 12 : 11;
+    var labels = new Map();
+    var lines = 1;
+    (nodes || []).forEach(function (n) {
+      var room = w - 20 - (n.issues.length ? 12 : 0);
+      var l = wrapLabel(n.name, room, size, n.id === selId ? 600 : 400, 3);
+      labels.set(n.id, l);
+      lines = Math.max(lines, l.length);
+    });
+    var nh = 12 + lines * 14;
+    return { W: w, GAP: gap, NH: nh, ROW: nh + 8, TOP: 36, size: size, labels: labels };
+  }
+
+  /* Textens bredd i kartans typsnitt. Utan canvas räknas med en genomsnittlig teckenbredd. */
+  var measureCtx;
+  function textWidth(s, size, weight) {
+    if (measureCtx === undefined) {
+      var c = document.createElement('canvas');
+      measureCtx = c.getContext ? c.getContext('2d') : null;
+    }
+    if (!measureCtx) return s.length * size * 0.56;
+    measureCtx.font = weight + ' ' + size + 'px ' + getComputedStyle(document.body).fontFamily;
+    return measureCtx.measureText(s).width;
+  }
+
+  /* Vanliga efterled i namnen. Ett långt ord delas helst framför dem: Produktregel-motor. */
+  var STEMS = ['administration', 'efterlevnad', 'utveckling', 'plattform', 'struktur', 'hantering', 'register', 'tjänst', 'portal', 'system', 'motor', 'regel', 'stöd', 'lager', 'team'];
+
+  /*
+   * Var ett ord som inte ryms på en rad ska delas. Bäst är vid ett bindestreck eller framför ett
+   * känt efterled, sedan efter ett s mot konsonant (Avtals-register), och sist så långt som ryms.
+   * Minst fyra tecken flyttas till nästa rad, så att det inte blir en ensam stavelse kvar.
+   */
+  function splitWord(word, fits) {
+    var best = null;
+    for (var i = word.length - 4; i >= 2; i--) {
+      var hyphen = word[i - 1] === '-';
+      var head = word.slice(0, i) + (hyphen ? '' : '-');
+      if (!fits(head)) continue;
+      var rest = word.slice(i).toLowerCase();
+      var rank = hyphen || STEMS.some(function (x) { return rest.indexOf(x) === 0; }) ? 0
+        : word[i - 1] === 's' && /[bcdfghjklmnpqrstvwxz]/.test(rest[0]) && i >= 4 ? 1 : 2;
+      if (!best || rank < best.rank) best = { at: i, head: head, rank: rank };
+      if (rank === 0) break;
+    }
+    return best;
+  }
+
+  /* Delar ett namn på rader som ryms i bredden. Det som ändå inte ryms på max rader kortas med … */
+  function wrapLabel(s, room, size, weight, max) {
+    var fits = function (t) { return textWidth(t, size, weight) <= room; };
+    var lines = [];
+    var cur = '';
+    s.split(' ').forEach(function (word) {
+      var cand = cur ? cur + ' ' + word : word;
+      if (fits(cand)) { cur = cand; return; }
+      if (cur) lines.push(cur);
+      cur = '';
+      var cut;
+      while (!fits(word) && (cut = splitWord(word, fits))) {
+        lines.push(cut.head);
+        word = word.slice(cut.at);
+      }
+      cur = word;
+    });
+    if (cur) lines.push(cur);
+    if (lines.length > max) lines = lines.slice(0, max - 1).concat([lines.slice(max - 1).join(' ')]);
+    return lines.map(function (l) {
+      if (fits(l)) return l;
+      while (l.length > 1 && !fits(l + '…')) l = l.slice(0, -1);
+      return l + '…';
+    });
   }
 
   function trunc(s, n) {
     return s.length > n ? s.slice(0, n - 1) + '…' : s;
-  }
-
-  /*
-   * Delar ett namn på högst max rader om högst chars tecken. Långa sammansatta ord avstavas
-   * när det finns fler rader. Det som ändå inte får plats kortas med …
-   */
-  function labelLines(s, chars, max) {
-    if (s.length <= chars) return [s];
-    var lines = [];
-    var cur = '';
-    s.split(' ').forEach(function (word) {
-      while (max > 1 && word.length > chars) {
-        if (cur) lines.push(cur);
-        cur = '';
-        lines.push(word.slice(0, chars - 1) + '-');
-        word = word.slice(chars - 1);
-      }
-      if (!cur) cur = word;
-      else if ((cur + ' ' + word).length <= chars) cur += ' ' + word;
-      else {
-        lines.push(cur);
-        cur = word;
-      }
-    });
-    if (cur) lines.push(cur);
-    if (lines.length > max) lines = lines.slice(0, max - 1).concat([lines.slice(max - 1).join(' ')]);
-    return lines.map(function (l) { return trunc(l, chars); });
   }
 
   /*
@@ -350,10 +392,10 @@
       var p = lay.pos.get(n.id);
       var state = !focus ? '' : n.id === sel.id ? ' sel' : focus.nodes.has(n.id) ? ' on' : ' off';
       var label = n.name + (n.issues.length ? '. Lucka: ' + n.issues.join(', ') : '');
-      var lines = labelLines(n.name, geo.chars - (n.issues.length ? 2 : 0), geo.lines);
-      var text = lines.length === 1
-        ? '<text x="10" y="' + (NH / 2 + 4) + '">' + esc(lines[0]) + '</text>'
-        : '<text x="10" y="' + (NH / 2 - 3) + '">' + esc(lines[0]) + '<tspan x="10" dy="14">' + esc(lines[1]) + '</tspan></text>';
+      var lines = geo.labels.get(n.id) || [n.name];
+      /* Raderna centreras i rutan, 14 px mellan raderna. */
+      var text = '<text x="10" y="' + (NH / 2 + 4 - (lines.length - 1) * 7) + '" style="font-size:' + geo.size + 'px">' + esc(lines[0]) +
+        lines.slice(1).map(function (l) { return '<tspan x="10" dy="14">' + esc(l) + '</tspan>'; }).join('') + '</text>';
       svg += '<g class="gnode' + state + (n.issues.length ? ' issue' : '') + '" style="transform:translate(' + p.x + 'px,' + p.y + 'px)" data-x="' + p.x + '" data-y="' + p.y + '" data-c="' + Math.round(p.x / (W + GAP)) + '" tabindex="0" role="button" aria-pressed="' + (sel && n.id === sel.id ? 'true' : 'false') + '" aria-label="' + esc(label) + '" data-action="graph-select" data-id="' + esc(n.id) + '">' +
         '<title>' + esc(label) + '</title><rect width="' + W + '" height="' + NH + '" rx="6"/>' + text +
         (n.issues.length ? '<circle cx="' + (W - 10) + '" cy="' + NH / 2 + '" r="3.5"/>' : '') + '</g>';
@@ -382,6 +424,8 @@
     return h + '</ol>';
   }
 
+  var fontsPending = false;
+
   function connectionsTab(ctx) {
     var e = ctx.e;
     var g = e.connectionGraph();
@@ -406,7 +450,17 @@
     var cardPad = Math.min(24, Math.max(16, 0.022 * window.innerWidth));
     var avail = OOS.measure() - 2 * cardPad - 4;
     var asMap = avail >= MAP_MIN;
-    var drawing = asMap ? mapSvg(g, nodes, focus, sel, geometry(avail, g.columns.length)) : tiersHtml(g, focus, sel);
+    var drawing = asMap ? mapSvg(g, nodes, focus, sel, geometry(avail, g.columns.length, nodes, sel ? sel.id : null)) : tiersHtml(g, focus, sel);
+    /* Namnen mäts i kartans typsnitt. Laddas det efter att kartan ritats, ritas den om en gång. */
+    if (asMap && document.fonts && document.fonts.status !== 'loaded' && !fontsPending) {
+      fontsPending = true;
+      document.fonts.ready.then(function () {
+        if (OOS.tab('insights', 'kpi') === 'connections' && document.querySelector('.graph')) {
+          OOS.motion('quiet');
+          OOS.refresh();
+        }
+      });
+    }
 
     h += '<section class="card" id="graph-section"><div class="card-head"><div><div class="card-title">Kopplingskarta</div>' +
       '<div class="card-sub">' + (sel

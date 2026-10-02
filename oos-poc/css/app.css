@@ -3095,10 +3095,15 @@ mark {
   opacity: 0.35;
 }
 
-/* Kartan räknar ut sin bredd själv. Blir den ändå för bred krymper den hellre än rullar. */
+/*
+ * Kartan räknar ut sin bredd själv. Blir den ändå för bred krymper den hellre än rullar.
+ * Rutorna i första och sista kolumnen ligger mot kanten: ramen ritas utanför ytan, i
+ * omslagets marginal, i stället för att klippas.
+ */
 .graph {
   max-width: 100%;
   height: auto;
+  overflow: visible;
 }
 
 /* Smal yta: kartans kolumner som nivåer uppifrån och ned, med en linje som binder ihop dem. */
