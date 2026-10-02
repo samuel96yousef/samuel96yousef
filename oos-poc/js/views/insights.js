@@ -405,7 +405,7 @@
 
   /*
    * Smal yta: samma kolumner som nivåer uppifrån och ned. Med ett val visas bara det som hör
-   * till valet, i samma ordning som i kartan. Kopplingarnas art står i detaljrutan under.
+   * till valet, i samma ordning som i kartan. Kopplingarnas art står på delens egen sida.
    */
   function tiersHtml(g, focus, sel) {
     var blocks = focus ? layout(g, focus, geometry(1000, g.columns.length)).blocks : null;
@@ -435,16 +435,8 @@
     var sel = OOS.state.graphSel && byId.has(OOS.state.graphSel) ? byId.get(OOS.state.graphSel) : null;
     var focus = sel ? OOSEngine.connectionFocus(g, sel.id) : null;
     var gaps = nodes.filter(function (n) { return n.issues.length; });
-    var primary = g.edges.filter(function (x) { return x.rel === 'primary'; }).length;
-
-    var h = '<p class="lede"><strong>' + g.edges.length + '</strong> kopplingar mellan <strong>' + nodes.length + '</strong> delar av organisationen.' +
-      (gaps.length ? ' <strong class="over">' + gaps.length + (gaps.length === 1 ? ' lucka' : ' luckor') + '</strong> där en koppling saknas.' : ' Inga luckor.') + '</p>';
-    h += '<div class="kpis">' +
-      UI.kpi('Primära kopplingar', primary, 'Heldragen linje') +
-      UI.kpi('Stödjande kopplingar', g.edges.length - primary, 'Streckad linje') +
-      UI.kpi('Team', S.db.teams.length, 'Mitten av kartan') +
-      UI.kpi('Luckor', gaps.length, gaps.length ? 'Saknar en koppling' : 'Allt är kopplat', { crit: gaps.length > 0 }) +
-      '</div>';
+    /* Fliken är kartan och luckorna. Kartan visar själv kopplingarna, så de står inte en gång till som lista. */
+    var h = '';
 
     /* Kartan står i ett kort: dra av kortets kant och innermarginal (se .card i app.css). */
     var cardPad = Math.min(24, Math.max(16, 0.022 * window.innerWidth));
@@ -468,17 +460,13 @@
         : asMap
           ? 'Välj en ruta för att samla det som hör till den. Heldragen linje är primär koppling eller ansvar, streckad är stödjande. En gul punkt betyder en lucka.'
           : 'Välj en del för att se det som hör till den. En gul punkt betyder en lucka. Bredda fönstret för att se kartan med linjer.') + '</div></div>' +
-      (sel ? UI.btn('Visa hela kartan', 'graph-clear', { cls: 'btn-sm' }) : '') + '</div>';
+      (sel ? '<div class="page-actions"><button type="button" class="btn btn-sm" data-go="' + esc(sel.kind + ':' + sel.refId) + '" aria-label="Öppna ' + esc(sel.name) + '">Öppna</button>' +
+        UI.btn('Visa hela kartan', 'graph-clear', { cls: 'btn-sm' }) + '</div>' : '') + '</div>';
     h += drawing + '</section>';
 
-    h += '<div class="grid-2">';
-    h += '<section class="card" id="graph-detail"><div class="card-head"><div class="card-title">' + (sel ? esc(sel.name) : 'Ingen ruta vald') + '</div>' +
-      (sel ? C.link(sel.kind + ':' + sel.refId, 'Öppna') : '') + '</div>';
-    h += sel ? selectionDetail(e, g, sel, byId) : '<p class="muted">Välj en ruta i kartan för att se alla dess kopplingar här.</p>';
-    h += '</section>';
-
-    h += '<section class="card"><div class="card-head"><div class="card-title">Luckor</div></div>';
-    if (!gaps.length) h += '<p class="muted">Inga luckor. Alla delar har de kopplingar de behöver.</p>';
+    h += '<section class="card" id="graph-gaps"><div class="card-head"><div><div class="card-title">Luckor' + (gaps.length ? ', ' + gaps.length : '') + '</div>' +
+      (gaps.length ? '<div class="card-sub">Delar som saknar en koppling. Visa i kartan väljer rutan.</div>' : '') + '</div></div>';
+    if (!gaps.length) h += '<p class="muted">Inga luckor.</p>';
     else {
       h += '<div class="list">';
       gaps.forEach(function (n) {
@@ -488,46 +476,12 @@
       });
       h += '</div>';
     }
-    h += '</section></div>';
+    h += '</section>';
     return h;
   }
 
   function labelOf(g, col) {
     return g.columns.filter(function (c) { return c.key === col; })[0].label;
-  }
-
-  function selectionDetail(e, g, sel, byId) {
-    var ins = g.edges.filter(function (x) { return x.to === sel.id; });
-    var outs = g.edges.filter(function (x) { return x.from === sel.id; });
-    function group(title, list, key) {
-      if (!list.length) return '';
-      var h = '<div class="field-block" style="margin-bottom:14px"><span class="label">' + esc(title) + '</span><div class="list">';
-      list.forEach(function (x) {
-        var n = byId.get(x[key]);
-        if (!n) return;
-        var rel = x.label ? (x.rel === 'primary' ? esc(x.label) : '<span class="quiet">' + esc(x.label) + '</span>') : C.relLabel(x.rel);
-        h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link(n.kind + ':' + n.refId, n.name) + '</div>' + rel + '</div>';
-      });
-      return h + '</div></div>';
-    }
-    var colIdx = g.columns.map(function (c) { return c.key; }).indexOf(sel.col);
-    var h = '';
-    if (sel.issues.length) h += '<div class="note warn" style="margin-bottom:14px">' + esc(sel.issues.join('. ')) + '.</div>';
-    h += group(colIdx > 0 ? g.columns[colIdx - 1].label : '', ins, 'from');
-    h += group(colIdx < g.columns.length - 1 ? g.columns[colIdx + 1].label : '', outs, 'to');
-    /* Teamets egna IT-domäner syns inte i kedjan, som går via systemen. */
-    if (sel.col === 'team') {
-      var its = e.teamDomains(sel.refId).filter(function (x) { return x.domain.type === 'it'; });
-      if (its.length) {
-        h += '<div class="field-block" style="margin-bottom:14px"><span class="label">Teamets IT-domäner</span><div class="list">';
-        its.forEach(function (x) {
-          h += '<div class="list-item" style="padding:6px 0"><div class="grow">' + C.link('itDomains:' + x.domain.id, x.domain.name) + '</div>' + C.relLabel(x.relationship) + '</div>';
-        });
-        h += '</div></div>';
-      }
-      h += '<p class="muted small">' + U.plural(e.teamMembers(sel.refId).length, 'medlem', 'medlemmar') + '.</p>';
-    }
-    return h || '<p class="muted">Inga kopplingar.</p>';
   }
 
   /* Rutornas platser före omritningen, så att de kan glida till de nya (se OOSMotion.moveNodes). */
@@ -558,7 +512,6 @@
     } else {
       OOSMotion.reveal(document.querySelector('.tiers'));
     }
-    OOSMotion.reveal(document.getElementById('graph-detail'));
   }
 
   function focusNode(id, scroll) {

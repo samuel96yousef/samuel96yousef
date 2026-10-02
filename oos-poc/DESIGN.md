@@ -125,7 +125,7 @@ Den utfällda raden och detaljerna under den (lådan, `C.drawer`) har samma mall
 
 Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den tillgängliga tiden" och fälls ut när någon vill veta.
 
-Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan.
+Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan. En bild står inte en gång till som lista: kopplingskartan visar själv vad en vald ruta hänger ihop med, och under den står bara luckorna, det man kan göra något åt. Vill man veta mer går Öppna till delens egen sida.
 
 För en arbetare visar en **tidsbudget** hur den tillgängliga tiden fördelas på team och domänroller. Ett streck markerar den tid som finns. Det som går utöver är randigt rött. Under stapeln står varje åtagande med timmar och en knapp för att ändra det.
 
