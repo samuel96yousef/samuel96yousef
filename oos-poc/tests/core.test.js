@@ -313,6 +313,49 @@ test('initiativet summerar ramen för sina beslutade epiker per team', () => {
   assert.ok(s.hoursInPeriod > 0);
 });
 
+test('investeringen jämförs med epikerna men räknas aldrig som belastning', () => {
+  const db = Seed.build();
+  const before = E.create(db);
+  const loadBefore = db.teams.map((t) => before.teamCapacity(t.id, OCT).loaded);
+  const orgBefore = before.orgCapacity(OCT).loaded;
+  db.initiatives.forEach((x) => { x.investment = 999999; });
+  const after = E.create(db);
+  db.teams.forEach((t, i) => near(after.teamCapacity(t.id, OCT).loaded, loadBefore[i]));
+  near(after.orgCapacity(OCT).loaded, orgBefore);
+});
+
+test('kvar och över i investeringen räknar beslutade epiker och förslag var för sig', () => {
+  const db = Seed.build();
+  const e = E.create(db);
+  /* Självservice: 2 600 h beslutat och 600 h i förslag mot 3 000 h. */
+  const s = e.initiativeSummary('in_sjalvservice', OCT);
+  assert.equal(s.investment, 3000);
+  near(s.room, 400);
+  near(s.roomAfterProposals, -200);
+  assert.equal(s.over, false);
+  /* ITP 1 går över redan med de beslutade epikerna och syns som signal. */
+  const itp = e.initiativeSummary('in_itp1', OCT);
+  near(itp.room, -500);
+  assert.equal(itp.over, true);
+  assert.ok(e.signals(OCT).some((x) => x.kind === 'investment' && x.ref.id === 'in_itp1'));
+  /* Utan investering finns inget att jämföra med, och ramen är summan av epikerna. */
+  const dp = e.initiativeSummary('in_dataplattform', OCT);
+  assert.equal(dp.investment, null);
+  assert.equal(dp.room, null);
+  assert.equal(dp.over, false);
+});
+
+test('ett förslag som beslutas flyttar sina timmar från förslag till beslutat', () => {
+  const db = Seed.build();
+  const ep = db.epics.find((x) => x.initiativeId === 'in_sjalvservice' && x.status === 'proposed');
+  const before = E.create(db).initiativeSummary('in_sjalvservice', OCT);
+  ep.status = 'planned';
+  const after = E.create(db).initiativeSummary('in_sjalvservice', OCT);
+  near(after.frame - before.frame, E.epicFrame(ep));
+  near(before.proposedFrame - after.proposedFrame, E.epicFrame(ep));
+  near(after.roomAfterProposals, before.roomAfterProposals);
+});
+
 test('utvecklingsarbete utan initiativ flaggas för spårbarhet', () => {
   const e = E.create(Seed.build());
   const titles = e.signals(OCT).filter((s) => s.kind === 'untraced').map((s) => s.title);

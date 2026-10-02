@@ -2545,6 +2545,16 @@ mark {
   padding: 10px 12px;
 }
 
+/* Initiativets investering under konsekvensen för teamet. */
+.inv-impact {
+  margin-top: 12px;
+}
+
+.form-side .note.warn.inv-impact {
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
 .form-side .impact-head {
   font-size: 13px;
   margin-bottom: 6px;
@@ -3687,6 +3697,18 @@ p,
 
 .budget-seg.free {
   background: var(--track);
+}
+
+/* Konsekvensen under initiativets investering. */
+.inv-note {
+  margin: 10px 0 0;
+}
+
+/* Ett förslag är ett estimat som inte är beslutat: streckat, som i resten av appen. */
+.budget-seg.proposal {
+  background: none;
+  border: 1px dashed var(--fg-3);
+  box-sizing: border-box;
 }
 
 .budget-over {

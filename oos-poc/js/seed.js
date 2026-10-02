@@ -362,22 +362,25 @@ var OOSSeed = (function () {
    * Arbete. Initiativ är beslutade satsningar som en leveransdomän äger. Epiker är teamens arbete:
    * utveckling (ofta nedbrutet från ett initiativ), förvaltning och utredning. Varje team har en
    * förvaltningsepik. Den rymmer drift, rättningar, utbildning och kompetensspridning.
-   * Timmarna är beslutade ramar, inte estimat (omvänd estimering, problem 17):
+   * Omvänd estimering (problem 17): leveransdomänen beslutar hur mycket tid ett initiativ får kosta
+   * (investeringen, sista fältet). Teamen estimerar sina epiker. Ett förslag är teamets estimat, och när
+   * epiken beslutas blir estimatet dess ram. Självservice ryms inte om förslaget beslutas, ITP 1 går
+   * redan över och Dataplattformen saknar beslutad investering.
    * monthly = timmar per månad så länge epiken pågår, total = timmar fördelade jämnt över arbetsdagarna.
    */
   var INITIATIVES = [
     ['in_sjalvservice', 'Självservice för pensionssparare', 'dd_km', 'w_cecilia', 'active', '2026-09-01', '2027-03-31',
-      'Hälften av kundernas ärenden ska gå att lösa själv i kundportalen.'],
+      'Hälften av kundernas ärenden ska gå att lösa själv i kundportalen.', 3000],
     ['in_itp1', 'Ny utbetalningsmotor för ITP 1', 'dd_pu', 'w_thomas', 'active', '2026-08-01', '2027-03-31',
-      'Utbetalningar enligt ITP 1 ska hanteras i den nya motorn utan manuella steg.'],
+      'Utbetalningar enligt ITP 1 ska hanteras i den nya motorn utan manuella steg.', 6000],
     ['in_kolbot', 'Automatiserad pensionsadministration', 'dd_pu', 'w_linnea', 'active', '2026-09-01', '2027-02-28',
-      'Minska den manuella hanteringen av avtalsändringar med 40 procent med hjälp av Kolbot.'],
+      'Minska den manuella hanteringen av avtalsändringar med 40 procent med hjälp av Kolbot.', 2400],
     ['in_anslutning', 'Digital anslutning av arbetsgivare', 'dd_ag', 'w_helena', 'active', '2026-08-01', '2027-03-31',
-      'Arbetsgivare ska kunna ansluta sig, teckna avtal och rapportera helt digitalt.'],
+      'Arbetsgivare ska kunna ansluta sig, teckna avtal och rapportera helt digitalt.', 7000],
     ['in_dora', 'DORA och digital motståndskraft', 'dd_ss', 'w_anders', 'active', '2026-06-01', '2026-12-31',
-      'Uppfylla kraven i DORA innan tillsynen i januari 2027.'],
+      'Uppfylla kraven i DORA innan tillsynen i januari 2027.', 800],
     ['in_dataplattform', 'Dataplattform i molnet', 'dd_uf', 'w_petra', 'active', '2026-09-01', '2027-04-30',
-      'Flytta datalager och BI till en gemensam plattform i molnet och avveckla den lokala miljön.']
+      'Flytta datalager och BI till en gemensam plattform i molnet och avveckla den lokala miljön.', null]
   ];
 
   /* [team, namn, typ, initiativ, status, ram, timmar, från, till, beskrivning] */
@@ -623,7 +626,7 @@ var OOSSeed = (function () {
       db.teamReductions.push({ id: id('tr'), teamId: r[0], type: r[1], percent: r[2], from: r[3], to: r[4], comment: r[5] });
     });
     INITIATIVES.forEach(function (x) {
-      db.initiatives.push({ id: x[0], name: x[1], deliveryDomainId: x[2], ownerId: x[3], status: x[4], from: x[5], to: x[6], goal: x[7] });
+      db.initiatives.push({ id: x[0], name: x[1], deliveryDomainId: x[2], ownerId: x[3], status: x[4], from: x[5], to: x[6], goal: x[7], investment: x[8] });
     });
     EPICS.forEach(function (x, i) {
       db.epics.push({

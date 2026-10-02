@@ -478,6 +478,44 @@
 
   /* ---------- Initiativ ---------- */
 
+  /* Under det beslutade: hur mycket som är kvar av investeringen, eller hur mycket det går över. */
+  function investmentNote(sum) {
+    if (sum.investment === null) return '';
+    if (sum.over) return '<br>' + UI.badge(U.fmtH(-sum.room) + ' över', 'warn');
+    return '<br><span class="sub">' + U.fmtH(sum.room) + ' kvar</span>';
+  }
+
+  /*
+   * Omvänd estimering (problem 17): leveransdomänens investering mot teamens epiker. Beslutade epiker
+   * fyller stapeln per team, förslagen står streckade efter, och det som går över investeringen
+   * sticker ut efter markeringen. Talen står i faktarutan, här syns proportionerna och förslagen.
+   */
+  function investmentCard(x, sum) {
+    var h = '<section class="card"><div class="card-head"><div><div class="card-title">Investering</div>' +
+      '<div class="card-sub">Leveransdomänens beslut om hur mycket tid initiativet får kosta, mot teamens epiker.</div></div>' +
+      UI.btn(sum.investment === null ? 'Sätt investering' : 'Ändra', 'initiative-edit', { cls: 'btn-sm', data: { id: x.id } }) + '</div>';
+    if (sum.investment === null) {
+      return h + '<p class="muted">Ingen investering är beslutad. Då går det inte att se om epikerna kostar mer än satsningen är värd.</p></section>';
+    }
+    var parts = sum.teams.map(function (t) { return { label: t.team.name, hours: t.frame, kind: 'team' }; });
+    if (sum.proposedFrame) parts.push({ label: 'Förslag från team', hours: sum.proposedFrame, kind: 'proposal' });
+    h += UI.budget(parts, sum.investment, { capLabel: 'Investering' });
+    var legend = [];
+    if (sum.frame) legend.push('<span><span class="sw loaded"></span>Beslutat i epiker, per team</span>');
+    if (sum.proposedFrame) legend.push('<span><span class="sw-k proposal"></span>Förslag från team</span>');
+    if (sum.roomAfterProposals > 0.5) legend.push('<span><span class="sw free"></span>Kvar</span>');
+    if (sum.roomAfterProposals < -0.5) legend.push('<span><span class="sw over"></span>Över investeringen</span>');
+    h += '<div class="legend-line" aria-hidden="true">' + legend.join('') + '</div>';
+    /* Över är ett beslut som ska fattas, inte ett fel: texten säger vilka val som finns. */
+    var choice = ' Minska omfattningen, öka investeringen eller stoppa annat arbete.';
+    var text = '';
+    if (sum.over) text = 'Epikerna går över investeringen.' + choice;
+    else if (sum.proposedFrame && sum.roomAfterProposals < -0.5) text = 'Förslagen ryms inte. Beslutas de går initiativet ' + U.fmtH(-sum.roomAfterProposals) + ' över.' + choice;
+    else if (sum.proposedFrame) text = 'Förslagen ryms. Beslutas de återstår ' + U.fmtH(sum.roomAfterProposals) + '.';
+    if (text) h += '<p class="small inv-note ' + (sum.roomAfterProposals < -0.5 ? 'warn-text' : 'muted') + '">' + text + '</p>';
+    return h + '</section>';
+  }
+
   function initiativeList(ctx) {
     var e = ctx.e;
     var p = ctx.period;
@@ -491,14 +529,21 @@
     var teamsInvolved = new Set();
     rows.forEach(function (r) { r.sum.teams.forEach(function (t) { if (t.hours > 0) teamsInvolved.add(t.team.id); }); });
 
+    var over = rows.filter(function (r) { return r.sum.over; }).length;
+    var missing = rows.filter(function (r) { return r.sum.investment === null && r.x.status !== 'done'; }).length;
+
     var h = UI.pageHead({
       title: 'Initiativ',
-      sub: 'Initiativ är satsningar som leveransdomänerna har beslutat. De bryts ned i teamens epiker, och initiativets ram är summan av epikerna. Så syns det hur mycket av organisationens kapacitet varje satsning använder.',
+      sub: 'Leveransdomänerna beslutar initiativen och hur mycket tid de får kosta. Teamen bryter ned dem i epiker och estimerar dem.',
       actions: UI.btn('Lägg till initiativ', 'initiative-add', { cls: 'btn-primary' })
     });
     h += UI.facts([
       { label: 'Pågående och planerade', value: active.length, note: U.plural(rows.length, 'initiativ', 'initiativ') + ' totalt' },
-      { label: 'Beslutad ram', value: U.fmtH(U.sum(rows, function (r) { return r.sum.frame; })), note: 'Summan av initiativens epiker' },
+      {
+        label: 'Beslutat i epiker',
+        value: U.fmtH(U.sum(rows, function (r) { return r.sum.frame; })),
+        note: [over ? U.plural(over, 'initiativ', 'initiativ') + ' över investeringen' : '', missing ? U.plural(missing, 'initiativ', 'initiativ') + ' utan investering' : ''].filter(Boolean).join(' · ') || 'Inom investeringarna'
+      },
       { label: 'I ' + p.inText, value: U.fmtH(inPeriod), note: U.fmtPct(org.capacity ? (inPeriod / org.capacity) * 100 : 0) + ' av kapaciteten' },
       { label: 'Team som bär initiativ', value: teamsInvolved.size, note: 'Av ' + S.db.teams.length + ' team' }
     ]);
@@ -516,8 +561,9 @@
         { key: 'name', label: 'Initiativ', sort: function (r) { return r.x.name; }, render: function (r) { return '<span class="name">' + esc(r.x.name) + '</span><br><span class="sub">' + (r.dd ? esc(r.dd.name) : '') + '</span>'; } },
         { key: 'owner', label: 'Ägare', opt: 2, sort: function (r) { return r.owner ? r.owner.name : 'ö'; }, render: function (r) { return r.owner ? esc(r.owner.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'status', label: 'Status', sort: function (r) { return r.x.status; }, render: function (r) { return C.epicStatus(r.x.status); } },
-        { key: 'teams', label: 'Team', cls: 'num', opt: 1, sort: function (r) { return r.sum.teams.length; }, render: function (r) { return r.sum.teams.length; } },
-        { key: 'frame', label: 'Ram', cls: 'num', opt: 1, sort: function (r) { return r.sum.frame; }, render: function (r) { return U.fmtH(r.sum.frame); } },
+        { key: 'teams', label: 'Team', cls: 'num', opt: 2, sort: function (r) { return r.sum.teams.length; }, render: function (r) { return r.sum.teams.length; } },
+        { key: 'investment', label: 'Investering', cls: 'num', opt: 1, sort: function (r) { return r.sum.investment === null ? -1 : r.sum.investment; }, render: function (r) { return r.sum.investment === null ? '<span class="muted">–</span>' : U.fmtH(r.sum.investment); } },
+        { key: 'frame', label: 'Beslutat', cls: 'num', opt: 1, sort: function (r) { return r.sum.frame; }, render: function (r) { return U.fmtH(r.sum.frame) + investmentNote(r.sum); } },
         { key: 'period', label: 'I perioden', cls: 'num', sort: function (r) { return r.sum.hoursInPeriod; }, render: function (r) { return U.fmtH(r.sum.hoursInPeriod); } }
       ]
     }) + '</section>';
@@ -542,14 +588,18 @@
     if (over.length) {
       h += '<div class="note crit"><strong>' + over.map(function (t) { return esc(t.team.name); }).join(' och ') + (over.length === 1 ? ' är' : ' är') + ' överplanerat i ' + esc(p.inText) + '.</strong> Initiativet konkurrerar med annat arbete om samma tid.</div>';
     }
+    var invested = sum.investment !== null;
     h += UI.facts([
-      { label: 'Beslutad ram', value: U.fmtH(sum.frame), note: U.plural(sum.decided.length, 'beslutad epik', 'beslutade epiker') },
-      { label: 'I ' + p.inText, value: U.fmtH(sum.hoursInPeriod), note: 'Av ' + U.fmtH(sum.frame) + ' i ramen' },
-      { label: 'Team', value: sum.teams.length, note: 'Bär arbetet' },
-      { label: 'Förslag', value: U.fmtH(sum.proposedFrame), note: sum.proposedFrame ? 'Väntar på beslut' : 'Inga förslag', tone: null }
+      { label: 'Investering', value: invested ? U.fmtH(sum.investment) : '–', note: invested ? 'Beslutad av leveransdomänen' : 'Inte beslutad' },
+      { label: 'Beslutat i epiker', value: U.fmtH(sum.frame), note: U.plural(sum.decided.length, 'beslutad epik', 'beslutade epiker') + ' i ' + U.plural(sum.teams.length, 'team', 'team') },
+      invested
+        ? { label: sum.over ? 'Över investeringen' : 'Kvar', value: U.fmtH(Math.abs(sum.room)), tone: sum.over ? 'warn' : null, note: sum.proposedFrame ? U.fmtH(sum.proposedFrame) + ' i förslag' + (sum.roomAfterProposals >= -0.5 ? ', ryms' : ', ryms inte') : 'Inga förslag' }
+        : { label: 'Förslag från team', value: U.fmtH(sum.proposedFrame), note: sum.proposedFrame ? 'Teamens estimat, väntar på beslut' : 'Inga förslag' },
+      { label: 'I ' + p.inText, value: U.fmtH(sum.hoursInPeriod), note: 'Av ' + U.fmtH(sum.frame) + ' beslutat' }
     ]);
 
-    var main = '<section class="card"><div class="card-head"><div><div class="card-title">Team som bär initiativet</div>' +
+    var main = investmentCard(x, sum);
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">Team som bär initiativet</div>' +
       '<div class="card-sub">Initiativets timmar i ' + esc(p.inText) + ' och teamets beläggning med allt annat arbete.</div></div></div>';
     main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Team</th><th class="num" data-opt="2">Epiker</th><th class="num" data-opt="1">Ram</th><th class="num">I perioden</th><th>Teamets beläggning</th></tr></thead><tbody>';
     sum.teams.forEach(function (t) {
@@ -559,8 +609,10 @@
     if (!sum.teams.length) main += '<tr><td colspan="5"><div class="empty">Inga beslutade epiker ännu. Lägg till en epik för varje team som ska bära arbetet.</div></td></tr>';
     main += '</tbody></table></div></section>';
 
-    main += '<section class="card"><div class="card-head"><div class="card-title">Epiker</div>' + UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-sm', data: { initiative: x.id } }) + '</div>';
-    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Epik</th><th>Status</th><th class="num" data-opt="1">Ram</th><th class="num">I perioden</th></tr></thead><tbody>';
+    main += '<section class="card"><div class="card-head"><div><div class="card-title">Epiker</div>' +
+      '<div class="card-sub">Ett förslag är teamets estimat. När det beslutas blir det epikens ram och belastar teamet.</div></div>' +
+      UI.btn('Lägg till epik', 'epic-add', { cls: 'btn-sm', data: { initiative: x.id } }) + '</div>';
+    main += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Epik</th><th>Status</th><th class="num" data-opt="1">Timmar</th><th class="num">I perioden</th></tr></thead><tbody>';
     sum.epics.slice().sort(function (a, b) { return a.from.localeCompare(b.from); }).forEach(function (ep) {
       var t = e.get('teams', ep.teamId);
       var hrs = E.epicHoursInPeriod(ep, p);

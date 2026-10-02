@@ -109,6 +109,40 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return ep.effort === 'monthly' ? U.fmtNum(ep.hours) + '\u00a0h/mån' : U.fmtH(ep.hours) + ' totalt';
   };
 
+  /*
+   * Omvänd estimering: vad initiativets investering räcker till när alla dess epiker räknas in,
+   * både beslutade och förslag. epic är en epik som ändras i ett formulär och ersätter sin sparade version.
+   * null när initiativet saknar investering.
+   */
+  C.investmentLeft = function (initiativeId, epic) {
+    var x = initiativeId ? S.db.initiatives.filter(function (i) { return i.id === initiativeId; })[0] : null;
+    if (!x || !(x.investment > 0)) return null;
+    var eps = S.db.epics.filter(function (ep) { return ep.initiativeId === x.id && (!epic || ep.id !== epic.id); });
+    if (epic && epic.hours && epic.from && epic.to && epic.from <= epic.to) eps = eps.concat([epic]);
+    return x.investment - U.sum(eps, OOSEngine.epicFrame);
+  };
+
+  /* Konsekvensen i epikformuläret för initiativets investering, under konsekvensen för teamet. */
+  C.investmentImpactHtml = function (v, original) {
+    var left = C.investmentLeft(v.initiativeId, Object.assign({}, original || {}, v, { id: original ? original.id : '_ny' }));
+    if (left === null) return '';
+    /* Alla initiativets epiker räknas in, även förslag, så att man ser om allt som är på väg ryms. */
+    if (left >= -0.5) return '<div class="note inv-impact">Initiativets investering: ' + U.fmtH(left) + ' kvar med epiken.</div>';
+    return '<div class="note warn inv-impact"><strong>Initiativet går ' + U.fmtH(-left) + ' över investeringen</strong> med epiken.</div>';
+  };
+
+  /* Hjälptext till initiativets investering, en rad: vad som blir kvar när epikerna och förslagen räknas in. */
+  C.investmentFormHelp = function (v, original) {
+    var eps = original ? S.db.epics.filter(function (ep) { return ep.initiativeId === original.id; }) : [];
+    var decided = U.sum(eps.filter(function (ep) { return OOSEngine.epicCounts(ep.status); }), OOSEngine.epicFrame);
+    var used = U.sum(eps, OOSEngine.epicFrame);
+    if (!used) return 'Ett beslut, inte ett estimat.';
+    if (!(v.investment > 0)) return 'Epikerna är ' + U.fmtH(used) + ' i dag.';
+    if (decided > v.investment + 0.5) return 'Beslutade epiker går ' + U.fmtH(decided - v.investment) + ' över.';
+    if (used > v.investment + 0.5) return 'Med förslagen går epikerna ' + U.fmtH(used - v.investment) + ' över.';
+    return U.fmtH(v.investment - used) + ' kvar efter epikerna.';
+  };
+
   C.epicRef = function (ep) {
     if (!ep) return '<span class="muted">–</span>';
     return C.link('epics:' + ep.id, ep.name);
@@ -1032,7 +1066,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     var p = OOS.period();
     UI.openForm({
       title: opts.title || (isNew ? 'Lägg till epik' : 'Ändra ' + r.name),
-      intro: opts.intro || 'Ramen är den tid som är beslutad för arbetet, inte ett estimat.',
+      intro: opts.intro || 'Timmarna är teamets estimat tills epiken beslutas.',
       /* Långt formulär: bred dialog med konsekvensen, kompetensbehovet och beroendena till höger. */
       wide: true,
       side: ['needs', 'dependsOn'],
@@ -1053,7 +1087,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
         C.depsField(r ? r.id : null),
         { key: 'description', label: 'Beskrivning', type: 'textarea' }
       ],
-      preview: function (v) { return C.impactHtml(C.epicImpact(v, r, opts.patch)); },
+      preview: function (v) { return C.impactHtml(C.epicImpact(v, r, opts.patch)) + (v.teamId ? C.investmentImpactHtml(v, r) : ''); },
       validate: function (v) {
         if (v.from && v.to && v.from > v.to) return { to: 'Slutdatum måste vara efter startdatum.' };
         /* Förvaltning är en löpande ram, och varje team har en. Mer förvaltning = högre ram, inte en till epik. */
@@ -1083,19 +1117,23 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     });
   };
 
-  /* Initiativ: en beslutad satsning som en leveransdomän äger och som bryts ned i teamens epiker. */
+  /*
+   * Initiativ: en beslutad satsning som en leveransdomän äger och som bryts ned i teamens epiker.
+   * Investeringen är hur mycket tid satsningen får kosta (omvänd estimering). Teamen estimerar epikerna.
+   */
   F.initiative = function (r) {
     var isNew = !r;
     var p = OOS.period();
     UI.openForm({
       title: isNew ? 'Lägg till initiativ' : 'Ändra ' + r.name,
-      intro: 'Ett initiativ är en satsning som leveransdomänen har beslutat. Arbetet görs i teamens epiker, och initiativets ram är summan av dem.',
+      intro: 'Leveransdomänen beslutar initiativet och hur mycket tid det får kosta. Teamen bryter ned det i epiker och estimerar dem.',
       values: r || { status: 'planned', from: p.start, to: OOSEngine.nextPeriod(OOSEngine.nextPeriod(p)).end },
       fields: [
         { key: 'name', label: 'Namn', required: true, full: true },
         { key: 'deliveryDomainId', label: 'Leveransdomän', type: 'select', required: true, placeholder: 'Välj leveransdomän …', options: C.opts.deliveryDomains() },
         { key: 'ownerId', label: 'Ägare', type: 'select', placeholder: 'Välj ägare …', options: C.opts.workers() },
         { key: 'status', label: 'Status', type: 'select', required: true, options: C.opts.epicStatus },
+        { key: 'investment', label: 'Investering, timmar', type: 'number', min: 1, max: 1000000, placeholder: 'Inte beslutad', help: function (v) { return C.investmentFormHelp(v, r); } },
         { key: 'from', label: 'Från', type: 'date', required: true },
         { key: 'to', label: 'Till', type: 'date', required: true },
         { key: 'goal', label: 'Mål', type: 'textarea', help: 'Vad ska vara annorlunda när initiativet är klart?' }
@@ -1105,6 +1143,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       },
       onSubmit: function (v) {
         v.ownerId = v.ownerId || null;
+        v.investment = v.investment > 0 ? v.investment : null;
         var rec = isNew ? S.insert('initiatives', v) : S.update('initiatives', r.id, v);
         UI.toast(isNew ? 'Initiativet lades till.' : 'Initiativet sparades.');
         if (isNew) OOS.go('initiatives:' + rec.id);

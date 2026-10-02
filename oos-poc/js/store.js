@@ -83,6 +83,14 @@ var OOSStore = (function () {
       if (d[k] === undefined) d[k] = Array.isArray(fresh[k]) ? [] : fresh[k];
     });
     if (d.settings && d.settings.loadSource === undefined) d.settings.loadSource = 'epics';
+    /* Initiativ från före investeringen får demodatans värde när det finns, annars ingen investering. */
+    if (Array.isArray(d.initiatives)) {
+      var freshInvestment = {};
+      fresh.initiatives.forEach(function (x) { freshInvestment[x.id] = x.investment; });
+      d.initiatives.forEach(function (x) {
+        if (x.investment === undefined) x.investment = freshInvestment[x.id] !== undefined ? freshInvestment[x.id] : null;
+      });
+    }
     /*
      * Epiker från före kompetensbehov och beroenden får demodatans värden när de finns, matchade på
      * team och namn. Andra epiker får tomma listor: arbetet fördelas då som teamets sammansättning.

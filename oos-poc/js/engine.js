@@ -654,8 +654,14 @@ var OOSEngine = (function () {
       return where('epics', 'initiativeId', initiativeId);
     }
 
-    /* Initiativet i siffror: timmar i perioden, hela ramen och vilka team som bär arbetet. */
+    /*
+     * Initiativet i siffror: timmar i perioden, hela ramen och vilka team som bär arbetet.
+     * Investeringen är ledningens beslut om hur mycket tid satsningen får kosta (omvänd estimering).
+     * Teamen estimerar epikerna. Investeringen jämförs med epikerna men räknas aldrig som belastning.
+     */
     function initiativeSummary(initiativeId, period) {
+      var x = get('initiatives', initiativeId);
+      var investment = x && Number(x.investment) > 0 ? Number(x.investment) : null;
       var eps = initiativeEpics(initiativeId);
       var decided = eps.filter(function (ep) { return COUNTS[ep.status]; });
       var teams = new Map();
@@ -668,14 +674,21 @@ var OOSEngine = (function () {
         cur.epics += 1;
         teams.set(t.id, cur);
       });
+      var frame = U.sum(decided, epicFrame);
+      var proposed = U.sum(eps.filter(function (ep) { return ep.status === 'proposed'; }), epicFrame);
       return {
         epics: eps,
         decided: decided,
         teams: Array.from(teams.values()).sort(function (a, b) { return b.frame - a.frame; }),
         hoursInPeriod: U.sum(decided, function (ep) { return epicHoursInPeriod(ep, period); }),
-        frame: U.sum(decided, epicFrame),
-        proposedFrame: U.sum(eps.filter(function (ep) { return ep.status === 'proposed'; }), epicFrame),
-        done: eps.filter(function (ep) { return ep.status === 'done'; }).length
+        frame: frame,
+        proposedFrame: proposed,
+        done: eps.filter(function (ep) { return ep.status === 'done'; }).length,
+        investment: investment,
+        /* Kvar av investeringen efter de beslutade epikerna, och om förslagen också beslutas. Negativt är över. */
+        room: investment === null ? null : investment - frame,
+        roomAfterProposals: investment === null ? null : investment - frame - proposed,
+        over: investment !== null && frame > investment + 0.5
       };
     }
 
@@ -1272,6 +1285,18 @@ var OOSEngine = (function () {
           title: ep.name + ' saknar initiativ',
           detail: 'Utvecklingsarbete i ' + (t ? t.name : 'okänt team') + ' som inte går att spåra till ett beslutat initiativ.',
           ref: { page: 'epics', id: ep.id }
+        });
+      });
+      (db.initiatives || []).forEach(function (x) {
+        if (x.status === 'done' || !x.investment || x.from > period.end || x.to < period.start) return;
+        var s = initiativeSummary(x.id, period);
+        if (!s.over) return;
+        out.push({
+          kind: 'investment',
+          severity: 'warning',
+          title: x.name + ' går över investeringen',
+          detail: 'Beslutade epiker är ' + U.fmtH(s.frame) + ', investeringen ' + U.fmtH(s.investment) + '. Minska omfattningen, öka investeringen eller stoppa annat arbete.',
+          ref: { page: 'initiatives', id: x.id }
         });
       });
       db.competences.forEach(function (c) {

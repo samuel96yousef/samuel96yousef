@@ -48,10 +48,10 @@ Allt går att skapa, ändra och ta bort. Alla ändringar loggas.
 |---|---|
 | 3, 8: olika versioner av verkligheten, för stor komplexitet | En datamodell. Alla siffror räknas fram ur den, inget skrivs in två gånger. |
 | 5: förenklad bild av kapacitet | Verklig kapacitet = grundkapacitet − grundavdrag − teamavdrag, fördelad på allokering, kompetens och domän. |
-| 9, 11: transparens och spårbarhet | Signaler visar överallokering, hög och för hög beläggning, saknade ägare, system utan ansvarigt team och utvecklingsarbete utan initiativ. Ändringsloggen visar vad som ändrats och när. Varje timme i en epik går att följa från team till initiativ och leveransdomän. |
+| 9, 11: transparens och spårbarhet | Signaler visar överallokering, hög och för hög beläggning, saknade ägare, system utan ansvarigt team, utvecklingsarbete utan initiativ och initiativ som går över sin investering. Ändringsloggen visar vad som ändrats och när. Varje timme i en epik går att följa från team till initiativ och leveransdomän. |
 | 14: kritisk kunskap i huvuden | Signal när bara en person har en kompetens på nivå 3–4. Kompetensspridningen planeras i teamets förvaltning. |
-| 16, 17: gemensam valuta, konsekvenser direkt | Allt räknas i timmar. Epikens ram är den tid som är beslutad, inte ett estimat (omvänd estimering). Formuläret visar teamets beläggning före och efter, period för period, innan epiken sparas. |
-| 15: förhandling om tid | Förslag syns med sin konsekvens men belastar inte teamet förrän de beslutas. Ett överplanerat team ger en kritisk signal. |
+| 16, 17: gemensam valuta, konsekvenser direkt | Allt räknas i timmar. Omvänd estimering: leveransdomänen beslutar initiativets investering, hur mycket tid satsningen får kosta. Teamen bryter ned initiativet i epiker och estimerar dem. Ett förslag är teamets estimat, och när epiken beslutas blir estimatet dess ram. Formuläret visar teamets beläggning före och efter, period för period, och vad som blir kvar av initiativets investering, innan epiken sparas. |
+| 15: förhandling om tid | Förslag syns med sin konsekvens men belastar inte teamet förrän de beslutas. Initiativet visar investeringen mot beslutade epiker och förslag. Går epikerna över är det ett beslut: minska omfattningen, öka investeringen eller stoppa annat arbete. Ett initiativ över sin investering och ett överplanerat team ger signaler. Investeringen räknas aldrig som belastning, bara epikerna gör det. |
 | 5, 20: kapacitet i flera dimensioner | Epikens kompetensbehov fördelar arbetet på kompetensområden. Då syns det när utvecklarna har tid men inte testarna eller kravanalytikerna, och var samma kompetens finns ledig i andra team. |
 | 9, 17: beroenden och konsekvenser | Epiker kan bero på varandra. Risker syns direkt: beroendet blir klart för sent, är bara ett förslag eller ligger hos ett team med flaskhals. |
 | 20: flera dimensioner | Team kopplas till verksamhetsdomän, IT-domän, system och kompetens samtidigt. |
@@ -73,7 +73,7 @@ Följer ER-skissen för Prototyp 1. Tabellerna finns i `js/seed.js` och relation
 | ExtendedDomain_Competence, ExtendedDeliveryCompetence | `extendedDomainCompetences`, `extendedDeliveryCompetences` |
 | Systems, ITDomain_System | `systems`, `itDomainSystems` |
 | OverheadReduction | `overheadReductions` (grundavdrag) och `teamReductions` (särskilda avdrag) |
-| Finns inte i skissen | `initiatives`: leveransdomän, ägare, status, period och mål |
+| Finns inte i skissen | `initiatives`: leveransdomän, ägare, status, period, mål och investering (`investment`, timmar totalt, valfri: `null` betyder att ingen investering är beslutad) |
 | Finns inte i skissen | `epics`: team, arbetstyp, initiativ (valfritt), status, ram (`monthly` h/mån eller `total` h), från, till, kompetensbehov (`needs`: kompetensområde och andel i procent) och beroenden (`dependsOn`: andra epiker) |
 | CapacitySummary | Räknas fram i `engine.allFacts()`, lagras inte |
 
@@ -101,7 +101,9 @@ Det här behöver beslutas innan en riktig Prototyp 1 byggs:
 1. **Kompetensnivåer.** ER-skissen säger 0–3, GUI-skissen visar 1–4. POC:n använder 1–4 (Grundläggande, Erfaren, Avancerad, Expert).
 2. **Allokering.** ER-skissen har `Team_Worker.AllocatedCapacity [month]` i timmar, GUI:t visar procent. POC:n använder procent för team och h/månad för domänroller.
 3. **Belastningens källa** är nu teamens epiker. Kvar att besluta:
-   - Ska epiker på sikt hämtas från Jira i stället för att skrivas in här? Då behöver Jira en ram i timmar per epik.
+   - Ska epiker på sikt hämtas från Jira i stället för att skrivas in här? Då behöver teamens estimat finnas i timmar i Jira, och investeringen per initiativ också.
+   - Vem har mandat att besluta investeringen: leveransdomänen eller portföljnivån (LPM)? PI-planeringen är det naturliga tillfället då teamen estimerar mot investeringen.
+   - Estimat är osäkra (problem 24). POC:n har en siffra per epik. Intervall eller säkerhet i estimatet är möjligt men inte byggt.
    - En epik tillhör ett team. Arbete som flera team gör delas upp i en epik per team under samma initiativ.
    - Beläggningen per person räknas per kompetensområde, inte per epik. Att namnge vem som gör vilken epik (bemanning) ger en skarpare bild men kräver mer inmatning och blir snabbt inaktuellt.
    - Kompetensbehovet anges per område och i procent. Det är grovt med avsikt. Finare nivå (enskild kompetens, timmar per person) är möjlig men kostar i inmatning.

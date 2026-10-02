@@ -376,6 +376,7 @@ var OOSUI = (function () {
         if (f.min !== undefined) extra += ' min="' + f.min + '"';
         if (f.max !== undefined) extra += ' max="' + f.max + '"';
         if (f.step !== undefined) extra += ' step="' + f.step + '"';
+        if (f.placeholder) extra += ' placeholder="' + esc(f.placeholder) + '"';
         if (f.datalist) extra += ' data-suggest="' + esc(JSON.stringify(f.datalist)) + '" autocomplete="off"';
         h += '<input type="' + (f.type || 'text') + '" id="' + id + '" name="' + esc(f.key) + '" value="' + esc(value) + '"' + req + extra + '>';
       }
