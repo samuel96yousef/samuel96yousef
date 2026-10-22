@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Koptisk bönbok",
+    "slug": "koptisk-bonbok",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "se.example.koptiskbonbok"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F3F1F2",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "se.example.koptiskbonbok"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "asyncRoutes": {
+            "web": false
+          }
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      "expo-localization",
+      "expo-splash-screen"
+    ],
+    "scheme": "koptiskbonbok"
+  }
+}
