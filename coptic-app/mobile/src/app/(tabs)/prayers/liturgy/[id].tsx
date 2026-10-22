@@ -8,7 +8,7 @@ import { Reader } from '../../../../components/Reader';
 import { ReaderActions } from '../../../../components/ReaderActions';
 import { TopBar } from '../../../../components/TopBar';
 import { kholagy } from '../../../../data';
-import { headingIndexes, liturgyRows } from '../../../../rows';
+import { headingIndexes, headingOutline, liturgyRows } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 import { FONTS } from '../../../../theme';
 
@@ -19,6 +19,7 @@ export default function Liturgy() {
   const liturgy = kholagy.find((p) => p.id === id) ?? kholagy[0];
   const rows = useMemo(() => liturgyRows(liturgy), [liturgy]);
   const headings = useMemo(() => headingIndexes(rows), [rows]);
+  const outline = useMemo(() => headingOutline(rows, { ar: liturgy.ar, sv: liturgy.sv }), [rows, liturgy]);
   const [jump, setJump] = useState<{ index: number; key: number } | null>(null);
   const ar = lang === 'ar';
 
@@ -43,7 +44,7 @@ export default function Liturgy() {
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
       <TopBar back={t.prayers}><ReaderActions /></TopBar>
-      <Reader rows={rows} header={header} scrollTo={jump} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} />
     </View>
   );
 }

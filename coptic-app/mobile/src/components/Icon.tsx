@@ -14,6 +14,7 @@ const PATHS = {
   liturgy: 'M8 20.5h8M9.5 20.5c0-3 1-4.5 2.5-5.5 1.5 1 2.5 2.5 2.5 5.5M6.5 8.5h11a5.5 5.5 0 0 1-11 0zM12 3v2.5M10.8 4.2h2.4',
   info: 'M12 11v5.5M12 7.6v.4',
   phone: 'M10.5 18.2h3',
+  list: 'M9.5 6.5h10M9.5 12h10M9.5 17.5h10',
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -26,6 +27,7 @@ export function Icon({ name, size = 24, color, strokeWidth = 1.7 }: { name: Icon
       {name === 'search' && <Circle cx={10.5} cy={10.5} r={6} />}
       {name === 'info' && <Circle cx={12} cy={12} r={9} />}
       {name === 'phone' && <Rect x={7} y={2.8} width={10} height={18.4} rx={2.4} />}
+      {name === 'list' && (<G><Circle cx={5} cy={6.5} r={0.5} /><Circle cx={5} cy={12} r={0.5} /><Circle cx={5} cy={17.5} r={0.5} /></G>)}
       <Path d={PATHS[name]} />
     </Svg>
   );

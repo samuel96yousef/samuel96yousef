@@ -18,6 +18,15 @@ det andra språket och svep åt sidan för att byta. På bred skärm (uppfälld
 vikbar telefon, vriden telefon, surfplatta) visas ett uppslag med svenska
 till vänster och arabiska till höger.
 
+Var i texten: när rubriken har rullat bort visas en bricka under
+toppknapparna med avsnittet du läser, vem som talar i liturgin (präst,
+diakon, folk) och hur långt du har kommit, till exempel "Katholikon ·
+1 Petr 1:3–12 · 4/6". Tryck på brickan för innehållet, där du ser var du
+är och kan hoppa. Medan du rullar visas en linje vid kanten med ett
+streck per avsnitt, utplacerade efter textens längd. Dra längs linjen för
+att hoppa, med avsnittets namn bredvid fingret. I Bibeln visar brickan
+versen ("Vers 21 av 48") och innehållet är ett rutnät med verserna.
+
 Kholagy: prästens delar har röd etikett, diakonens guldfärgad etikett och
 guldlinje, folkets svar fetstil med röd linje så att församlingen hittar
 sina delar. Instruktioner (rubriker) står i rött och kursivt, tysta böner
@@ -46,7 +55,8 @@ Byt först `bundleIdentifier` och `package` i `app.json` (nu `se.example.koptisk
 
 ```
 src/app/            skärmar (Expo Router)
-src/components/     läsaren, sidramen, valvet, flikraden, språkknappen
+src/components/     läsaren, sidramen, valvet, flikraden, språkknappen,
+                    Wayfinder (brickan, linjen och innehållet)
 src/lib/coptic.ts   koptisk kalender, påsk, högtider, fastor, timböner
 src/lib/lectionary.ts  reglerna för dagens läsningar
 src/data.ts         laddar texterna, bibelsök
@@ -100,5 +110,9 @@ vilken mapp som helst. Därför är `asyncRoutes` avstängt för webben i
 Testat: enhetstester, typkontroll, lint, `expo-doctor` (två kontroller
 kräver nätverk till Expos servrar och gick inte att köra här) och hela
 webbversionen i Chromium i telefon- och surfplattestorlek, ljust och mörkt,
-svenska och arabiska. Inte testat: på riktiga iPhone- och Android-telefoner.
-Glaseffekten (Liquid Glass) syns bara på iOS 26.
+svenska och arabiska, inklusive hopp till varje avsnitt och dragning längs
+linjen. Inte testat: på riktiga iPhone- och Android-telefoner, där
+haptiken och glaset bara finns. Linjen vid kanten tar emot fingret bara
+när den syns, så att den inte stjäl vanliga scrollrörelser nära kanten;
+det behöver provas på telefon. Glaseffekten (Liquid Glass) syns bara på
+iOS 26.

@@ -9,9 +9,11 @@
  * Unfolded (wide): an open book, Swedish on the left page and Arabic on the
  * right, row by row so verses line up. The Swedish page swings open from the
  * spine when the device unfolds.
+ *
+ * With an outline, the wayfinder shows where in the text the reader is.
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Pressable, StyleSheet, Text, View, type FlatList, type ListViewToken, type TextStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type FlatList, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, Keyframe, LinearTransition, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,11 +21,13 @@ import Svg, { Line } from 'react-native-svg';
 
 import { toArDigits } from '../lib/coptic';
 import type { Lang, Role, Unit } from '../lib/types';
+import { itemAt, type Outline } from '../rows';
 import { useSettings } from '../settings';
 import { FONTS, SPRING, type PagePalette } from '../theme';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
 import { useToast } from './Toast';
+import { createWayStore, PILL_TOP, Wayfinder } from './Wayfinder';
 
 export type Row =
   | { k: 'top' }
@@ -256,9 +260,13 @@ interface ReaderProps {
   footer?: ReactElement | null;
   /** Row to bring into view; change `key` to scroll again to the same row. */
   scrollTo?: { index: number; key: number } | null;
+  /** Sections or verses for the wayfinder */
+  outline?: Outline | null;
 }
 
-export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
+type Mark = React.ComponentRef<typeof View>;
+
+export function Reader({ rows, header, footer, scrollTo, outline }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set } = s;
   const insets = useSafeAreaInsets();
@@ -273,6 +281,14 @@ export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
   const swipeDir = useRef(0);
   const opacity = useSharedValue(1);
   const shift = useSharedValue(0);
+  const [way] = useState(createWayStore);
+  const progress = useSharedValue(0);
+  const marks = useRef(new Map<number, Mark>());
+  const seen = useRef({ first: 0 });
+  const seq = useRef(0);
+  const lastLocate = useRef(0);
+  const trailing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const markSet = useMemo(() => new Set(outline?.items.map((i) => i.index)), [outline]);
 
   const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t }), [page, scale, t]);
   const both = show === 'both';
@@ -284,11 +300,54 @@ export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
   }, []);
 
   const offset = insets.top + 60;
+  // Jumps land just below the context pill.
+  const jumpOffset = insets.top + PILL_TOP + 36;
+  // A section counts as entered once its top passes under the pill.
+  const readLine = insets.top + PILL_TOP + 42;
+
+  /**
+   * Scroll a row to the top. A row far below what the list has laid out
+   * cannot be reached in one go, so onScrollToIndexFailed walks there in
+   * steps. A row measured before the rows above it changed height lands in
+   * the wrong place, so landmarks are checked on screen and corrected.
+   * A newer target, or the reader's own finger, cancels both.
+   */
+  const target = useRef<{ index: number; viewOffset: number; tries: number } | null>(null);
+  const scrolledAt = useRef(0);
+  const scrollToRow = useCallback((index: number, viewOffset: number) => {
+    const goal = { index, viewOffset, tries: 0 };
+    target.current = goal;
+    const go = () => {
+      try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0, viewOffset }); } catch { /* handled by onScrollToIndexFailed */ }
+    };
+    go();
+    if (!markSet.has(index)) return;
+    let checks = 0;
+    let waits = 0;
+    const verify = () => setTimeout(() => {
+      if (target.current !== goal) return;
+      // Still moving: check once it has come to rest.
+      if (Date.now() - scrolledAt.current < 120 && waits++ < 40) { verify(); return; }
+      if (checks++ >= 3) return;
+      const node = marks.current.get(index);
+      if (!node) { go(); verify(); return; }
+      node.measureInWindow((_x, y, _w, h) => { if (target.current === goal && (h === 0 || Math.abs(y - viewOffset) > 4)) { go(); verify(); } });
+    }, checks ? 120 : 90);
+    verify();
+  }, [markSet]);
+  const onScrollFailed = useCallback((info: { index: number; highestMeasuredFrameIndex: number }) => {
+    const goal = target.current;
+    if (!goal || goal.index !== info.index || goal.tries++ > 40) return;
+    listRef.current?.scrollToIndex({ index: info.highestMeasuredFrameIndex, animated: false, viewPosition: 0 });
+    setTimeout(() => {
+      if (target.current !== goal) return;
+      try { listRef.current?.scrollToIndex({ index: goal.index, animated: false, viewPosition: 0, viewOffset: goal.viewOffset }); } catch { /* next step */ }
+    }, 40);
+  }, []);
+
   const restore = useCallback((index: number) => {
-    requestAnimationFrame(() => {
-      try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0, viewOffset: offset }); } catch { /* not laid out yet */ }
-    });
-  }, [offset]);
+    requestAnimationFrame(() => scrollToRow(index, offset));
+  }, [offset, scrollToRow]);
 
   // Keep the reader on the same verse when the language or layout changes.
   const prev = useRef({ primary, show, spread });
@@ -308,18 +367,77 @@ export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
     }
   }, [primary, show, spread, restore, reduce, opacity, shift]);
 
+  /**
+   * Which outline item the reader is in: the last one that starts on or above
+   * the first row on screen, or a later one whose top has passed under the
+   * pill. The list reports visible rows late during fast scrolls, so the next
+   * landmarks on screen are measured rather than trusted to that report.
+   */
+  const locate = useCallback(() => {
+    if (!outline) return;
+    const { first } = seen.current;
+    const items = outline.items;
+    let cur = itemAt(items, first);
+    const id = ++seq.current;
+    const cands: number[] = [];
+    for (let k = cur + 1; k < items.length && cands.length < 24; k++) if (marks.current.has(items[k].index)) cands.push(k);
+    if (!cands.length) { way.set({ first, current: cur }); return; }
+    let pending = cands.length;
+    const ys: number[] = [];
+    // A row that has left the screen measures as an empty box at 0,0; it does not count.
+    cands.forEach((k, j) => marks.current.get(items[k].index)?.measureInWindow((_x, y, _w, h) => {
+      ys[j] = h > 0 ? y : Infinity;
+      if (--pending || id !== seq.current) return;
+      cands.forEach((kk, jj) => { if (ys[jj] <= readLine) cur = Math.max(cur, kk); });
+      way.set({ first, current: cur });
+    }));
+  }, [outline, readLine, way]);
+
+  /** Jump to a row. Long smooth scrolls are slow and land on stale positions, so a jump cuts, with a short fade. */
+  const jump = useCallback((index: number, fade: boolean) => {
+    if (index < 0) return;
+    if (fade && !reduce) {
+      opacity.set(0.2);
+      opacity.set(withTiming(1, { duration: 280 }));
+    }
+    scrollToRow(index, jumpOffset);
+    if (outline) way.set({ current: itemAt(outline.items, index), first: Math.max(way.get().first, 2) });
+  }, [jumpOffset, outline, way, scrollToRow, reduce, opacity]);
+
   useEffect(() => {
     if (!scrollTo || scrollTo.index < 0) return;
-    const id = setTimeout(() => {
-      try { listRef.current?.scrollToIndex({ index: scrollTo.index, animated: !reduce, viewPosition: 0, viewOffset: offset }); } catch { /* handled by onScrollToIndexFailed */ }
-    }, 250);
+    const id = setTimeout(() => jump(scrollTo.index, !reduce), 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollTo]);
 
+  // FlatList does not allow a new onViewableItemsChanged, so it reaches locate through a ref.
+  const locateRef = useRef(locate);
+  useEffect(() => { locateRef.current = locate; }, [locate]);
   const onViewable = useCallback(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
-    const first = viewableItems.find((v) => v.index != null);
-    if (first?.index != null) firstVisible.current = first.index;
+    const idx = viewableItems.flatMap((v) => (v.index != null ? [v.index] : []));
+    if (!idx.length) return;
+    firstVisible.current = Math.min(...idx);
+    seen.current = { first: firstVisible.current };
+    locateRef.current();
+  }, []);
+
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const max = contentSize.height - layoutMeasurement.height;
+    scrolledAt.current = Date.now();
+    progress.set(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 0);
+    if (!outline) return;
+    way.poke();
+    // Measure at most every 90 ms while scrolling, and once more when it stops.
+    clearTimeout(trailing.current);
+    const now = Date.now();
+    if (now - lastLocate.current > 90) { lastLocate.current = now; locate(); } else trailing.current = setTimeout(locate, 120);
+  }, [outline, locate, progress, way]);
+
+  const onMark = useCallback((i: number, node: Mark | null, prevNode?: Mark) => {
+    if (node) marks.current.set(i, node);
+    else if (marks.current.get(i) === prevNode) marks.current.delete(i);
   }, []);
   const [viewability] = useState({ itemVisiblePercentThreshold: 1 });
 
@@ -349,10 +467,12 @@ export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
 
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} spread={spread} primary={primary} both={both}
-      peeked={peeks.has(index)} onPeek={togglePeek} animateOpen={!reduce && Date.now() - spreadAt.current < 900} />
-  ), [ctx, spread, primary, both, peeks, togglePeek, reduce]);
+      peeked={peeks.has(index)} onPeek={togglePeek} animateOpen={!reduce && Date.now() - spreadAt.current < 900}
+      mark={markSet.has(index)} onMark={onMark} />
+  ), [ctx, spread, primary, both, peeks, togglePeek, reduce, markSet, onMark]);
 
   return (
+    <View style={styles.fill}>
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.fill, fade]}>
         <Animated.FlatList
@@ -366,23 +486,37 @@ export function Reader({ rows, header, footer, scrollTo }: ReaderProps) {
           contentContainerStyle={{ paddingTop: insets.top + 60 }}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={viewability}
+          onScroll={onScroll}
+          onScrollBeginDrag={() => { target.current = null; }}
+          scrollEventThrottle={32}
           itemLayoutAnimation={reduce ? undefined : LinearTransition.springify().damping(SPRING.damping).stiffness(SPRING.stiffness)}
           initialNumToRender={14}
           windowSize={11}
-          onScrollToIndexFailed={(info) => {
-            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
-            setTimeout(() => { try { listRef.current?.scrollToIndex({ index: info.index, animated: false, viewOffset: offset }); } catch { /* give up */ } }, 120);
-          }}
+          onScrollToIndexFailed={onScrollFailed}
           accessibilityLabel={t.readings}
         />
       </Animated.View>
     </GestureDetector>
+    {outline && outline.items.length > 0 && <Wayfinder outline={outline} rows={rows} store={way} progress={progress} onJump={jump} />}
+    </View>
   );
 }
 
-const ReaderRow = memo(function ReaderRow({ row, index, ctx, spread, primary, both, peeked, onPeek, animateOpen }: {
+interface RowProps {
   row: Row; index: number; ctx: Ctx; spread: boolean; primary: Lang; both: boolean; peeked: boolean; onPeek: (i: number) => void; animateOpen: boolean;
-}) {
+}
+
+/** Rows the wayfinder measures (section titles, headings, verses) get a wrapper it can find on screen. */
+const ReaderRow = memo(function ReaderRow({ mark, onMark, ...p }: RowProps & { mark: boolean; onMark: (i: number, node: Mark | null, prev?: Mark) => void }) {
+  if (!mark) return <RowView {...p} />;
+  return (
+    <View collapsable={false} ref={(n) => { if (!n) return; onMark(p.index, n); return () => onMark(p.index, null, n); }}>
+      <RowView {...p} />
+    </View>
+  );
+});
+
+function RowView({ row, index, ctx, spread, primary, both, peeked, onPeek, animateOpen }: RowProps) {
   const { page } = ctx;
   if (spread) {
     if (row.k === 'top' || row.k === 'bottom') {
@@ -427,7 +561,7 @@ const ReaderRow = memo(function ReaderRow({ row, index, ctx, spread, primary, bo
       ) : <View style={highlight}>{content}</View>}
     </PageBody>
   );
-});
+}
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },

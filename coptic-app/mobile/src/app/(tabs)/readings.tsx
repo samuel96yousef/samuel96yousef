@@ -12,7 +12,7 @@ import { TopBar } from '../../components/TopBar';
 import { useReadings } from '../../data';
 import { STRINGS } from '../../i18n';
 import { coptic, fromIso, MONTHS, startOfDay } from '../../lib/coptic';
-import { dayRows, sectionIndex } from '../../rows';
+import { dayOutline, dayRows, sectionIndex } from '../../rows';
 import { useSettings } from '../../settings';
 
 export default function Readings() {
@@ -25,6 +25,7 @@ export default function Readings() {
   const c = coptic(date);
 
   const rows = useMemo(() => (data ? dayRows(data, fromIso(data.iso), { ar: STRINGS.ar.holyWeek, sv: STRINGS.sv.holyWeek }) : []), [data]);
+  const outline = useMemo(() => (data ? dayOutline(data, rows) : null), [data, rows]);
 
   // A link with ?date= moves the page to that day.
   const [linkedDate, setLinkedDate] = useState(params.date);
@@ -58,7 +59,7 @@ export default function Readings() {
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
       <TopBar><ReaderActions /></TopBar>
-      <Reader rows={rows} header={header} scrollTo={jump} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} />
     </View>
   );
 }

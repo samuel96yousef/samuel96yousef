@@ -8,7 +8,8 @@ import { Reader } from '../../../../components/Reader';
 import { ReaderActions } from '../../../../components/ReaderActions';
 import { TopBar } from '../../../../components/TopBar';
 import { books, loadBook, useAsync } from '../../../../data';
-import { chapterRows } from '../../../../rows';
+import { toArDigits } from '../../../../lib/coptic';
+import { chapterRows, verseOutline } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 
 export default function Chapter() {
@@ -20,6 +21,7 @@ export default function Chapter() {
   const verse = params.verse ? Number(params.verse) : undefined;
   const { data, loading } = useAsync(() => loadBook(b.bid), [b.bid]);
   const rows = useMemo(() => (data ? chapterRows(b, n, data.find(([c]) => c === n)?.[1] ?? [], verse) : []), [data, b, n, verse]);
+  const outline = useMemo(() => verseOutline(rows, { ar: `${b.ar} ${toArDigits(n)}`, sv: `${b.sv} ${n}` }), [rows, b, n]);
   const target = useMemo(() => {
     const i = verse ? rows.findIndex((r) => r.k === 'u' && r.u.n === verse) : -1;
     return i >= 0 ? { index: i, key: i } : null;
@@ -39,6 +41,7 @@ export default function Chapter() {
       <Reader
         rows={rows}
         scrollTo={target}
+        outline={outline}
         header={<View style={styles.header}><LargeTitle title={`${ar ? b.ar : b.sv} ${n}`} subtitle={t.chapter(n)} />{loading && !data && <ActivityIndicator color={colors.crimson} />}</View>}
         footer={nav}
       />

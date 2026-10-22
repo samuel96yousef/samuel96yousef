@@ -10,8 +10,10 @@ const liquid = Platform.OS === 'ios' && isLiquidGlassAvailable();
 /**
  * A floating glass surface: iOS 26 Liquid Glass where available, a blur on
  * older iOS and the web, and a solid surface on Android where blur is costly.
+ * `solid` is for chrome that sits on top of text: a plain blur lets the text
+ * show through, so it gets a solid surface unless Liquid Glass can adapt.
  */
-export function Glass({ style, children, interactive }: { style?: StyleProp<ViewStyle>; children?: ReactNode; interactive?: boolean }) {
+export function Glass({ style, children, interactive, solid }: { style?: StyleProp<ViewStyle>; children?: ReactNode; interactive?: boolean; solid?: boolean }) {
   const { colors, dark } = useSettings();
   const shadow: ViewStyle = { boxShadow: `0 12px 30px -12px ${colors.shadow}, 0 2px 8px -3px ${colors.shadow}` };
   if (liquid) {
@@ -21,7 +23,7 @@ export function Glass({ style, children, interactive }: { style?: StyleProp<View
       </GlassView>
     );
   }
-  if (Platform.OS === 'android') {
+  if (Platform.OS === 'android' || solid) {
     return <View style={[style, shadow, { backgroundColor: dark ? '#242022' : '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.sep }]}>{children}</View>;
   }
   return (
