@@ -72,9 +72,9 @@ export function useWay<T extends string | number | boolean | undefined | null>(s
 
 // ---------- Layout ----------
 
-/** The dock: 38 pt wide, 2 pt from the edge, so it ends where the text starts (the page frame begins at 23 pt). */
+/** The dock: 38 pt wide, 4 pt from the edge, so it ends about where the text starts (the page frame begins at 23 pt). */
 const DOCK_W = 38;
-const DOCK_INSET = 2;
+const DOCK_INSET = 4;
 const BTN_H = 40;
 const MID_H = 52;
 const DOCK_H = BTN_H * 2 + MID_H;
@@ -85,8 +85,11 @@ const RADIUS = ROW_H / ROW_ANGLE;
 const WHEEL_H = ROW_H * 7;
 /** Holding the number this long, without moving, brings out the wheel. */
 const HOLD_MS = 220;
+/** How far the wheel gives past the first or last section before it stops, in rows. */
+const OVERSCROLL = 0.25;
 
 const haptic = () => { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); };
+const bump = () => { if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); };
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -214,7 +217,7 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   const x = useSharedValue(frame.x);
   const y = useSharedValue(frame.top);
   const lift = useSharedValue(0);
-  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number } | null>(null);
+  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number; end: boolean } | null>(null);
   const droppedAt = useRef(0);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -269,7 +272,7 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
     runOnJS: true,
     onBegin: () => {
       const c = store.get().current;
-      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0 };
+      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0, end: false };
       lift.set(withTiming(1, { duration: 120 }));
       holdTimer.current = setTimeout(openWheel, HOLD_MS);
     },
@@ -295,9 +298,18 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
         return;
       }
       // The rows follow the finger, as on a picker wheel: drag up to bring later sections to the middle.
-      const pos = clamp(g.from - e.translationY / ROW_H, -0.45, items.length - 0.55);
-      wheel.set(pos);
-      const k = clamp(Math.round(pos), 0, items.length - 1);
+      const raw = g.from - e.translationY / ROW_H;
+      // Past the first or last section the wheel gives a little, then stops with a bump.
+      const last = items.length - 1;
+      const over = raw < 0 ? raw : raw > last ? raw - last : 0;
+      const pos = over ? (over < 0 ? 0 : last) + Math.sign(over) * OVERSCROLL * (1 - Math.exp(-Math.abs(over) * 2)) : raw;
+      const k = clamp(Math.round(pos), 0, last);
+      // Each section snaps into the band and the wheel only gives a little under
+      // the finger, so the selected name always rests centred.
+      wheel.set(over ? pos : withTiming(k + (pos - k) * 0.18, { duration: 120, easing: Easing.out(Easing.cubic) }));
+      const atEnd = Math.abs(over) > 0.15;
+      if (atEnd && !g.end) bump();
+      g.end = atEnd;
       if (k !== g.at) tick(k);
     },
     onFinalize: () => {

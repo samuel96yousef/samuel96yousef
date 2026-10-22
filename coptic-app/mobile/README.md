@@ -30,8 +30,10 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
   ▲ går först till början av avsnittet du är i, som på en musikspelare.
   **Håll in numret** så kommer ett hjul med avsnitten fram bredvid dockan,
   som tidshjulet i iOS. Håll kvar fingret och dra för att snurra det:
-  texten följer med, det tickar för varje avsnitt, och ett snabbt svep
-  rullar vidare innan hjulet stannar och fälls in. Dra numret åt sidan för
+  texten följer med, det tickar för varje avsnitt, och varje avsnitt
+  snäpper in i mitten så att det valda alltid står centrerat. Vid första
+  och sista avsnittet ger hjulet efter lite och stannar med en stöt. Ett
+  snabbt svep rullar vidare innan hjulet stannar och fälls in. Dra numret åt sidan för
   att flytta dockan till andra handen eller en annan höjd; appen kommer ihåg
   var den sitter. Ett kort tryck på numret fäller ut listan bredvid dockan.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
