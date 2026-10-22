@@ -10,7 +10,6 @@ import { DayPicker } from '../../components/DayPicker';
 import { Icon } from '../../components/Icon';
 import { SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
-import { BarButton, TopBar } from '../../components/TopBar';
 import { WeekStrip } from '../../components/WeekStrip';
 import { agpeyaIndex, getOverview, katameros } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
@@ -54,7 +53,8 @@ export default function Today() {
   // the year in the small text when it is another year, so the title stays on one line.
   const relative = isToday ? t.today : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : '';
   const title = relative || dayMonthText(day, lang);
-  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonthText(day, lang)}${year}` : `${weekdayText(day, lang)}${year}`;
+  // Away from today the strip shows the weekday already; the small text then only adds another year.
+  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonthText(day, lang)}${year}` : year.trim();
 
   // The date as a week: a short title line with the calendar, the week with
   // the Coptic day under each date, and one line with the Coptic date and
@@ -63,7 +63,7 @@ export default function Today() {
     <View style={[styles.head, { backgroundColor: colors.surface }, wide && styles.headWide, wide && ar && styles.headWideRtl]}>
       <View style={[styles.titleRow, { flexDirection: row }]}>
         <View style={[styles.titleText, { flexDirection: row }]}>
-          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, { color: colors.label }]}>{title}</Text>
+          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, !relative && styles.titleDate, { color: colors.label }]}>{title}</Text>
           <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
         </View>
         {!isToday && (
@@ -75,6 +75,11 @@ export default function Today() {
         <Pressable accessibilityRole="button" accessibilityLabel={t.pickDay} onPress={() => setPicking(true)} hitSlop={6}
           style={({ pressed }) => pressed && styles.dim}>
           <View style={[styles.calendar, { backgroundColor: colors.tint }]}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
+        </Pressable>
+        {/* Settings live in the card too, so the page needs no bar of its own above it. */}
+        <Pressable accessibilityRole="button" accessibilityLabel={t.settings} onPress={() => router.push('/settings')} hitSlop={6}
+          style={({ pressed }) => pressed && styles.dim}>
+          <View style={[styles.calendar, { backgroundColor: colors.bg2 }]}><Icon name="gear" size={19} color={colors.label} strokeWidth={2} /></View>
         </Pressable>
       </View>
       <WeekStrip day={day} onPick={pickDay} />
@@ -143,8 +148,7 @@ export default function Today() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 130 }]}>
         {header}
         <View style={wide ? [styles.cols, { flexDirection: row }] : styles.stack}>
           <View style={[styles.col, wide && styles.colWide]}><DayCard day={day} />{word}</View>
@@ -169,12 +173,14 @@ const styles = StyleSheet.create({
   // A week is read at a glance; across a wide screen it would be too far apart.
   headWide: { maxWidth: 560, width: '100%' },
   headWideRtl: { alignSelf: 'flex-end' },
-  titleRow: { alignItems: 'center', gap: 10 },
+  titleRow: { alignItems: 'center', gap: 8 },
   titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
-  title: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
+  // The title never gives way; the small weekday beside it does.
+  title: { fontSize: 24, fontWeight: '700', lineHeight: 30, flexShrink: 0 },
+  titleDate: { fontSize: 22 },
   subtitle: { fontSize: 15, flexShrink: 1 },
   dim: { opacity: 0.6 },
-  todayPill: { borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
+  todayPill: { borderRadius: 999, paddingHorizontal: 11, height: 34, justifyContent: 'center' },
   todayText: { fontSize: 14, fontWeight: '700' },
   calendar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   wordCard: { paddingVertical: 30, paddingHorizontal: 30 },
