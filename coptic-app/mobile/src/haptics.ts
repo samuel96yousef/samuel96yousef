@@ -9,27 +9,24 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
-let webSwitch: HTMLLabelElement | null = null;
-
 function webTick(ms: number) {
   if (typeof document === 'undefined') return;
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
     navigator.vibrate(ms);
     return;
   }
-  if (!webSwitch) {
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    input.id = 'haptic-switch';
-    input.style.display = 'none';
-    const label = document.createElement('label');
-    label.htmlFor = input.id;
-    label.style.display = 'none';
-    document.body.append(input, label);
-    webSwitch = label;
-  }
-  webSwitch.click();
+  // Safari plays a tick when a switch is toggled. The switch is made for each
+  // tick and removed again, so nothing is left in the page.
+  const label = document.createElement('label');
+  label.ariaHidden = 'true';
+  label.style.display = 'none';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  label.appendChild(input);
+  document.head.appendChild(label);
+  label.click();
+  label.remove();
 }
 
 /** A light click: one step of the crown. */

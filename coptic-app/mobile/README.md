@@ -28,12 +28,14 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
   under den.
 - **Dockan på sidan.** ▲ föregående avsnitt, avsnittets nummer, ▼ nästa.
   ▲ går först till början av avsnittet du är i, som på en musikspelare.
-  **Håll in numret** så blir dockan en Digital Crown som på Apple Watch,
-  en räfflad metallcylinder med en röd ring, och ett hjul med avsnitten
-  kommer fram bredvid, som tidshjulet i iOS. Håll kvar fingret och dra:
-  räfflorna rullar med tummen, texten följer med, det klickar i handen för
-  varje avsnitt och tar emot med en stöt vid första och sista. Ett snabbt
-  svep rullar vidare innan hjulet stannar och fälls in. Dra numret åt sidan för
+  **Håll in numret** så blir dockan en Digital Crown som på Apple Watch:
+  en räfflad metallcylinder med en röd ring och avsnittets nummer i mitten.
+  Texten bakom tonas ned och avsnitten lägger sig i en båge runt kronan som
+  på en urtavla, vart och ett med sitt nummer, med det aktuella i en kapsel.
+  Håll kvar fingret och dra: kronan klickar fram ett avsnitt i taget som en
+  riktig krona med lägen, numret pulserar, texten följer med, det klickar i
+  handen för varje avsnitt och tar emot med en stöt vid första och sista.
+  Ett snabbt svep rullar vidare innan urtavlan fälls in. Dra numret åt sidan för
   att flytta dockan till andra handen eller en annan höjd; appen kommer ihåg
   var den sitter. Ett kort tryck på numret fäller ut listan bredvid dockan.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
