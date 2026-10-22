@@ -1,31 +1,32 @@
 /**
- * Wayfinding in long texts, after iOS and long ChatGPT threads.
+ * Wayfinding in long texts: where you are at the top, how to move at the side.
  *
  * - The context pill takes the middle of the top bar once the title has
  *   scrolled away, like an iOS 26 inline title. It names the section you
- *   are in, who is speaking in a liturgy, and how far you have read. Tap it
- *   for the contents.
- * - The rail in the margin outside the page frame marks every section,
- *   spaced like the text, with the current one in crimson. It shows while
- *   you scroll; drag along it to jump, with a label beside your finger and a
- *   tick of haptics per section.
- * - Tapping the pill folds the contents down from it, with the current
- *   section marked.
+ *   are in, who is speaking in a liturgy, and how far you have read.
+ * - The dock sits on the side, where the thumb is, as iPhone Duo moves
+ *   controls to the edge of its outer screen: ▲ previous, ▼ next, and the
+ *   section number between them. Drag the number up or down to step through
+ *   sections like a Digital Crown; drag it sideways to move the dock to the
+ *   other hand or another height.
+ * - The list of sections opens where you tapped: down from the pill, or out
+ *   from the dock.
+ * - On the open book (an unfolded Duo), nothing you touch sits on the fold.
  */
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { STRINGS } from '../i18n';
 import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
-import { roleAt, rowWeights, type Outline, type OutlineItem } from '../rows';
-import { useSettings } from '../settings';
-import { FONTS } from '../theme';
+import { roleAt, type Outline, type OutlineItem } from '../rows';
+import { useSettings, type DockPlace } from '../settings';
+import { FONTS, SPRING_SMOOTH } from '../theme';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 import type { Row } from './Reader';
@@ -39,17 +40,14 @@ export interface WayState {
   first: number;
   /** Outline item the reader is in; -1 before the first */
   current: number;
-  /** The rail shows while the text moves */
-  awake: boolean;
-  /** The contents sheet is open */
-  sheet: boolean;
+  /** The list of sections is open, and from where */
+  sheet: false | 'top' | 'side';
   /** The large title has scrolled under the top bar */
   reading: boolean;
 }
 
 export function createWayStore() {
-  let state: WayState = { first: 0, current: -1, awake: false, sheet: false, reading: false };
-  let active = 0;
+  let state: WayState = { first: 0, current: -1, sheet: false, reading: false };
   const subs = new Set<() => void>();
   const set = (p: Partial<WayState>) => {
     const n = { ...state, ...p };
@@ -61,49 +59,30 @@ export function createWayStore() {
     get: () => state,
     set,
     subscribe: (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; },
-    /** The text moved: wake the rail. */
-    poke: () => { active = Date.now(); if (!state.awake) set({ awake: true }); },
-    idleFor: () => Date.now() - active,
   };
 }
 export type WayStore = ReturnType<typeof createWayStore>;
 
 /** One value from the store; the component re-renders only when that value changes, not on every scroll. */
-export function useWay<T extends string | number | boolean | undefined>(store: WayStore, select: (s: WayState) => T): T {
+export function useWay<T extends string | number | boolean | undefined | null>(store: WayStore, select: (s: WayState) => T): T {
   return useSyncExternalStore(store.subscribe, () => select(store.get()), () => select(store.get()));
 }
 
 // ---------- Layout ----------
 
-/** The rail runs between the top bar and the tab bar. */
-const RAIL_TOP = BAR_HEIGHT + 10;
-const RAIL_BOTTOM = 86;
-const RAIL_PAD = 12;
-/** The page frame starts 23 pt from the screen edge; ticks stay inside that margin. */
-const TICK_EDGE = 4;
-/** Ticks are drawn for every section up to this many; above it, and for verses, only landmarks. */
-const MAX_TICKS = 60;
+/** The dock: 38 pt wide, 2 pt from the edge, so it ends where the text starts (the page frame begins at 23 pt). */
+const DOCK_W = 38;
+const DOCK_INSET = 2;
+const BTN_H = 40;
+const MID_H = 52;
+const DOCK_H = BTN_H * 2 + MID_H;
+/** Finger travel per step when the number is dragged like a crown. */
+const STEP_SECTION = 24;
+const STEP_VERSE = 12;
 
 const haptic = () => { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); };
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
-
-/** Spread marks over the track like the text, but never closer than `gap`. */
-function placeTicks(fractions: number[], h: number, gap: number) {
-  const n = fractions.length;
-  if (!n || h <= 0) return [];
-  if (n * gap > h) return fractions.map((_, i) => (n === 1 ? 0 : (i * h) / (n - 1)));
-  const y = fractions.map((f) => f * h);
-  for (let i = 1; i < n; i++) y[i] = Math.max(y[i], y[i - 1] + gap);
-  y[n - 1] = Math.min(y[n - 1], h);
-  for (let i = n - 2; i >= 0; i--) y[i] = Math.min(y[i], y[i + 1] - gap);
-  return y.map((v) => Math.max(0, v));
-}
-
-function nearest(ys: number[], y: number) {
-  let best = 0;
-  for (let i = 1; i < ys.length; i++) if (Math.abs(ys[i] - y) < Math.abs(ys[best] - y)) best = i;
-  return best;
-}
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 const label = (it: OutlineItem, l: Lang) => (l === 'ar' ? it.ar : it.sv);
 const subLabel = (it: OutlineItem, l: Lang) => (l === 'ar' ? it.subAr : it.subSv);
@@ -114,13 +93,42 @@ function useTextLang(): Lang {
   return spread ? lang : primary;
 }
 
+/** Where the dock rests, between the top bar and the tab bar, from the saved side and height. */
+interface DockFrame {
+  side: DockPlace['side'];
+  x: number;
+  top: number;
+  minTop: number;
+  maxTop: number;
+  width: number;
+  height: number;
+  /** Lowest point a panel may reach, above the tab bar */
+  floor: number;
+}
+
+function useDockFrame(): DockFrame {
+  const { dock } = useSettings();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const minTop = insets.top + BAR_HEIGHT + 12;
+  const floor = height - insets.bottom - 90;
+  const maxTop = Math.max(minTop, floor - DOCK_H);
+  return {
+    side: dock.side,
+    x: dock.side === 'left' ? DOCK_INSET : width - DOCK_INSET - DOCK_W,
+    top: minTop + clamp(dock.y, 0, 1) * (maxTop - minTop),
+    minTop, maxTop, width, height, floor,
+  };
+}
+
 // ---------- Context pill ----------
 
 /** The middle of the top bar while reading: where you are, who speaks, how far you have come. */
 export function ContextPill({ outline, rows, store, progress }: {
   outline: Outline; rows: Row[]; store: WayStore; progress: SharedValue<number>;
 }) {
-  const { t, colors } = useSettings();
+  const { t, colors, spread, lang } = useSettings();
+  const { width } = useWindowDimensions();
   const reduce = useReducedMotion();
   const L = useTextLang();
   const tl = STRINGS[L];
@@ -128,7 +136,7 @@ export function ContextPill({ outline, rows, store, progress }: {
   const verses = outline.kind === 'verses';
   const hasRoles = useMemo(() => rows.some((r) => r.k === 'role'), [rows]);
   const cur = useWay(store, (s) => s.current);
-  const open = useWay(store, (s) => s.sheet);
+  const open = useWay(store, (s) => s.sheet === 'top');
   const role = useWay(store, (s) => (hasRoles ? roleAt(rows, Math.max(s.first + 1, items[s.current]?.index ?? 0)) : undefined));
   // A transform, not a width: it moves on the compositor without a layout pass.
   const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.get() }] }));
@@ -149,12 +157,14 @@ export function ContextPill({ outline, rows, store, progress }: {
   const roleColor = role === 'priest' ? colors.crimson : role === 'deacon' ? colors.gold : colors.label;
 
   return (
-    <Animated.View entering={reduce ? undefined : FadeIn.duration(200)} exiting={reduce ? undefined : FadeOut.duration(140)} style={styles.pillWrap}>
+    // On the open book the pill sits over one page, never across the fold.
+    <Animated.View entering={reduce ? undefined : FadeIn.duration(200)} exiting={reduce ? undefined : FadeOut.duration(140)}
+      style={spread ? [styles.pillPage, { alignSelf: lang === 'ar' ? 'flex-end' : 'flex-start', maxWidth: width / 2 - 76 }] : styles.pillWrap}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t.outlineOpen}. ${title}${sub ? `, ${sub}` : ''}`}
         aria-expanded={open}
-        onPress={() => { haptic(); store.set({ sheet: !store.get().sheet }); }}
+        onPress={() => { haptic(); store.set({ sheet: store.get().sheet === 'top' ? false : 'top' }); }}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <Glass style={styles.pill} interactive>
@@ -180,132 +190,217 @@ export function ContextPill({ outline, rows, store, progress }: {
   );
 }
 
+// ---------- The dock ----------
+
+/** Previous, the section number, next: on the side, within reach of the thumb. */
+function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
+  outline: Outline; store: WayStore; frame: DockFrame; lang: Lang;
+  onJump: (row: number, fade: boolean) => void; onCrown: (i: number | null) => void;
+}) {
+  const { t, colors, set } = useSettings();
+  const reduce = useReducedMotion();
+  const items = outline.items;
+  const verses = outline.kind === 'verses';
+  const cur = useWay(store, (s) => s.current);
+  const listOpen = useWay(store, (s) => s.sheet === 'side');
+  const x = useSharedValue(frame.x);
+  const y = useSharedValue(frame.top);
+  const lift = useSharedValue(0);
+  const gesture = useRef<{ mode: 'tap' | 'crown' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number } | null>(null);
+  const droppedAt = useRef(0);
+
+  // Follow the saved place, except just after a drop, while the dock springs there itself.
+  useEffect(() => {
+    if (gesture.current || Date.now() - droppedAt.current < 700) return;
+    x.set(frame.x);
+    y.set(frame.top);
+  }, [frame.x, frame.top, x, y]);
+
+  const landmark = (from: number, dir: 1 | -1) => {
+    for (let k = from + dir; k >= 0 && k < items.length; k += dir) if (items[k].level === 1) return k;
+    return -1;
+  };
+  const prevTarget = () => {
+    if (cur < 0) return -1;
+    if (verses) return landmark(cur, -1) >= 0 ? landmark(cur, -1) : cur > 0 ? 0 : -1;
+    // Inside a section, go back to its start first, like "previous" on a music player.
+    return store.get().first > items[cur].index ? cur : cur - 1;
+  };
+  const nextTarget = () => (verses ? landmark(cur, 1) : cur < items.length - 1 ? cur + 1 : -1);
+  const go = (k: number) => {
+    if (k < 0) return;
+    haptic();
+    store.set({ sheet: false });
+    onJump(items[k].index, true);
+  };
+
+  const pan = usePanGesture({
+    minDistance: 0,
+    runOnJS: true,
+    onBegin: () => {
+      const c = store.get().current;
+      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0 };
+      lift.set(withTiming(1, { duration: 120 }));
+    },
+    onUpdate: (e) => {
+      const g = gesture.current;
+      if (!g) return;
+      g.dx = e.translationX;
+      g.dy = e.translationY;
+      if (g.mode === 'tap') {
+        if (Math.abs(e.translationX) > 12 && Math.abs(e.translationX) > Math.abs(e.translationY)) g.mode = 'move';
+        else if (Math.abs(e.translationY) > 8) g.mode = 'crown';
+        else return;
+        haptic();
+      }
+      if (g.mode === 'move') {
+        x.set(g.x + e.translationX);
+        y.set(g.y + e.translationY);
+        return;
+      }
+      // Down moves forward through the text, as scrolling does.
+      const k = clamp(Math.max(0, g.from) + Math.round(e.translationY / (verses ? STEP_VERSE : STEP_SECTION)), 0, items.length - 1);
+      if (k === g.at) return;
+      g.at = k;
+      haptic();
+      onCrown(k);
+      onJump(items[k].index, false);
+    },
+    onFinalize: () => {
+      const g = gesture.current;
+      gesture.current = null;
+      lift.set(withTiming(0, { duration: 160 }));
+      if (!g) return;
+      if (g.mode === 'tap') {
+        haptic();
+        store.set({ sheet: store.get().sheet === 'side' ? false : 'side' });
+      } else if (g.mode === 'crown') {
+        onCrown(null);
+      } else {
+        // Snap to the nearer edge, at the height the finger left it.
+        const side = g.x + g.dx + DOCK_W / 2 < frame.width / 2 ? 'left' : 'right';
+        const top = clamp(g.y + g.dy, frame.minTop, frame.maxTop);
+        droppedAt.current = Date.now();
+        x.set(withSpring(side === 'left' ? DOCK_INSET : frame.width - DOCK_INSET - DOCK_W, SPRING_SMOOTH));
+        y.set(withSpring(top, SPRING_SMOOTH));
+        set({ dock: { side, y: (top - frame.minTop) / Math.max(1, frame.maxTop - frame.minTop) } });
+      }
+    },
+  });
+
+  const place = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: 1 + lift.get() * 0.06 }],
+  }));
+
+  // Targets are worked out on press: "previous" depends on how far into the section the reader is.
+  const prevOff = cur < 0;
+  const nextOff = nextTarget() < 0;
+  const item = cur >= 0 ? items[cur] : undefined;
+  const big = item ? (verses ? label(item, L) : digits(cur + 1, L)) : null;
+  const small = `/${digits(items.length, L)}`;
+  const button = (dir: 'prev' | 'next', off: boolean) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={dir === 'prev' ? (verses ? t.prevVerses : t.prevSection) : (verses ? t.nextVerses : t.nextSection)}
+      accessibilityState={{ disabled: off }}
+      disabled={off}
+      hitSlop={{ left: 8, right: 8 }}
+      onPress={() => go(dir === 'prev' ? prevTarget() : nextTarget())}
+      style={({ pressed }) => [styles.dockBtn, pressed && { backgroundColor: colors.lens }]}
+    >
+      <Icon name={dir === 'prev' ? 'chevU' : 'chevD'} size={20} strokeWidth={2.2} color={off ? colors.label3 : colors.label} />
+    </Pressable>
+  );
+
+  return (
+    <Animated.View entering={reduce ? undefined : FadeIn.duration(220)} exiting={reduce ? undefined : FadeOut.duration(140)} style={[styles.dock, place]}>
+      <Glass style={styles.dockGlass} interactive>
+        {button('prev', prevOff)}
+        <GestureDetector gesture={pan}>
+          <View
+            style={[styles.dockMid, listOpen && { backgroundColor: colors.lens }]}
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel={t.allSections}
+            accessibilityValue={{ text: item ? label(item, L) : outline.title[L] }}
+            accessibilityActions={[{ name: 'activate' }, { name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={(e) => {
+              const a = e.nativeEvent.actionName;
+              if (a === 'activate') store.set({ sheet: store.get().sheet === 'side' ? false : 'side' });
+              else go(a === 'increment' ? nextTarget() : prevTarget());
+            }}
+          >
+            {big ? (
+              <>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.dockBig, L === 'ar' && styles.dockBigAr, { color: colors.crimson }]}>{big}</Text>
+                <Text numberOfLines={1} style={[styles.dockSmall, { color: colors.label2 }]}>{small}</Text>
+              </>
+            ) : <Icon name="list" size={18} color={colors.crimson} strokeWidth={2} />}
+          </View>
+        </GestureDetector>
+        {button('next', nextOff)}
+      </Glass>
+    </Animated.View>
+  );
+}
+
 // ---------- The wayfinder ----------
 
 interface Props {
   outline: Outline;
-  rows: Row[];
   store: WayStore;
   /** Bring a row to the top; `fade` for a jump the reader asked for, not for scrubbing */
   onJump: (row: number, fade: boolean) => void;
 }
 
-export function Wayfinder({ outline, rows, store, onJump }: Props) {
-  const { t, lang, primary, show, colors, hintOnce } = useSettings();
-  const insets = useSafeAreaInsets();
+export function Wayfinder({ outline, store, onJump }: Props) {
+  const { t, colors, hintOnce } = useSettings();
   const reduce = useReducedMotion();
   const toast = useToast();
+  const frame = useDockFrame();
   const cur = useWay(store, (s) => s.current);
-  const wayAwake = useWay(store, (s) => s.awake);
-  const sheetOpen = useWay(store, (s) => s.sheet);
-  const [drag, setDrag] = useState<number | null>(null);
-  // The panel stays mounted while it folds away.
-  const [panel, setPanel] = useState(false);
-  if (sheetOpen && !panel) setPanel(true);
+  const reading = useWay(store, (s) => s.reading);
+  const sheet = useWay(store, (s) => s.sheet);
+  const [crown, setCrown] = useState<number | null>(null);
+  // The list stays mounted, where it opened from, while it folds away.
+  const [panelFrom, setPanelFrom] = useState<'top' | 'side' | null>(null);
+  if (sheet && sheet !== panelFrom) setPanelFrom(sheet);
   const closePanel = useCallback(() => store.set({ sheet: false }), [store]);
-  const hidePanel = useCallback(() => setPanel(false), []);
-  // Leaving the screen (another tab, back) folds the contents away.
+  const hidePanel = useCallback(() => setPanelFrom(null), []);
+  // Leaving the screen (another tab, back) folds the list away.
   useFocusEffect(useCallback(() => () => store.set({ sheet: false }), [store]));
-  const [railH, setRailH] = useState(0);
-  const dragRef = useRef<number | null>(null);
   const mountedAt = useRef(0);
-  const vis = useSharedValue(0);
 
   const L = useTextLang();
   const tl = STRINGS[L];
   const items = outline.items;
   const verses = outline.kind === 'verses';
-  const edge = (v: number) => (lang === 'ar' ? { left: v } : { right: v });
-
-  const ys = useMemo(() => {
-    const cum = rowWeights(rows, primary, show === 'both');
-    const total = cum[cum.length - 1] || 1;
-    return placeTicks(items.map((it) => cum[it.index] / total), railH - RAIL_PAD * 2, verses ? 0 : 6);
-  }, [rows, primary, show, items, railH, verses]);
-
-  const showRail = items.length > 1;
-  const awake = wayAwake || drag !== null;
+  const showDock = reading && items.length > 1 && sheet !== 'top';
 
   useEffect(() => { mountedAt.current = Date.now(); }, []);
 
-  // Fade the rail out a moment after the text stops.
+  // The first time the dock shows, say what it does (after the tap-to-translate hint).
   useEffect(() => {
-    vis.set(withTiming(awake ? 1 : 0, { duration: awake ? 140 : 420 }));
-    if (!wayAwake || drag !== null) return;
-    const id = setInterval(() => { if (store.idleFor() > 1500) store.set({ awake: false }); }, 300);
-    return () => clearInterval(id);
-  }, [awake, wayAwake, drag, store, vis]);
+    if (showDock && Date.now() - mountedAt.current > 4000 && hintOnce('dock')) toast(t.dockHint, 6000);
+  }, [showDock, hintOnce, toast, t]);
 
-  // The first time the rail shows, say what it does (after the tap-to-translate hint).
-  useEffect(() => {
-    if (wayAwake && showRail && Date.now() - mountedAt.current > 4000 && hintOnce('rail')) toast(t.railHint, 5200);
-  }, [wayAwake, showRail, hintOnce, toast, t]);
-
-  const choose = (y: number) => {
-    if (!ys.length) return;
-    const i = nearest(ys, y - RAIL_PAD);
-    if (i === dragRef.current) return;
-    dragRef.current = i;
-    setDrag(i);
-    haptic();
-    onJump(items[i].index, false);
-  };
-  const pan = usePanGesture({
-    minDistance: 0,
-    runOnJS: true,
-    onBegin: (e) => choose(e.y),
-    onUpdate: (e) => choose(e.y),
-    onFinalize: () => { dragRef.current = null; setDrag(null); store.poke(); },
-  });
-
-  const railStyle = useAnimatedStyle(() => ({ opacity: vis.get() }));
-
-  const item = cur >= 0 ? items[cur] : undefined;
   const rtl = L === 'ar';
   const align: TextStyle = rtl ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left' };
-  const bubble = drag !== null ? items[drag] : undefined;
+  const bubble = crown !== null ? items[crown] : undefined;
+  const beside = frame.side === 'left' ? { left: DOCK_INSET + DOCK_W + 10 } : { right: DOCK_INSET + DOCK_W + 10 };
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      {showRail && !sheetOpen && (
-        <Animated.View
-          pointerEvents={awake ? 'auto' : 'none'}
-          onLayout={(e) => setRailH(e.nativeEvent.layout.height)}
-          style={[styles.rail, { top: insets.top + RAIL_TOP, bottom: insets.bottom + RAIL_BOTTOM, ...edge(0) }, railStyle]}
-          accessible
-          accessibilityRole="adjustable"
-          accessibilityLabel={t.railLabel}
-          accessibilityValue={{ text: item ? label(item, L) : outline.title[L] }}
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={(e) => {
-            const k = Math.min(items.length - 1, Math.max(0, cur + (e.nativeEvent.actionName === 'increment' ? 1 : -1)));
-            onJump(items[k].index, false);
-          }}
-        >
-          <GestureDetector gesture={pan}>
-            <View style={styles.railHit}>
-              {/* A backdrop only while dragging; at rest the ticks sit bare in the margin. */}
-              {drag !== null && <Glass style={[styles.railGlass, edge(1)]} />}
-              {ys.map((y, i) => {
-                const it = items[i];
-                const on = i === (drag ?? cur);
-                if (!on && (verses || items.length > MAX_TICKS) && it.level !== 1) return null;
-                const w = on ? 15 : it.level === 1 ? 10 : 6;
-                return (
-                  <View key={i} style={[styles.tick, {
-                    top: RAIL_PAD + y - (on ? 1.5 : 1), width: w, height: on ? 3 : 2, ...edge(TICK_EDGE),
-                    backgroundColor: on ? colors.crimson : it.level === 1 ? colors.label2 : colors.label3,
-                  }]} />
-                );
-              })}
-            </View>
-          </GestureDetector>
-        </Animated.View>
+      {panelFrom && (
+        <OutlinePanel outline={outline} current={cur} lang={L} from={panelFrom} frame={frame} visible={!!sheet}
+          onClose={closePanel} onHidden={hidePanel} onPick={(i) => onJump(items[i].index, !reduce)} />
       )}
 
+      {showDock && <Dock outline={outline} store={store} frame={frame} lang={L} onJump={onJump} onCrown={setCrown} />}
+
       {bubble && (
-        <View pointerEvents="none" style={[styles.bubble, {
-          top: insets.top + RAIL_TOP + RAIL_PAD + (ys[drag ?? 0] ?? 0) - 24, ...edge(34),
+        <View pointerEvents="none" style={[styles.bubble, beside, {
+          top: frame.top + DOCK_H / 2 - 26,
           backgroundColor: colors.surface, borderColor: colors.sep, boxShadow: `0 10px 26px -10px ${colors.shadow}`,
         }]}>
           <Text numberOfLines={1} style={[rtl ? styles.bubbleTitleAr : styles.bubbleTitle, align, { color: colors.label }]}>
@@ -316,11 +411,6 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
           ) : null}
         </View>
       )}
-
-      {panel && (
-        <OutlinePanel outline={outline} current={cur} lang={L} visible={sheetOpen} onClose={closePanel} onHidden={hidePanel}
-          onPick={(i) => onJump(items[i].index, !reduce)} />
-      )}
     </View>
   );
 }
@@ -328,13 +418,13 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
 // ---------- Contents ----------
 
 /**
- * The contents fold down from the pill, where the reader tapped, instead of
- * rising from the bottom of the screen. No heading: the pill above already
- * says where you are. Tap the pill again, or anywhere outside, to fold them
- * away; Android's back button does the same.
+ * The list of sections opens where the reader tapped: it folds down from the
+ * pill, or slides out beside the dock at the thumb's height. No heading: the
+ * pill already says where you are. Tap the pill or the dock again, or
+ * anywhere outside, to fold it away; Android's back button does the same.
  */
-function OutlinePanel({ outline, current, lang: L, visible, onClose, onHidden, onPick }: {
-  outline: Outline; current: number; lang: Lang; visible: boolean;
+function OutlinePanel({ outline, current, lang: L, from, frame, visible, onClose, onHidden, onPick }: {
+  outline: Outline; current: number; lang: Lang; from: 'top' | 'side'; frame: DockFrame; visible: boolean;
   onClose: () => void; onHidden: () => void; onPick: (i: number) => void;
 }) {
   const { t, colors, dark } = useSettings();
@@ -345,8 +435,14 @@ function OutlinePanel({ outline, current, lang: L, visible, onClose, onHidden, o
   const list = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const rtl = L === 'ar';
   const verses = outline.kind === 'verses';
+  const side = from === 'side';
   const top = insets.top + BAR_HEIGHT;
-  const maxHeight = Math.max(200, Math.min(height * 0.62, height - top - insets.bottom - 100));
+  const maxHeight = side
+    ? Math.max(200, Math.min(height * 0.6, frame.floor - frame.minTop))
+    : Math.max(200, Math.min(height * 0.62, height - top - insets.bottom - 100));
+  // Beside the dock, centred on it as far as the screen allows.
+  const sideTop = clamp(frame.top + DOCK_H / 2 - maxHeight / 2, frame.minTop, frame.floor - maxHeight);
+  const toRight = frame.side === 'right';
 
   // Unfold on open; on close, fold away first and unmount after.
   useEffect(() => {
@@ -366,10 +462,12 @@ function OutlinePanel({ outline, current, lang: L, visible, onClose, onHidden, o
   }, [visible, onClose]);
 
   const backdrop = useAnimatedStyle(() => ({ opacity: open.get() }));
-  // Grows out of the pill: from just under it, slightly smaller, to full size.
+  // Grows out of what was tapped: down from the pill, or sideways out of the dock.
   const panel = useAnimatedStyle(() => ({
     opacity: open.get(),
-    transform: [{ translateY: (1 - open.get()) * -14 }, { scale: 0.94 + 0.06 * open.get() }],
+    transform: side
+      ? [{ translateX: (1 - open.get()) * (toRight ? 18 : -18) }, { scale: 0.94 + 0.06 * open.get() }]
+      : [{ translateY: (1 - open.get()) * -14 }, { scale: 0.94 + 0.06 * open.get() }],
   }));
   const align: TextStyle = rtl ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left' };
   const pick = (i: number) => { onPick(i); onClose(); };
@@ -379,8 +477,10 @@ function OutlinePanel({ outline, current, lang: L, visible, onClose, onHidden, o
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? 'rgba(0,0,0,0.4)' : 'rgba(20,10,15,0.16)' }, backdrop]}>
         <Pressable style={styles.fill} accessibilityRole="button" accessibilityLabel={t.close} onPress={onClose} />
       </Animated.View>
-      <View pointerEvents="box-none" style={[styles.panelWrap, { top }]}>
-        <Animated.View style={[styles.panelOuter, panel]}>
+      <View pointerEvents="box-none" style={side
+        ? [styles.sideWrap, { top: sideTop, height: maxHeight, width: Math.min(340, frame.width - DOCK_INSET - DOCK_W - 22) }, toRight ? { right: DOCK_INSET + DOCK_W + 10 } : { left: DOCK_INSET + DOCK_W + 10 }]
+        : [styles.panelWrap, { top }]}>
+        <Animated.View style={[styles.panelOuter, side && { transformOrigin: toRight ? 'right' : 'left' }, panel]}>
           <Glass style={styles.panel} solid>
             <ScrollView ref={list} style={{ maxHeight }} contentContainerStyle={[styles.listPad, verses && [styles.grid, rtl && styles.gridRtl]]}>
               {outline.items.map((it, i) => {
@@ -421,6 +521,7 @@ const styles = StyleSheet.create({
   right: { textAlign: 'right' },
   pressed: { transform: [{ scale: 0.97 }] },
   pillWrap: { width: '100%', maxWidth: 420, alignSelf: 'center' },
+  pillPage: { width: '100%' },
   pill: { borderRadius: 22, height: 44 },
   pillRow: { flex: 1, alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 2 },
   pillText: { flexShrink: 1, flexGrow: 1 },
@@ -434,16 +535,20 @@ const styles = StyleSheet.create({
   track: { position: 'absolute', left: 18, right: 18, bottom: 3, height: 2, borderRadius: 1, overflow: 'hidden' },
   fillBar: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 1, transformOrigin: 'left' },
   fromRight: { transformOrigin: 'right' },
-  rail: { position: 'absolute', width: 30, zIndex: 14 },
-  railHit: { flex: 1 },
-  railGlass: { position: 'absolute', top: 0, bottom: 0, width: 22, borderRadius: 11 },
-  tick: { position: 'absolute', borderRadius: 2 },
+  dock: { position: 'absolute', left: 0, top: 0, width: DOCK_W, height: DOCK_H, zIndex: 15 },
+  dockGlass: { flex: 1, borderRadius: DOCK_W / 2, overflow: 'hidden' },
+  dockBtn: { height: BTN_H, alignItems: 'center', justifyContent: 'center' },
+  dockMid: { height: MID_H, alignItems: 'center', justifyContent: 'center', marginHorizontal: 3, borderRadius: 14 },
+  dockBig: { fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 20 },
+  dockBigAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 24 },
+  dockSmall: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
   bubble: { position: 'absolute', maxWidth: 260, minWidth: 120, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, zIndex: 16 },
   bubbleTitle: { fontFamily: FONTS.svSemi, fontSize: 15 },
   bubbleTitleAr: { fontFamily: FONTS.arBold, fontSize: 16, lineHeight: 24 },
   bubbleSub: { fontSize: 12, marginTop: 1 },
   panelWrap: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
   panelOuter: { width: '100%', maxWidth: 520, transformOrigin: 'top' },
+  sideWrap: { position: 'absolute', justifyContent: 'center' },
   panel: { borderRadius: 24, overflow: 'hidden' },
   listPad: { padding: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 14, justifyContent: 'flex-start' },

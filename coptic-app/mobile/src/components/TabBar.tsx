@@ -27,6 +27,8 @@ export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const reading = isReaderPath(pathname) && !spread;
+  // On the open book (an unfolded Duo) the bar moves onto one page, off the fold.
+  const offFold = isReaderPath(pathname) && spread;
   const [layouts, setLayouts] = useState<Record<string, LayoutRectangle>>({});
   const x = useSharedValue(0);
   const w = useSharedValue(0);
@@ -45,7 +47,8 @@ export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 10, paddingHorizontal: Math.max(14, insets.left) },
-      { justifyContent: reading ? 'space-between' : 'center', flexDirection: lang === 'ar' ? 'row-reverse' : 'row' }]}>
+      { justifyContent: reading ? 'space-between' : offFold ? 'flex-start' : 'center', flexDirection: lang === 'ar' ? 'row-reverse' : 'row' },
+      offFold && { paddingHorizontal: 28 }]}>
       <Animated.View layout={layout}>
         <Glass style={[styles.bar, reading && styles.barCompact]}>
           <Animated.View style={[styles.lens, reading && styles.lensCompact, { backgroundColor: colors.lens }, lens]} />

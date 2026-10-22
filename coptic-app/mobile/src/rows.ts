@@ -143,29 +143,6 @@ export function itemAt(items: OutlineItem[], row: number) {
   return found;
 }
 
-/**
- * Rough height of every row, so the rail can space its marks like the text:
- * a long reading gets a long stretch, a short one a short stretch.
- * Returns the running total, one longer than `rows`.
- */
-export function rowWeights(rows: Row[], primary: 'ar' | 'sv', both: boolean): number[] {
-  const lines = (s: string | undefined, perLine: number) => (s ? Math.ceil(s.length / perLine) : 0);
-  const cum = [0];
-  for (const r of rows) {
-    let w = 1;
-    if (r.k === 'title' || r.k === 'cart') w = 3;
-    else if (r.k === 'sep' || r.k === 'run') w = 2;
-    else if (r.k === 'feast') w = 1.5 * r.items.length;
-    else if (r.k === 'u') {
-      const main = primary === 'ar' ? lines(r.u.ar, 34) * 1.55 : lines(r.u.sv, 40);
-      const alt = both ? (primary === 'ar' ? lines(r.u.sv, 46) * 0.9 : lines(r.u.ar, 40) * 1.2) : 0;
-      w = 0.4 + main + alt;
-    }
-    cum.push(cum[cum.length - 1] + w);
-  }
-  return cum;
-}
-
 export function chapterRows(book: BibleBook, chapter: number, verses: Verse[], highlight?: number): Row[] {
   return [
     { k: 'top' },
