@@ -21,12 +21,23 @@ import { layoutBook, rowsIn, spreadOf, type BookLang, type Grid, type Window } f
 import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
 import { useSettings } from '../settings';
-import { PageBody, PageBottom, PageTop } from './Page';
+import type { PagePalette } from '../theme';
+import { CopticCross } from './CopticCross';
 import type { Row } from './Reader';
 import { BAR_HEIGHT } from './TopBar';
 
-/** Height of the top and bottom page edges (PageTop, PageBottom). */
+/** Space above and below the text on a page. */
 const EDGE = 30;
+/**
+ * Each page has its own double frame, as in the printed Katameros. It sits
+ * further from the spine than from the outer edge, where the paper curves
+ * away into the fold, and so does the text.
+ */
+const INSET = 11;
+const GUTTER = 22;
+const RULE_GAP = 4.5;
+const TEXT_OUTER = 30;
+const TEXT_INNER = 42;
 /** Rows measured per batch. */
 const CHUNK = 120;
 /** Space kept under the text at the foot of each page. */
@@ -76,6 +87,7 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
   const near: BookLang = dir === 1 ? 'sv' : 'ar';
   const far: BookLang = dir === 1 ? 'ar' : 'sv';
   const W = Math.floor((width - 24) / 2);
+  const textW = W - TEXT_OUTER - TEXT_INNER;
   const bookTop = insets.top + BAR_HEIGHT + 4;
   const sheetH = Math.max(220, Math.floor(height - bookTop - insets.bottom - 86));
   const bodyH = sheetH - EDGE * 2;
@@ -92,7 +104,7 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
   // ---------- Measuring ----------
   const [ver, setVer] = useState({ rows, n: 0 });
   if (ver.rows !== rows) setVer({ rows, n: ver.n + 1 });
-  const sizes = `${ver.n}|${W}|${sizeKey}`;
+  const sizes = `${ver.n}|${textW}|${sizeKey}`;
   const [measured, setMeasured] = useState({ key: '', sv: [] as number[], ar: [] as number[], n: 0 });
   const m = useMemo(() => (measured.key === sizes ? measured : { key: sizes, sv: [] as number[], ar: [] as number[], n: 0 }), [measured, sizes]);
   const upto = Math.min(index.length, m.n + CHUNK);
@@ -268,17 +280,20 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
 
   // ---------- Drawing ----------
   const top = (k: number) => (k === 0 ? cover : 0);
-  const body = (k: number) => bodyH - top(k);
   const hasPages = (k: number) => room(k) >= 96;
   const sheet = (k: number, slot: 'near' | 'far') => {
     const s = spreads[k];
     if (!s || !hasPages(k)) return null;
     const l = slot === 'near' ? near : far;
-    return <Sheet w={s[l]} lang={l} slot={slot} bodyH={body(k)} tops={tops} rows={rows} index={index} renderRow={renderRow} mirror={dir < 0} />;
+    return <Sheet w={s[l]} lang={l} slot={slot} height={sheetH - top(k)} tops={tops} rows={rows} index={index} renderRow={renderRow} mirror={dir < 0} />;
   };
   const place = (key: string, k: number, slot: 'near' | 'far') => (
     <View key={key} style={[styles.sheet, { left: slot === 'near' ? 0 : W, top: top(k), width: W }]}>{sheet(k, slot)}</View>
   );
+
+  // The open book lies on a soft shadow, with the edges of more pages showing at either side.
+  const bedTop = turn ? top(turn.b) : top(Math.max(cur, 0));
+  const bed = (turn ? hasPages(turn.b) : cur >= 0 && hasPages(cur)) ? <Bed key="bed" W={W} top={bedTop} height={sheetH - bedTop} /> : null;
 
   let layers: ReactElement[] = [];
   if (turn) {
@@ -311,7 +326,7 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
     <View style={styles.fill}>
       <GestureDetector gesture={pan} touchAction="pan-y">
         <Animated.View style={[styles.book, { top: bookTop, width: 2 * W, height: sheetH }, NO_SELECT, bookStyle]} accessibilityLabel={status}>
-          <View style={[StyleSheet.absoluteFill, dir < 0 && styles.flip]}>{layers}</View>
+          <View style={[StyleSheet.absoluteFill, dir < 0 && styles.flip]}>{bed}{layers}</View>
           {cur > 0 && <Zone label={t.prevPage} side={dir === 1 ? 'left' : 'right'} W={W} onPress={() => go(live.current.cur - 1)} />}
           {cur >= 0 && cur < last && <Zone label={t.nextPage} side={dir === 1 ? 'right' : 'left'} W={W} onPress={() => go(live.current.cur + 1)} />}
         </Animated.View>
@@ -338,11 +353,11 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
       {!complete && (
         <View pointerEvents="none" style={styles.measure} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
           {(['sv', 'ar'] as const).map((l) => (
-            <PageBody key={l} side="left" style={{ width: W }}>
+            <View key={l} style={{ width: textW }}>
               {index.slice(0, upto).map((ri, i) => (
                 <View key={ri} onLayout={(e) => record(sizes, l, i, e.nativeEvent.layout.height, upto)}>{renderRow(rows[ri], l)}</View>
               ))}
-            </PageBody>
+            </View>
           ))}
         </View>
       )}
@@ -351,29 +366,62 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
 }
 
 interface SheetProps {
-  w: Window; lang: Lang; slot: 'near' | 'far'; bodyH: number; tops: number[]; rows: Row[]; index: number[];
+  w: Window; lang: Lang; slot: 'near' | 'far'; height: number; tops: number[]; rows: Row[]; index: number[];
   renderRow: BookProps['renderRow']; mirror: boolean;
 }
 
-/** One page: its frame, and the slice of the text it shows. */
-const Sheet = memo(function Sheet({ w, lang, slot, bodyH, tops, rows, index, renderRow, mirror }: SheetProps) {
-  const side = slot === 'near' ? 'left' : 'right';
+/** Shading where the paper curves into the spine: deeper on dark paper. */
+function foldColors(page: PagePalette): [string, string, string] {
+  const n = parseInt(page.page.slice(1), 16);
+  const dark = ((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255) < 3 * 96;
+  return dark ? ['rgba(0,0,0,0)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.5)'] : ['rgba(70,40,30,0)', 'rgba(70,40,30,0.05)', 'rgba(70,40,30,0.15)'];
+}
+
+/**
+ * One page: paper with its own double frame and a cross on each corner, the
+ * slice of the text it shows, and the shading of the fold along the spine.
+ */
+const Sheet = memo(function Sheet({ w, lang, slot, height, tops, rows, index, renderRow, mirror }: SheetProps) {
+  const { page } = useSettings();
+  const near = slot === 'near';
   const shown = useMemo(() => rowsIn(tops, w), [tops, w]);
+  const frame = near ? { left: INSET, right: GUTTER } : { left: GUTTER, right: INSET };
+  const fold = foldColors(page);
+  const corner = (key: string, pos: ViewStyle) => (
+    <View key={key} style={[styles.corner, { backgroundColor: page.page }, pos]}><CopticCross size={17} color={page.rule} /></View>
+  );
   return (
-    <View>
-      <PageTop side={side} />
-      <PageBody side={side} style={{ height: bodyH }}>
-        {/* The window ends between two lines; the next page starts there. In the mirrored (Arabic) book the text is turned back. */}
-        <View style={[{ height: w.e - w.s }, styles.window, mirror && styles.flip]}>
-          {shown.map((j) => (
-            <View key={index[j]} style={[styles.row, { top: tops[j] - w.s }]}>{renderRow(rows[index[j]], lang)}</View>
-          ))}
-        </View>
-      </PageBody>
-      <PageBottom side={side} />
+    <View style={[styles.paper, near ? styles.paperNear : styles.paperFar, { height, backgroundColor: page.page }]}>
+      <View pointerEvents="none" style={[styles.ruleOuter, { top: INSET, bottom: INSET, ...frame, borderColor: page.rule }]} />
+      <View pointerEvents="none" style={[styles.ruleInner, { top: INSET + RULE_GAP, bottom: INSET + RULE_GAP, left: frame.left + RULE_GAP, right: frame.right + RULE_GAP, borderColor: page.rule2 }]} />
+      {corner('tl', { top: INSET - 10, left: frame.left - 10 })}
+      {corner('tr', { top: INSET - 10, right: frame.right - 10 })}
+      {corner('bl', { bottom: INSET - 10, left: frame.left - 10 })}
+      {corner('br', { bottom: INSET - 10, right: frame.right - 10 })}
+      {/* The window ends between two lines; the next page starts there. In the mirrored (Arabic) book the text is turned back. */}
+      <View style={[styles.window, { top: EDGE, height: w.e - w.s }, near ? { left: TEXT_OUTER, right: TEXT_INNER } : { left: TEXT_INNER, right: TEXT_OUTER }, mirror && styles.flip]}>
+        {shown.map((j) => (
+          <View key={index[j]} style={[styles.row, { top: tops[j] - w.s }]}>{renderRow(rows[index[j]], lang)}</View>
+        ))}
+      </View>
+      <LinearGradient pointerEvents="none" colors={near ? fold : [fold[2], fold[1], fold[0]]} locations={near ? [0, 0.55, 1] : [0, 0.45, 1]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fold, near ? { right: 0 } : { left: 0 }]} />
     </View>
   );
 });
+
+/** Under the pages: the shadow the book casts, and a few more sheets showing at its outer edges. */
+function Bed({ W, top, height }: { W: number; top: number; height: number }) {
+  const { page, colors } = useSettings();
+  return (
+    <View pointerEvents="none" style={[styles.sheet, { left: 0, top, width: 2 * W, height }]}>
+      {[6, 3].map((o, i) => (
+        <View key={o} style={[styles.stack, { top: o / 2, bottom: o / 2, left: -o, right: -o, backgroundColor: page.page, borderColor: colors.sep },
+          !i && { boxShadow: `0 18px 34px -18px ${colors.shadow}, 0 1px 3px ${colors.shadow}` }]} />
+      ))}
+    </View>
+  );
+}
 
 /**
  * The part of the right page that has not lifted yet: everything left of the
@@ -463,7 +511,15 @@ const styles = StyleSheet.create({
   sheet: { position: 'absolute' },
   originRight: { transformOrigin: 'right center' },
   clip: { position: 'absolute', overflow: 'hidden' },
-  window: { overflow: 'hidden' },
+  paper: { overflow: 'hidden' },
+  paperNear: { borderTopLeftRadius: 5, borderBottomLeftRadius: 5 },
+  paperFar: { borderTopRightRadius: 5, borderBottomRightRadius: 5 },
+  ruleOuter: { position: 'absolute', borderWidth: 1.25 },
+  ruleInner: { position: 'absolute', borderWidth: 0.75 },
+  corner: { position: 'absolute', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  fold: { position: 'absolute', top: 0, bottom: 0, width: 46 },
+  stack: { position: 'absolute', borderRadius: 6, borderWidth: StyleSheet.hairlineWidth },
+  window: { position: 'absolute', overflow: 'hidden' },
   row: { position: 'absolute', left: 0, right: 0 },
   curve: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 72 },
   shadow: { position: 'absolute', top: 0, bottom: 0, left: 0 },
