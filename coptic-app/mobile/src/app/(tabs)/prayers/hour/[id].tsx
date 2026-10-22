@@ -11,13 +11,14 @@ import { useSettings } from '../../../../settings';
 
 export default function Hour() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, spread } = useSettings();
   const hour = agpeyaIndex.find((h) => h.id === id) ?? agpeyaIndex[0];
   const { data } = usePrayer('agpeya', hour.id);
   const rows = useMemo(() => (data ? prayerRows(data, { ar: 'الأجبية', sv: 'Agpeya' }) : []), [data]);
   const outline = useMemo(() => headingOutline(rows, { ar: hour.ar, sv: hour.sv }), [rows, hour]);
   const ar = lang === 'ar';
-  const header = (
+  // In the open book the page's own cartouche is the title.
+  const header = spread ? (!data ? <ActivityIndicator color={colors.crimson} /> : null) : (
     <View style={styles.header}>
       <LargeTitle title={ar ? hour.ar : hour.sv} subtitle={ar ? HOURS[hour.id]?.ar : HOURS[hour.id]?.sv} />
       {!data && <ActivityIndicator color={colors.crimson} />}

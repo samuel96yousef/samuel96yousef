@@ -8,18 +8,22 @@ import { DayPicker } from './DayPicker';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 
-/** Step through the Katameros day by day, or tap the date to pick any day from a calendar. */
-export function DateBar({ date, onChange }: { date: Date; onChange: (d: Date) => void }) {
+/**
+ * Step through the Katameros day by day, or tap the date to pick any day from
+ * a calendar. `compact` is the slim version that shares a row with other
+ * controls above the open book.
+ */
+export function DateBar({ date, onChange, compact }: { date: Date; onChange: (d: Date) => void; compact?: boolean }) {
   const { t, lang, colors } = useSettings();
   const [picking, setPicking] = useState(false);
   const ar = lang === 'ar';
   const c = coptic(date);
   const isToday = dayDiff(date, new Date()) === 0;
   return (
-    <View style={[styles.bar, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-      <DayStep n={-1} onPress={() => onChange(addDays(date, -1))} />
+    <View style={[styles.bar, compact && styles.barCompact, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      <DayStep n={-1} small={compact} onPress={() => onChange(addDays(date, -1))} />
       <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
-        style={({ pressed }) => [styles.when, pressed && styles.dim]}>
+        style={({ pressed }) => [compact ? styles.whenCompact : styles.when, pressed && styles.dim]}>
         <Text style={[styles.cop, { color: colors.label }, ar && styles.right]}>
           {copticText(c, ar ? 'ar' : 'sv')}
           {!ar && <Text style={[styles.copAr, { color: colors.label2 }]}>  {copticText(c, 'ar')}</Text>}
@@ -35,18 +39,18 @@ export function DateBar({ date, onChange }: { date: Date; onChange: (d: Date) =>
           <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
         </Pressable>
       )}
-      <DayStep n={1} onPress={() => onChange(addDays(date, 1))} />
+      <DayStep n={1} small={compact} onPress={() => onChange(addDays(date, 1))} />
     </View>
   );
 }
 
 /** A round button to the day before or after. */
-export function DayStep({ n, onPress, style }: { n: number; onPress: () => void; style?: StyleProp<ViewStyle> }) {
+export function DayStep({ n, onPress, style, small }: { n: number; onPress: () => void; style?: StyleProp<ViewStyle>; small?: boolean }) {
   const { t, lang, colors } = useSettings();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={n < 0 ? t.prevDay : t.nextDay} onPress={onPress} style={({ pressed }) => [style, pressed && styles.pressed]}>
-      <Glass style={styles.round} interactive>
-        <View style={styles.roundInner}>
+      <Glass style={[styles.round, small && styles.roundSmall]} interactive>
+        <View style={[styles.roundInner, small && styles.roundSmall]}>
           <View style={lang === 'ar' && styles.flip}><Icon name={n < 0 ? 'chevL' : 'chevR'} size={20} color={colors.label} strokeWidth={2.2} /></View>
         </View>
       </Glass>
@@ -56,6 +60,10 @@ export function DayStep({ n, onPress, style }: { n: number; onPress: () => void;
 
 const styles = StyleSheet.create({
   bar: { alignItems: 'center', gap: 10, marginBottom: 14 },
+  barCompact: { marginBottom: 0, gap: 8 },
+  // As wide as the date, beside other controls (flex: 0 would make it zero wide on the web).
+  whenCompact: { flexShrink: 0 },
+  roundSmall: { width: 36, height: 36, borderRadius: 18 },
   round: { width: 42, height: 42, borderRadius: 21 },
   roundInner: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   when: { flex: 1, minWidth: 0 },

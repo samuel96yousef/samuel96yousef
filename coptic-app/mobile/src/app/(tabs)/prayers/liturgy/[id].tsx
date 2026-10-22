@@ -13,7 +13,7 @@ import { FONTS } from '../../../../theme';
 /** A liturgy from the Kholagy, with the priest's, deacon's and people's parts set apart. */
 export default function Liturgy() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t, lang, colors, page } = useSettings();
+  const { t, lang, colors, page, spread } = useSettings();
   const liturgy = kholagyIndex.find((p) => p.id === id) ?? kholagyIndex[0];
   const { data } = usePrayer('kholagy', liturgy.id);
   const rows = useMemo(() => (data ? liturgyRows(data) : []), [data]);
@@ -32,13 +32,20 @@ export default function Liturgy() {
     );
   });
 
-  const header = (
+  const chips = data
+    ? <Chips items={headings.map((h) => ({ key: String(h.i), label: ar ? h.ar : h.sv || h.ar }))} onPress={(k) => setJump({ index: Number(k), key: Date.now() })} style={spread && styles.bookChips} />
+    : <ActivityIndicator color={colors.crimson} />;
+  // In the open book the page's cartouche is the title: the roles and the sections share one slim row.
+  const header = spread ? (
+    <View style={[styles.bookHead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      <View style={[styles.legend, styles.legendBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
+      {chips}
+    </View>
+  ) : (
     <View style={styles.header}>
       <LargeTitle title={ar ? liturgy.ar : liturgy.sv} subtitle={t.kholagy} />
       <View style={[styles.legend, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
-      {data
-        ? <Chips items={headings.map((h) => ({ key: String(h.i), label: ar ? h.ar : h.sv || h.ar }))} onPress={(k) => setJump({ index: Number(k), key: Date.now() })} />
-        : <ActivityIndicator color={colors.crimson} />}
+      {chips}
     </View>
   );
 
@@ -53,6 +60,9 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { paddingHorizontal: 16 },
   legend: { gap: 16, marginBottom: 12, flexWrap: 'wrap' },
+  legendBook: { marginBottom: 0, flexWrap: 'nowrap' },
+  bookHead: { alignItems: 'center', gap: 18, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 12 },
+  bookChips: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
   legendItem: { alignItems: 'center', gap: 6 },
   bar: { width: 4, height: 16, borderRadius: 2 },
   legendText: { fontSize: 14, fontWeight: '600' },

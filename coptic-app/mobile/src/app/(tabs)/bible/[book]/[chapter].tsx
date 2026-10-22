@@ -13,7 +13,7 @@ import { useSettings } from '../../../../settings';
 
 export default function Chapter() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string }>();
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, spread } = useSettings();
   const ar = lang === 'ar';
   const b = books.find((x) => x.bid === Number(params.book)) ?? books[0];
   const n = Number(params.chapter) || 1;
@@ -43,7 +43,10 @@ export default function Chapter() {
         scrollTo={target}
         outline={outline}
         back={ar ? b.ar : b.sv}
-        header={<View style={styles.header}><LargeTitle title={`${ar ? b.ar : b.sv} ${n}`} subtitle={t.chapter(n)} />{loading && !data && <ActivityIndicator color={colors.crimson} />}</View>}
+        // In the open book the page's running head and cartouche name the chapter.
+        header={spread
+          ? (loading && !data ? <ActivityIndicator color={colors.crimson} /> : null)
+          : <View style={styles.header}><LargeTitle title={`${ar ? b.ar : b.sv} ${n}`} subtitle={t.chapter(n)} />{loading && !data && <ActivityIndicator color={colors.crimson} />}</View>}
         footer={nav}
       />
     </View>

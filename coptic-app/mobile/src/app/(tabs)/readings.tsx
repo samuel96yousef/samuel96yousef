@@ -38,17 +38,27 @@ export default function Readings() {
     setJump({ index: sectionIndex(rows, params.section), key: -1 });
   }
 
-  const header = (
+  const chips = (
+    <Chips
+      items={(data?.sections ?? []).map((s) => ({ key: s.key, label: ar ? s.ar : s.sv }))}
+      onPress={(key) => setJump({ index: sectionIndex(rows, key), key: Date.now() })}
+      style={spread && styles.bookChips}
+    />
+  );
+  // The open book's first spread keeps its room for the pages: one slim row
+  // with the day and the sections. The pages carry the title and the date.
+  const header = spread ? (
+    <View style={[styles.bookHead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      <DateBar compact date={date} onChange={pickDay} />
+      {chips}
+      {loading && !data && <ActivityIndicator color={colors.crimson} />}
+    </View>
+  ) : (
     <View style={styles.header}>
       <LargeTitle title={t.readings} />
       <DateBar date={date} onChange={pickDay} />
-      <Chips
-        items={(data?.sections ?? []).map((s) => ({ key: s.key, label: ar ? s.ar : s.sv }))}
-        onPress={(key) => setJump({ index: sectionIndex(rows, key), key: Date.now() })}
-      />
-      {spread && <Text style={[styles.note, { color: colors.label2 }, ar && styles.right]}>{t.spreadNote}</Text>}
-      {/* The open book frames its own pages; the arch would leave the first spread little room. */}
-      {!spread && <Arch ar={`قراءات شهر ${MONTHS[c.month - 1][1]}`} sv={t.readingsArch(MONTHS[c.month - 1][0])} cop={MONTHS[c.month - 1][2]} />}
+      {chips}
+      <Arch ar={`قراءات شهر ${MONTHS[c.month - 1][1]}`} sv={t.readingsArch(MONTHS[c.month - 1][0])} cop={MONTHS[c.month - 1][2]} />
       {loading && !data && <ActivityIndicator style={styles.loading} color={colors.crimson} />}
       {error && <Text style={[styles.note, { color: colors.crimson }]}>{error.message}</Text>}
     </View>
@@ -64,6 +74,8 @@ export default function Readings() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 6 },
+  bookHead: { alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 12 },
+  bookChips: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
   note: { fontSize: 13, marginBottom: 8 },
   loading: { marginVertical: 30 },
   right: { textAlign: 'right' },
