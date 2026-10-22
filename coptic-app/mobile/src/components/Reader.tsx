@@ -271,11 +271,16 @@ interface ReaderProps {
   outline?: Outline | null;
   /** Label of the back button in the top bar, if any */
   back?: string;
+  /**
+   * The header carries the reader's actions itself, so the top bar stays
+   * away until the reader is into the text and the page starts at the top.
+   */
+  ownHeader?: boolean;
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline, back }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set } = s;
   const insets = useSafeAreaInsets();
@@ -543,7 +548,8 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
 
   const extraData = useMemo(() => [ctx, primary, both, peeks], [ctx, primary, both, peeks]);
   const footerView = useMemo(() => <View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>, [insets.bottom, footer]);
-  const contentStyle = useMemo(() => ({ paddingTop: insets.top + 60 }), [insets.top]);
+  const quietTop = !!ownHeader && !spread;
+  const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60) }), [insets.top, quietTop]);
 
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} primary={primary} both={both}
@@ -582,22 +588,24 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
       </Animated.View>
     </GestureDetector>
     )}
-    <Chrome store={way} back={back} book={spread} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    <Chrome store={way} back={back} book={spread} quiet={quietTop} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
     {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, pill }: { store: WayStore; back?: string; book: boolean; pill: ReactElement | null }) {
+function Chrome({ store, back, book, quiet, pill }: { store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null }) {
   const reading = useWay(store, (s) => s.reading);
   return (
     <>
       {/* Text slides under the bars only when it scrolls; the open book's pages stop short of them. */}
-      {!book && <EdgeFades reading={reading} />}
-      <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
-        <ReaderActions />
-      </TopBar>
+      {!book && <EdgeFades reading={reading} quiet={quiet} />}
+      {(!quiet || reading) && (
+        <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
+          <ReaderActions />
+        </TopBar>
+      )}
     </>
   );
 }
@@ -608,7 +616,7 @@ function Chrome({ store, back, book, pill }: { store: WayStore; back?: string; b
  * At the top of the screen the fade is the app background, matching the
  * header; once reading, it is the page colour inside the page margins.
  */
-function EdgeFades({ reading }: { reading: boolean }) {
+function EdgeFades({ reading, quiet }: { reading: boolean; quiet: boolean }) {
   const { colors, page } = useSettings();
   const insets = useSafeAreaInsets();
   const vis = useSharedValue(reading ? 1 : 0);
@@ -626,7 +634,8 @@ function EdgeFades({ reading }: { reading: boolean }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {/* The header's large title starts at the top padding, so the background fade ends there. */}
-      {top(colors.bg, insets.top + 60, insets.top + 44)}
+      {/* With no top bar showing, only the status bar is kept clear. */}
+      {quiet && !reading ? top(colors.bg, insets.top + 10, insets.top) : top(colors.bg, insets.top + 60, insets.top + 44)}
       {bottom(colors.bg)}
       <Animated.View style={[styles.fadePage, onPage]}>
         {top(page.page, topH, solid)}
