@@ -63,6 +63,20 @@ export function easter(year: number): Date {
 export const copticText = (c: CopticDate, lang: Lang) =>
   lang === 'ar' ? `${toArDigits(c.day)} ${MONTHS[c.month - 1][1]}` : `${c.day} ${MONTHS[c.month - 1][0]}`;
 
+/** "7 november", without weekday or year. */
+export const dayMonthText = (d: Date, lang: Lang) =>
+  lang === 'ar' ? `${toArDigits(d.getDate())} ${GM_AR[d.getMonth()]}` : `${d.getDate()} ${GM_SV[d.getMonth()]}`;
+
+/** "Oktober 2026", for a month of the calendar. */
+export const monthText = (d: Date, lang: Lang) =>
+  lang === 'ar' ? `${GM_AR[d.getMonth()]} ${toArDigits(d.getFullYear())}` : `${cap(GM_SV[d.getMonth()])} ${d.getFullYear()}`;
+
+/** Short weekday names, Sunday first, for the calendar's heading. */
+export const WEEKDAYS_SHORT: Record<Lang, string[]> = {
+  sv: ['sön', 'mån', 'tis', 'ons', 'tor', 'fre', 'lör'],
+  ar: ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'],
+};
+
 export function gregorianText(d: Date, lang: Lang, withYear = true) {
   return lang === 'ar'
     ? `${WD_AR[d.getDay()]} ${toArDigits(d.getDate())} ${GM_AR[d.getMonth()]}${withYear ? ` ${toArDigits(d.getFullYear())}` : ''}`

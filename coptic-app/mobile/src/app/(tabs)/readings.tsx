@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Arch } from '../../components/Arch';
@@ -8,15 +8,17 @@ import { DateBar } from '../../components/DateBar';
 import { LargeTitle } from '../../components/LargeTitle';
 import { Reader } from '../../components/Reader';
 import { useReadings } from '../../data';
+import { pickDay, useReadingDay } from '../../day';
 import { STRINGS } from '../../i18n';
-import { coptic, fromIso, MONTHS, startOfDay } from '../../lib/coptic';
+import { coptic, fromIso, isoDate, MONTHS } from '../../lib/coptic';
 import { dayOutline, dayRows, sectionIndex } from '../../rows';
 import { useSettings } from '../../settings';
 
 export default function Readings() {
   const { t, lang, colors, spread } = useSettings();
-  const params = useLocalSearchParams<{ section?: string; date?: string }>();
-  const [date, setDate] = useState(() => (params.date ? fromIso(params.date) : startOfDay(new Date())));
+  const params = useLocalSearchParams<{ section?: string; date?: string; at?: string }>();
+  // The same day as on "Today": today, unless the reader picked another.
+  const { day: date } = useReadingDay();
   const [jump, setJump] = useState<{ index: number; key: number } | null>(null);
   const { data, loading, error } = useReadings(date);
   const ar = lang === 'ar';
@@ -25,24 +27,21 @@ export default function Readings() {
   const rows = useMemo(() => (data ? dayRows(data, fromIso(data.iso), { ar: STRINGS.ar.holyWeek, sv: STRINGS.sv.holyWeek }) : []), [data]);
   const outline = useMemo(() => (data ? dayOutline(data, rows) : null), [data, rows]);
 
-  // A link with ?date= moves the page to that day.
-  const [linkedDate, setLinkedDate] = useState(params.date);
-  if (params.date !== linkedDate) {
-    setLinkedDate(params.date);
-    if (params.date) setDate(fromIso(params.date));
-  }
+  // A link with ?date= opens that day.
+  useEffect(() => { if (params.date) pickDay(fromIso(params.date)); }, [params.date]);
 
-  // Arriving from "Today" with a section: jump there once the text is in.
-  const [jumpedTo, setJumpedTo] = useState<string | undefined>(undefined);
-  if (params.section && rows.length && jumpedTo !== params.section) {
-    setJumpedTo(params.section);
+  // Arriving from "Today" with a section: jump there once that day's text is in (not the day shown before).
+  const visit = params.section ? `${params.section}|${params.at ?? ''}` : '';
+  const [jumpedTo, setJumpedTo] = useState('');
+  if (visit && params.section && data?.iso === isoDate(date) && rows.length && jumpedTo !== visit) {
+    setJumpedTo(visit);
     setJump({ index: sectionIndex(rows, params.section), key: -1 });
   }
 
   const header = (
     <View style={styles.header}>
       <LargeTitle title={t.readings} />
-      <DateBar date={date} onChange={setDate} />
+      <DateBar date={date} onChange={pickDay} />
       <Chips
         items={(data?.sections ?? []).map((s) => ({ key: s.key, label: ar ? s.ar : s.sv }))}
         onPress={(key) => setJump({ index: sectionIndex(rows, key), key: Date.now() })}

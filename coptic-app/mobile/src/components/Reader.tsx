@@ -285,6 +285,13 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
   const firstVisible = useRef(0);
   // Unfolded verses belong to one text and one display mode; anything else starts folded.
   const [peekState, setPeekState] = useState<{ rows: Row[]; show: string; set: ReadonlySet<number> }>({ rows, show, set: EMPTY });
+  // A new text (another day) gets new row keys: the list would otherwise place
+  // jumps with the old text's row heights. It also starts at the top.
+  const [textNo, setTextNo] = useState({ rows, n: 0 });
+  if (textNo.rows !== rows) setTextNo({ rows, n: textNo.n + 1 });
+  useEffect(() => {
+    if (textNo.n) listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [textNo.n]);
   const peeks = peekState.rows === rows && peekState.show === show ? peekState.set : EMPTY;
   const swipeDir = useRef(0);
   const opacity = useSharedValue(1);
@@ -332,6 +339,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
    */
   const target = useRef<{ index: number; viewOffset: number; tries: number } | null>(null);
   const scrolledAt = useRef(0);
+  const offsetY = useRef(0);
   const scrollToRow = useCallback((index: number, viewOffset: number) => {
     const goal = { index, viewOffset, tries: 0 };
     target.current = goal;
@@ -342,14 +350,27 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     if (!markSet.has(index)) return;
     let checks = 0;
     let waits = 0;
+    let still = 0;
     const verify = () => setTimeout(() => {
       if (target.current !== goal) return;
       // Still moving: check once it has come to rest.
       if (Date.now() - scrolledAt.current < 120 && waits++ < 40) { verify(); return; }
-      if (checks++ >= 3) return;
+      if (checks++ >= 16) return;
       const node = marks.current.get(index);
-      if (!node) { go(); verify(); return; }
-      node.measureInWindow((_x, y, _w, h) => { if (target.current === goal && (h === 0 || Math.abs(y - viewOffset) > 4)) { go(); verify(); } });
+      if (!node) { still = 0; go(); verify(); return; }
+      node.measureInWindow((_x, y, _w, h) => {
+        if (target.current !== goal) return;
+        if (h === 0) { still = 0; go(); verify(); return; }
+        // The list's own idea of where the row is can be stale; what is on screen is not.
+        if (Math.abs(y - viewOffset) > 4) {
+          still = 0;
+          listRef.current?.scrollToOffset({ offset: Math.max(0, offsetY.current + y - viewOffset), animated: false });
+          verify();
+        }
+        // Rows above it may still be laid out and push it down, so it is
+        // watched until it has stayed put for half a second.
+        else if (++still < 4) verify();
+      });
     }, checks ? 120 : 90);
     verify();
   }, [markSet]);
@@ -478,6 +499,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const max = contentSize.height - layoutMeasurement.height;
     scrolledAt.current = Date.now();
+    offsetY.current = contentOffset.y;
     progress.set(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 0);
     // Reading once the large title is under the top bar; apart thresholds, so it does not flicker at the edge.
     const y = contentOffset.y;
@@ -541,7 +563,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
         <FlatList
           ref={listRef}
           data={rows}
-          keyExtractor={(_, i) => String(i)}
+          keyExtractor={(_, i) => `${textNo.n}:${i}`}
           renderItem={renderItem}
           extraData={extraData}
           ListHeaderComponent={header ?? undefined}

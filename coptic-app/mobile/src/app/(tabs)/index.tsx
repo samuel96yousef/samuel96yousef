@@ -8,9 +8,12 @@ import { CopticCross } from '../../components/CopticCross';
 import { Icon } from '../../components/Icon';
 import { LargeTitle, SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
+import { DayStep } from '../../components/DateBar';
+import { DayPicker } from '../../components/DayPicker';
 import { BarButton, TopBar } from '../../components/TopBar';
 import { agpeyaIndex, getOverview, katameros } from '../../data';
-import { coptic, copticText, gregorianText, HOURS, hourNow, isFastDay, MONTHS, observances, season, startOfDay, toArDigits } from '../../lib/coptic';
+import { pickDay, useReadingDay } from '../../day';
+import { addDays, coptic, copticText, dayDiff, dayMonthText, gregorianText, HOURS, hourNow, isFastDay, MONTHS, observances, season, toArDigits } from '../../lib/coptic';
 import { useSettings } from '../../settings';
 import { FONTS, HOUR_SKY } from '../../theme';
 
@@ -28,13 +31,15 @@ export default function Today() {
   const insets = useSafeAreaInsets();
   const wide = useWindowDimensions().width >= 720;
   const now = useMinute();
-  const today = startOfDay(now);
+  // The day shown is today unless the reader picks another; the prayer hour is always now.
+  const { day, isToday } = useReadingDay();
+  const [picking, setPicking] = useState(false);
   // Nothing here waits for a Bible book: the readings are titles and
   // references, and the word of the day ships with the lectionary.
-  const overview = getOverview(today);
-  const c = coptic(today);
-  const obs = observances(today);
-  const seasonInfo = season(today);
+  const overview = getOverview(day);
+  const c = coptic(day);
+  const obs = observances(day);
+  const seasonInfo = season(day);
   const hid = hourNow(now);
   const hour = agpeyaIndex.find((h) => h.id === hid);
   const sky = HOUR_SKY[hid];
@@ -47,17 +52,27 @@ export default function Today() {
   const chips = [
     ...obs.map((o) => ({ text: ar ? o.ar : o.sv, tone: o.major ? 'gold' : 'crimson' })),
     ...(seasonInfo ? [{ text: ar ? seasonInfo.ar : seasonInfo.sv, tone: 'quiet' }] : []),
-    ...(isFastDay(today) && !seasonInfo?.fasting ? [{ text: t.fastDay, tone: 'quiet' }] : []),
+    ...(isFastDay(day) && !seasonInfo?.fasting ? [{ text: t.fastDay, tone: 'quiet' }] : []),
   ];
+  const diff = dayDiff(day, now);
+  const title = isToday ? t.today : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : dayMonthText(day, lang);
 
+  // The date card steps a day either way, and a tap on the date opens the calendar.
   const dateCard = (
     <FramedCard style={styles.dateCard}>
-      <Text style={[styles.cop, { color: page.rule }]}>{MONTHS[c.month - 1][2]}</Text>
-      <Text style={[ar ? styles.bigAr : styles.big, { color: page.ink }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
-      <Text style={[ar ? styles.smallSv : styles.smallAr, { color: page.ink }]}>
-        {ar ? copticText(c, 'sv') : `${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}
-      </Text>
-      <Text style={[styles.greg, { color: page.ink2 }]}>{gregorianText(today, lang)}{'\n'}{t.year(c.year)}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(day, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
+        style={({ pressed }) => [styles.dateTap, pressed && styles.dim]}>
+        <Text style={[styles.cop, { color: page.rule }]}>{MONTHS[c.month - 1][2]}</Text>
+        <Text style={[ar ? styles.bigAr : styles.big, { color: page.ink }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
+        <Text style={[ar ? styles.smallSv : styles.smallAr, { color: page.ink }]}>
+          {ar ? copticText(c, 'sv') : `${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}
+        </Text>
+        <Text style={[styles.greg, { color: page.ink2 }]}>{gregorianText(day, lang)}{'\n'}{t.year(c.year)}</Text>
+        <View style={[styles.pick, { flexDirection: row }]}>
+          <Text style={[styles.pickText, { color: page.rule }]}>{t.pickDay}</Text>
+          <Icon name="chevD" size={13} color={page.rule} strokeWidth={2.4} />
+        </View>
+      </Pressable>
       {chips.length > 0 && (
         <View style={styles.chips}>
           {chips.map((ch) => (
@@ -67,6 +82,13 @@ export default function Today() {
           ))}
         </View>
       )}
+      {!isToday && (
+        <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} style={({ pressed }) => [styles.back, { backgroundColor: colors.crimson }, pressed && styles.pressed]}>
+          <Text style={styles.backText}>{t.goToday}</Text>
+        </Pressable>
+      )}
+      <DayStep n={-1} onPress={() => pickDay(addDays(day, -1))} style={[styles.step, ar ? styles.stepEnd : styles.stepStart]} />
+      <DayStep n={1} onPress={() => pickDay(addDays(day, 1))} style={[styles.step, ar ? styles.stepStart : styles.stepEnd]} />
     </FramedCard>
   );
 
@@ -96,13 +118,14 @@ export default function Today() {
 
   const list = overview.sections.length > 0 ? (
     <View>
-      <SectionLabel>{t.todaysReadings}</SectionLabel>
+      <SectionLabel>{isToday ? t.todaysReadings : t.readingsFor(dayMonthText(day, lang))}</SectionLabel>
       <View style={[styles.list, { backgroundColor: colors.surface }]}>
         {overview.sections.map((s, i) => (
           <Pressable
             key={s.key}
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/readings', params: { section: s.key } })}
+            // `at` makes every tap a new visit, so the section is found again even if the reader moved on.
+            onPress={() => router.push({ pathname: '/readings', params: { section: s.key, at: String(Date.now()) } })}
             style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 }, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep }]}
           >
             <CopticCross size={20} color={colors.crimson} />
@@ -125,12 +148,13 @@ export default function Today() {
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
       <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
-        <LargeTitle title={t.today} subtitle={gregorianText(today, lang)} />
+        <LargeTitle title={title} subtitle={gregorianText(day, lang)} />
         <View style={wide ? [styles.cols, { flexDirection: row }] : styles.stack}>
           <View style={styles.col}>{dateCard}{word}</View>
           <View style={styles.col}>{hourCard}{list}</View>
         </View>
       </ScrollView>
+      <DayPicker visible={picking} day={day} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
     </View>
   );
 }
@@ -142,6 +166,16 @@ const styles = StyleSheet.create({
   stack: { gap: 20 },
   col: { flex: 1, gap: 20, minWidth: 0, width: '100%' },
   dateCard: { alignItems: 'center' },
+  // Kept clear of the step buttons on either side.
+  dateTap: { alignItems: 'center', paddingHorizontal: 40, alignSelf: 'stretch' },
+  dim: { opacity: 0.6 },
+  pick: { alignItems: 'center', gap: 4, marginTop: 8 },
+  pickText: { fontSize: 13, fontWeight: '600' },
+  step: { position: 'absolute', top: 62 },
+  stepStart: { left: 22 },
+  stepEnd: { right: 22 },
+  back: { marginTop: 14, borderRadius: 999, paddingHorizontal: 18, height: 36, justifyContent: 'center' },
+  backText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   cop: { fontFamily: FONTS.cop, fontSize: 15, letterSpacing: 1 },
   big: { fontFamily: FONTS.svSemi, fontSize: 56, lineHeight: 66, marginTop: 4 },
   bigAr: { fontFamily: FONTS.arBold, fontSize: 48, lineHeight: 80 },
