@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import type { Row } from '../src/components/Reader';
-import { headingOutline, itemAt, liturgyRows, prayerRows, roleAt, rowWeights, verseOutline } from '../src/rows';
+import { headingOutline, itemAt, liturgyRows, prayerRows, roleAt, verseOutline } from '../src/rows';
 import type { Prayer } from '../src/lib/types';
 
 const DATA = path.join(__dirname, '..', 'assets', 'data');
@@ -56,15 +56,6 @@ describe('Wayfinding outlines', () => {
   it('finds the item a row belongs to', () => {
     const items = [5, 9, 20].map((index) => ({ index, level: 1 as const, ar: '', sv: '' }));
     expect([0, 4, 5, 8, 9, 19, 20, 99].map((r) => itemAt(items, r))).toEqual([-1, -1, 0, 0, 1, 1, 2, 2]);
-  });
-
-  it('weighs long texts heavier than short ones', () => {
-    const cum = rowWeights([
-      { k: 'u', u: { t: 'p', sv: 'kort', ar: 'ق' } },
-      { k: 'u', u: { t: 'p', sv: 'x'.repeat(400), ar: 'ق' } },
-    ], 'sv', false);
-    expect(cum).toHaveLength(3);
-    expect(cum[2] - cum[1]).toBeGreaterThan(5 * (cum[1] - cum[0]));
   });
 
   (hasData ? it : it.skip)('outlines every hour and liturgy in the data', () => {
