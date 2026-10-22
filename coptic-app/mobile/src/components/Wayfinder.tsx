@@ -6,10 +6,11 @@
  *   are in, who is speaking in a liturgy, and how far you have read.
  * - The dock sits on the side, where the thumb is, as iPhone Duo moves
  *   controls to the edge of its outer screen: ▲ previous, ▼ next, and the
- *   section number between them. Hold the number and the dock turns into a
- *   Digital Crown, a ridged cylinder that rolls under the thumb with a click
- *   per section, while a wheel of sections turns out beside it like the iOS
- *   picker. Keep the finger down and drag to spin it, and the text follows. Drag the number sideways to
+ *   section number between them. Hold the number and the dock turns into the
+ *   side of an Apple Watch Ultra: a knurled titanium crown with a crimson ring
+ *   that turns one tooth per section, the number above it and the total below,
+ *   while the sections curve around it like a dial. Keep the finger down and
+ *   drag to turn it, and the text follows. Drag the number sideways to
  *   move the dock to the other hand or another height.
  * - The list of sections opens where you tapped: down from the pill, or out
  *   from the dock.
@@ -89,10 +90,14 @@ const ARC = 64;
 const OVERSCROLL = 0.25;
 /** Holding the number this long, without moving, brings out the wheel. */
 const HOLD_MS = 220;
-/** The crown: a knurled cylinder as tall as the dock, ridges evenly spaced round it. */
-const CROWN_R = DOCK_H / 2;
-const RIDGES = 46;
-const RIDGE_ANGLE = Math.PI / RIDGES;
+/** The crown: a knurled titanium cylinder between the number and the total, turning one tooth per section. */
+const CROWN_H = 64;
+const CROWN_R = CROWN_H / 2;
+const TEETH = 18;
+const TOOTH_ANGLE = (2 * Math.PI) / TEETH;
+/** A tooth covers about half its share of the circumference; the rest is the groove. */
+const TOOTH_H = CROWN_R * TOOTH_ANGLE * 0.5;
+const RING_W = 5;
 
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -410,50 +415,65 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
 
 // ---------- The crown ----------
 
-/** One ridge of the knurling: it rolls round the cylinder, bunching and dimming towards the edges. */
-function Ridge({ i, wheel, groove, shine }: { i: number; wheel: SharedValue<number>; groove: string; shine: string }) {
+/** Titanium, as on the Apple Watch Ultra: natural in light mode, black in dark mode. */
+function titanium(dark: boolean) {
+  return dark
+    ? { body: ['#090807', '#171514', '#26231f', '#171514', '#090807'] as [string, string, ...string[]], tooth: ['#9a948d', '#5c5752', '#262320'] as [string, string, ...string[]] }
+    : { body: ['#47423d', '#736c64', '#8f887f', '#736c64', '#47423d'] as [string, string, ...string[]], tooth: ['#ffffff', '#d6cfc5', '#8a8279'] as [string, string, ...string[]] };
+}
+
+/** One tooth of the knurling: it rolls round the crown, foreshortening towards the top and bottom. */
+function Tooth({ i, wheel, colors }: { i: number; wheel: SharedValue<number>; colors: [string, string, ...string[]] }) {
   const roll = useAnimatedStyle(() => {
-    // The surface moves with the finger: a row of the dial is ROW_H of travel.
-    const turn = (wheel.get() * ROW_H) / CROWN_R;
-    const raw = i * RIDGE_ANGLE - turn + Math.PI / 2;
-    const a = ((raw % Math.PI) + Math.PI) % Math.PI - Math.PI / 2;
+    // One section turns the crown by one tooth.
+    const raw = (i - wheel.get()) * TOOTH_ANGLE + Math.PI;
+    const a = ((raw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    const front = Math.abs(a) < Math.PI / 2;
     const c = Math.cos(a);
-    return { opacity: 0.25 + 0.75 * c, transform: [{ translateY: CROWN_R * Math.sin(a) }, { scaleY: 0.3 + 0.7 * c }] };
+    return { opacity: front ? 0.35 + 0.65 * c : 0, transform: [{ translateY: CROWN_R * Math.sin(a) }, { scaleY: front ? Math.max(0.08, c) : 0.08 }] };
   });
-  return <Animated.View style={[styles.ridge, { backgroundColor: groove, borderBottomColor: shine }, roll]} />;
+  return (
+    <Animated.View style={[styles.tooth, roll]}>
+      <LinearGradient colors={colors} style={StyleSheet.absoluteFill} />
+    </Animated.View>
+  );
 }
 
 /**
- * The dock as an Apple Watch Digital Crown, seen from the side: polished metal
- * shaded like a cylinder, fine knurling that turns with the thumb, a crimson
- * ring on the face towards the screen, and the section number in the middle,
- * which pulses on every step.
+ * The dock while the dial turns, after the side of an Apple Watch Ultra: the
+ * section number above, a knurled titanium crown with a crimson ring on its
+ * outer face, and the total below. The number pulses on every step.
  */
 function Crown({ wheel, side, big, small }: { wheel: SharedValue<number>; side: DockPlace['side']; big: string; small: string }) {
   const { colors, dark } = useSettings();
   const reduce = useReducedMotion();
   const pulse = useSharedValue(1);
   useEffect(() => {
-    if (!reduce) pulse.set(withSequence(withTiming(1.16, { duration: 70 }), withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) })));
+    if (!reduce) pulse.set(withSequence(withTiming(1.18, { duration: 70 }), withTiming(1, { duration: 170, easing: Easing.out(Easing.quad) })));
   }, [big, pulse, reduce]);
   const pop = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
-  const metal: [string, string, ...string[]] = dark
-    ? ['#050405', '#292326', '#4b4347', '#8c8286', '#4b4347', '#292326', '#050405']
-    : ['#59525a', '#9f989c', '#d5cfd2', '#ffffff', '#d5cfd2', '#9f989c', '#59525a'];
-  const ridges: number[] = [];
-  for (let i = 0; i < RIDGES; i++) ridges.push(i);
+  const metal = titanium(dark);
+  const outer = side === 'right' ? { right: 0 } : { left: 0 };
+  const inner = side === 'right' ? { left: 0 } : { right: 0 };
+  const teethSpan = side === 'right' ? { left: 2, right: RING_W } : { right: 2, left: RING_W };
+  const teeth: number[] = [];
+  for (let i = 0; i < TEETH; i++) teeth.push(i);
   return (
-    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(120)} exiting={reduce ? undefined : FadeOut.duration(200)} style={styles.crown}>
-      <LinearGradient colors={metal} locations={[0, 0.12, 0.3, 0.5, 0.7, 0.88, 1]} style={StyleSheet.absoluteFill} />
-      {ridges.map((i) => (
-        <Ridge key={i} i={i} wheel={wheel} groove={dark ? 'rgba(0,0,0,0.6)' : 'rgba(35,25,30,0.32)'} shine={dark ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.95)'} />
-      ))}
-      <View style={[styles.crownRing, side === 'right' ? { left: 1 } : { right: 1 }, { backgroundColor: colors.crimson }]} />
-      <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']} locations={[0, 0.28, 0.72, 1]} style={StyleSheet.absoluteFill} />
-      <Animated.View style={[styles.crownChip, { backgroundColor: dark ? 'rgba(16,13,14,0.86)' : 'rgba(255,255,255,0.93)', borderColor: colors.sep }, pop]}>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.dockBig, { color: colors.crimson }]}>{big}</Text>
-        <Text numberOfLines={1} style={[styles.dockSmall, { color: colors.label2 }]}>{small}</Text>
-      </Animated.View>
+    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(120)} exiting={reduce ? undefined : FadeOut.duration(200)}
+      style={[styles.crownFace, { backgroundColor: dark ? '#242022' : '#FFFFFF' }]}>
+      <Animated.Text numberOfLines={1} adjustsFontSizeToFit style={[styles.crownNum, { color: colors.crimson }, pop]}>{big}</Animated.Text>
+      <View style={styles.crown}>
+        <LinearGradient colors={metal.body} locations={[0, 0.2, 0.5, 0.8, 1]} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, teethSpan]}>
+          {teeth.map((i) => <Tooth key={i} i={i} wheel={wheel} colors={metal.tooth} />)}
+        </View>
+        {/* Where the crown meets the case, and the crimson ring on its outer face. */}
+        <View style={[styles.crownSeam, inner]} />
+        <LinearGradient colors={[colors.crimson, '#ff8a9a', colors.crimson]} locations={[0, 0.5, 1]} style={[styles.crownRing, outer]} />
+        <LinearGradient colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0)', 'rgba(255,255,255,0.08)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.5)']}
+          locations={[0, 0.3, 0.5, 0.7, 1]} style={StyleSheet.absoluteFill} />
+      </View>
+      <Text numberOfLines={1} style={[styles.dockSmall, { color: colors.label2 }]}>{small}</Text>
     </Animated.View>
   );
 }
@@ -483,7 +503,7 @@ function DialRow({ i, wheel, right, text, num, on, rtl }: { i: number; wheel: Sh
     <Animated.View style={[styles.dialRow, { flexDirection: right ? 'row' : 'row-reverse' }, turn]}>
       <Text numberOfLines={1} style={[on ? styles.dialOn : styles.dialText, rtl && styles.dialTextAr,
         { color: on ? colors.crimson : colors.label, textAlign: right ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }]}>{text}</Text>
-      {num !== null && <Text style={[styles.dialNum, { color: on ? colors.crimson : colors.label2 }]}>{num}</Text>}
+      {num !== null && <Text style={[styles.dialNum, on ? [styles.dialNumOn, { backgroundColor: colors.crimson }] : { color: colors.label2 }]}>{num}</Text>}
     </Animated.View>
   );
 }
@@ -704,17 +724,20 @@ const styles = StyleSheet.create({
   dockBig: { fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 20 },
   dockBigAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 24 },
   dockSmall: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  crown: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
-  ridge: { position: 'absolute', left: 3, right: 3, top: CROWN_R - 1, height: 2, borderBottomWidth: 0.75 },
-  crownRing: { position: 'absolute', top: 6, bottom: 6, width: 2, borderRadius: 1, opacity: 0.95 },
-  crownChip: { position: 'absolute', left: 3, right: 3, top: CROWN_R - 24, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
+  crownFace: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'space-evenly' },
+  crownNum: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  crown: { width: DOCK_W - 6, height: CROWN_H, borderRadius: 7, overflow: 'hidden' },
+  tooth: { position: 'absolute', left: 0, right: 0, top: CROWN_R - TOOTH_H / 2, height: TOOTH_H, borderRadius: 1, overflow: 'hidden' },
+  crownSeam: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: 'rgba(0,0,0,0.45)' },
+  crownRing: { position: 'absolute', top: 0, bottom: 0, width: RING_W },
   dial: { position: 'absolute', zIndex: 16 },
   dialChip: { position: 'absolute', left: 0, right: 0, top: WHEEL_H / 2 - ROW_H / 2 - 2, height: ROW_H + 4, borderRadius: (ROW_H + 4) / 2, borderWidth: StyleSheet.hairlineWidth },
   dialRow: { position: 'absolute', left: 16, right: 10, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, alignItems: 'center', gap: 10 },
   dialText: { flex: 1, fontSize: 16, fontWeight: '500' },
   dialOn: { flex: 1, fontSize: 16.5, fontWeight: '700' },
   dialTextAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 26 },
-  dialNum: { width: 26, fontSize: 13, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  dialNum: { width: 24, height: 24, lineHeight: 24, borderRadius: 12, overflow: 'hidden', fontSize: 13, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  dialNumOn: { color: '#FFFFFF' },
   panelWrap: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
   panelOuter: { width: '100%', maxWidth: 520, transformOrigin: 'top' },
   sideWrap: { position: 'absolute', justifyContent: 'center' },

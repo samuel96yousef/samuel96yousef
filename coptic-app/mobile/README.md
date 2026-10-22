@@ -28,10 +28,13 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
   under den.
 - **Dockan på sidan.** ▲ föregående avsnitt, avsnittets nummer, ▼ nästa.
   ▲ går först till början av avsnittet du är i, som på en musikspelare.
-  **Håll in numret** så blir dockan en Digital Crown som på Apple Watch:
-  en räfflad metallcylinder med en röd ring och avsnittets nummer i mitten.
+  **Håll in numret** så blir dockan sidan av en Apple Watch Ultra: en
+  grovräfflad krona i titan (naturlig i ljust läge, svart i mörkt) med en
+  röd ring på yttersidan, avsnittets nummer ovanför och antalet under.
+  Kronan vrids en tand per avsnitt.
   Texten bakom tonas ned och avsnitten lägger sig i en båge runt kronan som
-  på en urtavla, vart och ett med sitt nummer, med det aktuella i en kapsel.
+  på en urtavla, vart och ett med sitt nummer, med det aktuella i en kapsel
+  och numret i en röd bricka.
   Håll kvar fingret och dra: kronan klickar fram ett avsnitt i taget som en
   riktig krona med lägen, numret pulserar, texten följer med, det klickar i
   handen för varje avsnitt och tar emot med en stöt vid första och sista.
