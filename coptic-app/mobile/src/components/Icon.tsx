@@ -17,6 +17,7 @@ const PATHS = {
   info: 'M12 11v5.5M12 7.6v.4',
   phone: 'M10.5 18.2h3',
   list: 'M9.5 6.5h10M9.5 12h10M9.5 17.5h10',
+  calendar: 'M4.5 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2zM4.5 10h15M8.5 3.3v3.4M15.5 3.3v3.4',
 } as const;
 
 export type IconName = keyof typeof PATHS;

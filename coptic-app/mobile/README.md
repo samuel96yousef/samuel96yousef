@@ -7,7 +7,7 @@ Arabisk-svensk app för en koptisk församling i Sverige, byggd med Expo
 
 | Flik | Innehåll |
 | --- | --- |
-| Idag | Koptiskt datum, högtider, fasta, dagens ord (på papper i Katameros-ram), timbönen som gäller nu och dagens läsningar. Datumet visas en gång, kompakt: veckodag och datum ovanför det koptiska datumet som rubrik. Öppnar alltid på idag. Pilarna bredvid rubriken går en dag bakåt eller framåt, och ett tryck på rubriken öppnar en kalender med det koptiska datumet under varje dag och högtider markerade. |
+| Idag | Veckan med det koptiska datumet under varje dag (idag markerad, vald dag som en röd ruta, högtider med en guldprick), det koptiska och arabiska datumet, högtider och fasta, dagens ord (på papper i Katameros-ram), timbönen som gäller nu och dagens läsningar. Öppnar alltid på idag. Svep veckan för andra veckor och tryck på en dag för att läsa den; kalenderknappen öppnar en månadskalender för datum längre bort. |
 | Läsningar | Katameros för vilket datum som helst, med alla regler för fastor, påsktiden, söndagar och paramoun i Kiahk och Touba. Visar samma dag som Idag: väljer du en dag på den ena följer den andra med. En vald dag gäller till midnatt eller tills appen varit borta en halvtimme, sedan är det idag igen. |
 | Böner | Agpeya (åtta timböner) och Kholagy (åtta liturgier) där präst, diakon och folk har olika stil. |
 | Bibeln | Alla 74 böcker kapitel för kapitel, med sökning på svenska och arabiska. Varje bok har en innehållssida som i Katameros: namnet i en kartusch, kapitlen med medaljong, början av första versen och antal verser, och "Fortsätt läsa" till kapitlet du senast öppnade. |

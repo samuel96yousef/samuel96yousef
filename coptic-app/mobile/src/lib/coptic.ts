@@ -63,6 +63,9 @@ export function easter(year: number): Date {
 export const copticText = (c: CopticDate, lang: Lang) =>
   lang === 'ar' ? `${toArDigits(c.day)} ${MONTHS[c.month - 1][1]}` : `${c.day} ${MONTHS[c.month - 1][0]}`;
 
+/** "torsdag" / "الخميس". */
+export const weekdayText = (d: Date, lang: Lang) => (lang === 'ar' ? WD_AR[d.getDay()] : WD_SV[d.getDay()]);
+
 /** "7 november", without weekday or year. */
 export const dayMonthText = (d: Date, lang: Lang) =>
   lang === 'ar' ? `${toArDigits(d.getDate())} ${GM_AR[d.getMonth()]}` : `${d.getDate()} ${GM_SV[d.getMonth()]}`;

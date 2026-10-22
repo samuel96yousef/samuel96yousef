@@ -11,9 +11,10 @@ import { Icon } from '../../components/Icon';
 import { SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
 import { BarButton, TopBar } from '../../components/TopBar';
+import { WeekStrip } from '../../components/WeekStrip';
 import { agpeyaIndex, getOverview, katameros } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
-import { addDays, coptic, copticText, dayDiff, dayMonthText, gregorianText, HOURS, hourNow, isFastDay, MONTHS, observances, season, toArDigits } from '../../lib/coptic';
+import { coptic, copticText, dayDiff, dayMonthText, HOURS, hourNow, isFastDay, observances, season, toArDigits, weekdayText } from '../../lib/coptic';
 import { useSettings } from '../../settings';
 import { FONTS, HOUR_SKY } from '../../theme';
 
@@ -24,17 +25,6 @@ function useMinute() {
     return () => clearInterval(id);
   }, []);
   return now;
-}
-
-/** A small round step to the day before or after, inside the stepper. */
-function Step({ n, onPress }: { n: -1 | 1; onPress: () => void }) {
-  const { t, lang, colors } = useSettings();
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={n < 0 ? t.prevDay : t.nextDay} onPress={onPress} hitSlop={4}
-      style={({ pressed }) => [styles.stepBtn, pressed && { backgroundColor: colors.bg2 }]}>
-      <View style={lang === 'ar' && styles.flip}><Icon name={n < 0 ? 'chevL' : 'chevR'} size={17} color={colors.label} strokeWidth={2.4} /></View>
-    </Pressable>
-  );
 }
 
 export default function Today() {
@@ -66,48 +56,44 @@ export default function Today() {
     ...(isFastDay(day) && !seasonInfo?.fasting ? [{ text: t.fastDay, tone: 'quiet' }] : []),
   ];
   const diff = dayDiff(day, now);
-  const relative = isToday ? '' : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : '';
   const sameYear = day.getFullYear() === now.getFullYear();
-  const eyebrow = [relative, gregorianText(day, lang, !sameYear)].filter(Boolean).join(' · ');
+  const dayMonth = `${dayMonthText(day, lang)}${sameYear ? '' : ` ${ar ? toArDigits(day.getFullYear()) : day.getFullYear()}`}`;
+  // "Idag torsdag 22 oktober"; another day reads "7 november lördag".
+  const relative = isToday ? t.today : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : '';
+  const title = relative || dayMonth;
+  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonth}` : weekdayText(day, lang);
 
-  // The date, once: the weekday and Gregorian date small above, the Coptic
-  // date as the title, the Arabic (or Swedish) date and the Coptic month in
-  // Coptic beneath. Tap the title for the calendar; the arrows step a day.
-  const stepper = (
-    <Glass style={styles.stepper} interactive>
-      <View style={[styles.stepperRow, { flexDirection: row }]}>
-        <Step n={-1} onPress={() => pickDay(addDays(day, -1))} />
+  // The date as a week: a short title line with the calendar, the week with
+  // the Coptic day under each date, and one line with the Coptic date and
+  // what the day keeps. Swipe the week for others; the calendar goes further.
+  const header = (
+    <View style={[styles.head, wide && styles.headWide, wide && ar && styles.headWideRtl]}>
+      <View style={[styles.titleRow, { flexDirection: row }]}>
+        <View style={[styles.titleText, { flexDirection: row }]}>
+          <Text accessibilityRole="header" style={[styles.title, { color: colors.label }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
+        </View>
         {!isToday && (
-          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6} style={({ pressed }) => pressed && styles.dim}>
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())}
+            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
             <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
           </Pressable>
         )}
-        <Step n={1} onPress={() => pickDay(addDays(day, 1))} />
+        <Pressable accessibilityRole="button" accessibilityLabel={t.pickDay} onPress={() => setPicking(true)} hitSlop={6}
+          style={({ pressed }) => pressed && styles.dim}>
+          <Glass style={styles.calendar} interactive>
+            <View style={styles.calendarInner}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
+          </Glass>
+        </Pressable>
       </View>
-    </Glass>
-  );
-
-  // The date in three tight rows: the Gregorian date and the Coptic month
-  // with the arrows beside them; the Coptic date as the title, with the date
-  // in the other language on the same line; and what the day keeps.
-  const header = (
-    <View style={styles.head}>
-      <View style={[styles.topRow, { flexDirection: row }, wide && styles.topRowWide]}>
-        <Text numberOfLines={2} style={[styles.eyebrow, { color: colors.crimson }, ar && styles.eyebrowAr]}>
-          {eyebrow}
-          <Text style={styles.eyebrowCop}>{`  ·  ${MONTHS[c.month - 1][2]}`}</Text>
-        </Text>
-        {stepper}
-      </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${copticText(c, lang)}, ${gregorianText(day, lang)}. ${t.pickDay}`}
-        onPress={() => setPicking(true)} style={({ pressed }) => [styles.titleTap, { flexDirection: row }, pressed && styles.dim]}>
-        <Text accessibilityRole="header" style={[styles.title, ar && styles.titleAr, { color: colors.label }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
-        <Icon name="chevD" size={17} color={colors.crimson} strokeWidth={2.6} />
-        {/* A separate piece, so Arabic and Swedish never get reordered by one another. */}
+      <WeekStrip day={day} onPick={pickDay} />
+      {/* Separate pieces, so Arabic and Swedish never get reordered by one another. */}
+      <View style={[styles.info, { flexDirection: row }]}>
+        <Text style={[ar ? [styles.infoAr, styles.infoMainAr] : [styles.infoSv, styles.infoMain], { color: colors.label }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
         {ar
-          ? <Text style={[styles.alt, { color: colors.label2 }]}>{`${copticText(c, 'sv')} ${c.year}`}</Text>
-          : <Text style={[styles.alt, styles.altAr, { color: colors.label2 }]}>{`${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}</Text>}
-      </Pressable>
+          ? <Text style={[styles.infoSv, { color: colors.label2 }]}>{`${copticText(c, 'sv')} ${c.year}`}</Text>
+          : <Text style={[styles.infoAr, { color: colors.label2 }]}>{`${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}</Text>}
+      </View>
       {chips.length > 0 && (
         <Text style={[styles.keeps, ar && styles.right]}>
           {chips.map((ch, i) => (
@@ -203,24 +189,25 @@ const styles = StyleSheet.create({
   col: { gap: 20, minWidth: 0, width: '100%' },
   // Only side by side do the columns share the width; stacked, each is as tall as its content.
   colWide: { flex: 1 },
-  head: { marginBottom: 16 },
-  topRow: { alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  // On a wide screen the arrows stay beside the date rather than across the page.
-  topRowWide: { justifyContent: 'flex-start', gap: 20 },
-  eyebrow: { flexShrink: 1, fontSize: 13, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase' },
-  eyebrowAr: { textAlign: 'right', writingDirection: 'rtl', letterSpacing: 0, textTransform: 'none', fontSize: 14 },
-  eyebrowCop: { fontFamily: FONTS.cop, fontWeight: 'normal', letterSpacing: 0.4, textTransform: 'none' },
-  titleTap: { alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, rowGap: 0, marginTop: 2 },
-  title: { fontSize: 32, fontWeight: '700', lineHeight: 38 },
-  titleAr: { writingDirection: 'rtl' },
-  alt: { fontSize: 17, lineHeight: 26 },
-  altAr: { fontFamily: FONTS.ar, fontSize: 20, lineHeight: 30, writingDirection: 'rtl' },
-  keeps: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: 2 },
+  head: { gap: 10, marginBottom: 18 },
+  // A week is read at a glance; across a wide screen it would be too far apart.
+  headWide: { maxWidth: 560, width: '100%' },
+  headWideRtl: { alignSelf: 'flex-end' },
+  titleRow: { alignItems: 'center', gap: 10 },
+  titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
+  title: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  subtitle: { fontSize: 15, flexShrink: 1 },
   dim: { opacity: 0.6 },
-  stepper: { borderRadius: 999 },
-  stepperRow: { alignItems: 'center', gap: 2, padding: 2 },
-  stepBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  todayText: { fontSize: 14, fontWeight: '700', paddingHorizontal: 6 },
+  todayPill: { borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
+  todayText: { fontSize: 14, fontWeight: '700' },
+  calendar: { width: 38, height: 38, borderRadius: 19 },
+  calendarInner: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  info: { flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10, rowGap: 0, paddingHorizontal: 4 },
+  infoMain: { fontFamily: FONTS.svSemi },
+  infoMainAr: { fontFamily: FONTS.arBold },
+  infoSv: { fontFamily: FONTS.sv, fontSize: 16, lineHeight: 26 },
+  infoAr: { fontFamily: FONTS.ar, fontSize: 19, lineHeight: 30, writingDirection: 'rtl' },
+  keeps: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: -8, paddingHorizontal: 4 },
   wordCard: { paddingVertical: 30, paddingHorizontal: 30 },
   wordHead: { justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 10 },
   wordLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase' },
