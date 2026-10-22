@@ -6,23 +6,24 @@
  *   are in, who is speaking in a liturgy, and how far you have read.
  * - The dock sits on the side, where the thumb is, as iPhone Duo moves
  *   controls to the edge of its outer screen: ▲ previous, ▼ next, and the
- *   section number between them. Hold the number and a scroll wheel of
- *   sections turns out beside it, like the iOS picker: keep the finger down
- *   and drag to spin it, and the text follows. Drag the number sideways to
+ *   section number between them. Hold the number and the dock turns into a
+ *   Digital Crown, a ridged cylinder that rolls under the thumb with a click
+ *   per section, while a wheel of sections turns out beside it like the iOS
+ *   picker. Keep the finger down and drag to spin it, and the text follows. Drag the number sideways to
  *   move the dock to the other hand or another height.
  * - The list of sections opens where you tapped: down from the pill, or out
  *   from the dock.
  * - On the open book (an unfolded Duo), nothing you touch sits on the fold.
  */
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { bump, tick } from '../haptics';
 import { STRINGS } from '../i18n';
 import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
@@ -85,8 +86,11 @@ const RADIUS = ROW_H / ROW_ANGLE;
 const WHEEL_H = ROW_H * 7;
 /** Holding the number this long, without moving, brings out the wheel. */
 const HOLD_MS = 220;
+/** The crown: a knurled cylinder as tall as the dock, ridges evenly spaced round it. */
+const CROWN_R = DOCK_H / 2;
+const RIDGES = 30;
+const RIDGE_ANGLE = Math.PI / RIDGES;
 
-const haptic = () => { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); };
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -170,7 +174,7 @@ export function ContextPill({ outline, rows, store, progress }: {
         accessibilityRole="button"
         accessibilityLabel={`${t.outlineOpen}. ${title}${sub ? `, ${sub}` : ''}`}
         aria-expanded={open}
-        onPress={() => { haptic(); store.set({ sheet: store.get().sheet === 'top' ? false : 'top' }); }}
+        onPress={() => { tick(); store.set({ sheet: store.get().sheet === 'top' ? false : 'top' }); }}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <Glass style={styles.pill} interactive>
@@ -214,7 +218,9 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   const x = useSharedValue(frame.x);
   const y = useSharedValue(frame.top);
   const lift = useSharedValue(0);
-  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number } | null>(null);
+  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number; end: boolean } | null>(null);
+  // While the wheel turns, the dock shows the crown instead of its arrows.
+  const [crown, setCrown] = useState(false);
   const droppedAt = useRef(0);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -239,16 +245,16 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   const nextTarget = () => (verses ? landmark(cur, 1) : cur < items.length - 1 ? cur + 1 : -1);
   const go = (k: number) => {
     if (k < 0) return;
-    haptic();
+    tick();
     store.set({ sheet: false });
     onJump(items[k].index, true);
   };
 
-  /** The wheel lands on a row: tick, and bring that section to the top. */
-  const tick = (k: number) => {
+  /** The wheel lands on a row: click, and bring that section to the top. */
+  const land = (k: number) => {
     const g = gesture.current;
     if (g) g.at = k;
-    haptic();
+    tick();
     onWheel(k);
     onJump(items[k].index, false);
   };
@@ -260,7 +266,8 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
     g.from = g.at = Math.max(0, store.get().current);
     store.set({ sheet: false });
     wheel.set(g.from);
-    haptic();
+    tick();
+    setCrown(true);
     onWheel(g.from);
   };
 
@@ -269,7 +276,7 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
     runOnJS: true,
     onBegin: () => {
       const c = store.get().current;
-      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0 };
+      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0, end: false };
       lift.set(withTiming(1, { duration: 120 }));
       holdTimer.current = setTimeout(openWheel, HOLD_MS);
     },
@@ -283,7 +290,7 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
         if (Math.abs(e.translationX) > 12 && Math.abs(e.translationX) > Math.abs(e.translationY)) {
           clearTimeout(holdTimer.current);
           g.mode = 'move';
-          haptic();
+          tick();
         } else if (Math.abs(e.translationY) > 8) {
           clearTimeout(holdTimer.current);
           openWheel();
@@ -295,10 +302,15 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
         return;
       }
       // The rows follow the finger, as on a picker wheel: drag up to bring later sections to the middle.
-      const pos = clamp(g.from - e.translationY / ROW_H, -0.45, items.length - 0.55);
+      const raw = g.from - e.translationY / ROW_H;
+      const pos = clamp(raw, -0.45, items.length - 0.55);
       wheel.set(pos);
+      // Past the first or last section the crown stops with a bump.
+      const atEnd = raw < -0.25 || raw > items.length - 0.75;
+      if (atEnd && !g.end) bump();
+      g.end = atEnd;
       const k = clamp(Math.round(pos), 0, items.length - 1);
-      if (k !== g.at) tick(k);
+      if (k !== g.at) land(k);
     },
     onFinalize: () => {
       const g = gesture.current;
@@ -307,15 +319,15 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
       if (!g) { gesture.current = null; return; }
       if (g.mode === 'tap') {
         gesture.current = null;
-        haptic();
+        tick();
         store.set({ sheet: store.get().sheet === 'side' ? false : 'side' });
       } else if (g.mode === 'wheel') {
         // A flick carries on a little; then the wheel settles on a row and folds away.
         const target = clamp(Math.round(wheel.get() - (g.vy / ROW_H) * 0.18), 0, items.length - 1);
         wheel.set(reduce ? target : withSpring(target, SPRING_SMOOTH));
-        if (target !== g.at) tick(target);
+        if (target !== g.at) land(target);
         gesture.current = null;
-        hideTimer.current = setTimeout(() => onWheel(null), 650);
+        hideTimer.current = setTimeout(() => { onWheel(null); setCrown(false); }, 650);
       } else {
         gesture.current = null;
         // Snap to the nearer edge, at the height the finger left it.
@@ -381,7 +393,48 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
           </View>
         </GestureDetector>
         {button('next', nextOff)}
+        {crown && <Crown wheel={wheel} side={frame.side} />}
       </Glass>
+    </Animated.View>
+  );
+}
+
+// ---------- The crown ----------
+
+/** One ridge of the knurling: it rolls round the cylinder, bunching and dimming towards the edges. */
+function Ridge({ i, wheel, groove, shine }: { i: number; wheel: SharedValue<number>; groove: string; shine: string }) {
+  const roll = useAnimatedStyle(() => {
+    // The surface moves with the finger: a row of the wheel is ROW_H of travel.
+    const turn = (wheel.get() * ROW_H) / CROWN_R;
+    const raw = i * RIDGE_ANGLE - turn + Math.PI / 2;
+    const a = ((raw % Math.PI) + Math.PI) % Math.PI - Math.PI / 2;
+    return { opacity: Math.cos(a), transform: [{ translateY: CROWN_R * Math.sin(a) }, { scaleY: 0.4 + 0.6 * Math.cos(a) }] };
+  });
+  return <Animated.View style={[styles.ridge, { backgroundColor: groove, borderBottomColor: shine }, roll]} />;
+}
+
+/**
+ * The dock as an Apple Watch Digital Crown, seen from the side: brushed metal
+ * shaded like a cylinder, knurled ridges that turn with the thumb, and a
+ * crimson ring on the face towards the screen.
+ */
+function Crown({ wheel, side }: { wheel: SharedValue<number>; side: DockPlace['side'] }) {
+  const { colors, dark } = useSettings();
+  const reduce = useReducedMotion();
+  const metal: [string, string, ...string[]] = dark
+    ? ['#0c0a0b', '#3a3336', '#6d6468', '#3a3336', '#0c0a0b']
+    : ['#77707a', '#c6bfc3', '#f7f4f5', '#c6bfc3', '#77707a'];
+  const ridges: number[] = [];
+  for (let i = 0; i < RIDGES; i++) ridges.push(i);
+  return (
+    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(120)} exiting={reduce ? undefined : FadeOut.duration(200)} style={styles.crown}>
+      <LinearGradient colors={metal} locations={[0, 0.22, 0.5, 0.78, 1]} style={StyleSheet.absoluteFill} />
+      {ridges.map((i) => (
+        <Ridge key={i} i={i} wheel={wheel} groove={dark ? 'rgba(0,0,0,0.55)' : 'rgba(40,30,35,0.35)'} shine={dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)'} />
+      ))}
+      <View style={[styles.crownRing, side === 'right' ? { left: 0 } : { right: 0 }, { backgroundColor: colors.crimson }]} />
+      {/* Shade the top and bottom, where the cylinder turns away. */}
+      <LinearGradient colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.5)']} locations={[0, 0.3, 0.7, 1]} style={StyleSheet.absoluteFill} />
     </Animated.View>
   );
 }
@@ -614,6 +667,9 @@ const styles = StyleSheet.create({
   dockBig: { fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 20 },
   dockBigAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 24 },
   dockSmall: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  crown: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' },
+  ridge: { position: 'absolute', left: 4, right: 4, top: CROWN_R - 1.5, height: 3, borderBottomWidth: 1 },
+  crownRing: { position: 'absolute', top: 0, bottom: 0, width: 3, opacity: 0.9 },
   wheel: { position: 'absolute', borderRadius: 22, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, zIndex: 16 },
   wheelBand: { position: 'absolute', left: 6, right: 6, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, borderRadius: 10 },
   wheelRow: { position: 'absolute', left: 12, right: 12, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, justifyContent: 'center' },
