@@ -9,13 +9,15 @@
  *   spaced like the text, with the current one in crimson. It shows while
  *   you scroll; drag along it to jump, with a label beside your finger and a
  *   tick of haptics per section.
- * - The contents sheet lists every section and marks where you are.
+ * - Tapping the pill folds the contents down from it, with the current
+ *   section marked.
  */
 import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
-import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { STRINGS } from '../i18n';
@@ -23,7 +25,7 @@ import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
 import { roleAt, rowWeights, type Outline, type OutlineItem } from '../rows';
 import { useSettings } from '../settings';
-import { FONTS, SPRING_SMOOTH } from '../theme';
+import { FONTS } from '../theme';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 import type { Row } from './Reader';
@@ -126,6 +128,7 @@ export function ContextPill({ outline, rows, store, progress }: {
   const verses = outline.kind === 'verses';
   const hasRoles = useMemo(() => rows.some((r) => r.k === 'role'), [rows]);
   const cur = useWay(store, (s) => s.current);
+  const open = useWay(store, (s) => s.sheet);
   const role = useWay(store, (s) => (hasRoles ? roleAt(rows, Math.max(s.first + 1, items[s.current]?.index ?? 0)) : undefined));
   // A transform, not a width: it moves on the compositor without a layout pass.
   const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.get() }] }));
@@ -150,12 +153,13 @@ export function ContextPill({ outline, rows, store, progress }: {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t.outlineOpen}. ${title}${sub ? `, ${sub}` : ''}`}
-        onPress={() => { haptic(); store.set({ sheet: true }); }}
+        aria-expanded={open}
+        onPress={() => { haptic(); store.set({ sheet: !store.get().sheet }); }}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <Glass style={styles.pill} interactive>
           <View style={[styles.pillRow, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
-            <Icon name="list" size={16} color={colors.crimson} strokeWidth={2} />
+            <Icon name={open ? 'chevU' : 'list'} size={16} color={colors.crimson} strokeWidth={2.2} />
             <View style={styles.pillText}>
               <Text numberOfLines={1} style={[rtl ? styles.pillTitleAr : styles.pillTitle, align, { color: colors.label }]}>{title}</Text>
               {sub ? (
@@ -195,6 +199,13 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
   const wayAwake = useWay(store, (s) => s.awake);
   const sheetOpen = useWay(store, (s) => s.sheet);
   const [drag, setDrag] = useState<number | null>(null);
+  // The panel stays mounted while it folds away.
+  const [panel, setPanel] = useState(false);
+  if (sheetOpen && !panel) setPanel(true);
+  const closePanel = useCallback(() => store.set({ sheet: false }), [store]);
+  const hidePanel = useCallback(() => setPanel(false), []);
+  // Leaving the screen (another tab, back) folds the contents away.
+  useFocusEffect(useCallback(() => () => store.set({ sheet: false }), [store]));
   const [railH, setRailH] = useState(0);
   const dragRef = useRef<number | null>(null);
   const mountedAt = useRef(0);
@@ -256,7 +267,7 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      {showRail && (
+      {showRail && !sheetOpen && (
         <Animated.View
           pointerEvents={awake ? 'auto' : 'none'}
           onLayout={(e) => setRailH(e.nativeEvent.layout.height)}
@@ -306,106 +317,102 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
         </View>
       )}
 
-      {sheetOpen && (
-        <OutlineSheet outline={outline} current={cur} lang={L} onClose={() => store.set({ sheet: false })}
+      {panel && (
+        <OutlinePanel outline={outline} current={cur} lang={L} visible={sheetOpen} onClose={closePanel} onHidden={hidePanel}
           onPick={(i) => onJump(items[i].index, !reduce)} />
       )}
     </View>
   );
 }
 
-// ---------- Contents sheet ----------
+// ---------- Contents ----------
 
-function OutlineSheet({ outline, current, lang: L, onClose, onPick }: {
-  outline: Outline; current: number; lang: Lang; onClose: () => void; onPick: (i: number) => void;
+/**
+ * The contents fold down from the pill, where the reader tapped, instead of
+ * rising from the bottom of the screen. No heading: the pill above already
+ * says where you are. Tap the pill again, or anywhere outside, to fold them
+ * away; Android's back button does the same.
+ */
+function OutlinePanel({ outline, current, lang: L, visible, onClose, onHidden, onPick }: {
+  outline: Outline; current: number; lang: Lang; visible: boolean;
+  onClose: () => void; onHidden: () => void; onPick: (i: number) => void;
 }) {
-  const { t, colors, lang } = useSettings();
+  const { t, colors, dark } = useSettings();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const reduce = useReducedMotion();
-  const y = useSharedValue(height);
+  const open = useSharedValue(0);
   const list = useRef<React.ComponentRef<typeof ScrollView>>(null);
-  const closing = useRef(false);
   const rtl = L === 'ar';
   const verses = outline.kind === 'verses';
+  const top = insets.top + BAR_HEIGHT;
+  const maxHeight = Math.max(200, Math.min(height * 0.62, height - top - insets.bottom - 100));
 
-  useEffect(() => { y.set(reduce ? 0 : withSpring(0, SPRING_SMOOTH)); }, [y, reduce]);
+  // Unfold on open; on close, fold away first and unmount after.
+  useEffect(() => {
+    if (visible) {
+      open.set(reduce ? 1 : withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) }));
+      return;
+    }
+    open.set(reduce ? 0 : withTiming(0, { duration: 160, easing: Easing.in(Easing.quad) }));
+    const id = setTimeout(onHidden, reduce ? 0 : 170);
+    return () => clearTimeout(id);
+  }, [visible, open, reduce, onHidden]);
 
-  const close = (then?: () => void) => {
-    if (closing.current) return;
-    closing.current = true;
-    y.set(withTiming(height, { duration: reduce ? 0 : 220 }));
-    setTimeout(() => { onClose(); then?.(); }, reduce ? 0 : 200);
-  };
-  const pick = (i: number) => close(() => onPick(i));
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { onClose(); return true; });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
-  const pan = usePanGesture({
-    activeOffsetY: 6,
-    runOnJS: true,
-    onUpdate: (e) => y.set(Math.max(0, e.translationY)),
-    onDeactivate: (e) => {
-      if (e.translationY > 90 || e.velocityY > 800) close();
-      else y.set(withSpring(0, SPRING_SMOOTH));
-    },
-  });
-
-  const backdrop = useAnimatedStyle(() => ({ opacity: interpolate(y.get(), [0, height], [1, 0], 'clamp') }));
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
+  const backdrop = useAnimatedStyle(() => ({ opacity: open.get() }));
+  // Grows out of the pill: from just under it, slightly smaller, to full size.
+  const panel = useAnimatedStyle(() => ({
+    opacity: open.get(),
+    transform: [{ translateY: (1 - open.get()) * -14 }, { scale: 0.94 + 0.06 * open.get() }],
+  }));
   const align: TextStyle = rtl ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left' };
-  const count = current >= 0 ? (verses ? STRINGS[L].verseOf(label(outline.items[current], L), outline.items.length) : t.ofN(current + 1, outline.items.length)) : '';
+  const pick = (i: number) => { onPick(i); onClose(); };
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={() => close()} statusBarTranslucent>
-      <GestureHandlerRootView style={styles.fill}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdrop]}>
-          <Pressable style={styles.fill} accessibilityRole="button" accessibilityLabel={t.close} onPress={() => close()} />
-        </Animated.View>
-        <Animated.View style={[styles.sheet, { maxHeight: height * 0.74, paddingBottom: insets.bottom + 12, backgroundColor: colors.surface }, sheetStyle]}>
-          <GestureDetector gesture={pan}>
-            <View style={styles.sheetHead}>
-              <View style={[styles.grabber, { backgroundColor: colors.label3 }]} />
-              <View style={[styles.headRow, { flexDirection: lang === 'ar' ? 'row-reverse' : 'row' }]}>
-                <View style={styles.fill}>
-                  <Text accessibilityRole="header" style={[styles.sheetTitle, lang === 'ar' && styles.right, { color: colors.label }]}>{t.outline}</Text>
-                  <Text numberOfLines={1} style={[styles.sheetSub, lang === 'ar' && styles.right, { color: colors.label2 }]}>{outline.title[L]}{count ? ` · ${count}` : ''}</Text>
-                </View>
-                <Pressable accessibilityRole="button" accessibilityLabel={t.close} onPress={() => close()} style={[styles.closeBtn, { backgroundColor: colors.bg2 }]}>
-                  <Icon name="x" size={18} color={colors.label} strokeWidth={2.2} />
-                </Pressable>
-              </View>
-            </View>
-          </GestureDetector>
-          <ScrollView ref={list} contentContainerStyle={[styles.listPad, verses && [styles.grid, rtl && styles.gridRtl]]}>
-            {outline.items.map((it, i) => {
-              const on = i === current;
-              const onLayout = on ? (e: { nativeEvent: { layout: { y: number } } }) => list.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - 120), animated: false }) : undefined;
-              if (verses) {
+    <View pointerEvents={visible ? 'box-none' : 'none'} style={StyleSheet.absoluteFill}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? 'rgba(0,0,0,0.4)' : 'rgba(20,10,15,0.16)' }, backdrop]}>
+        <Pressable style={styles.fill} accessibilityRole="button" accessibilityLabel={t.close} onPress={onClose} />
+      </Animated.View>
+      <View pointerEvents="box-none" style={[styles.panelWrap, { top }]}>
+        <Animated.View style={[styles.panelOuter, panel]}>
+          <Glass style={styles.panel} solid>
+            <ScrollView ref={list} style={{ maxHeight }} contentContainerStyle={[styles.listPad, verses && [styles.grid, rtl && styles.gridRtl]]}>
+              {outline.items.map((it, i) => {
+                const on = i === current;
+                const onLayout = on ? (e: { nativeEvent: { layout: { y: number } } }) => list.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - maxHeight / 3), animated: false }) : undefined;
+                if (verses) {
+                  return (
+                    <Pressable key={i} onLayout={onLayout} accessibilityRole="button" accessibilityState={{ selected: on }}
+                      accessibilityLabel={`${STRINGS[L].verse} ${label(it, L)}`} onPress={() => pick(i)}
+                      style={({ pressed }) => [styles.cell, { backgroundColor: on ? colors.crimson : pressed ? colors.bg2 : colors.tint }]}>
+                      <Text style={[styles.cellText, { color: on ? '#fff' : colors.label }, rtl && styles.cellTextAr]}>{label(it, L)}</Text>
+                    </Pressable>
+                  );
+                }
+                const sub = subLabel(it, L);
                 return (
                   <Pressable key={i} onLayout={onLayout} accessibilityRole="button" accessibilityState={{ selected: on }}
-                    accessibilityLabel={`${STRINGS[L].verse} ${label(it, L)}`} onPress={() => pick(i)}
-                    style={({ pressed }) => [styles.cell, { backgroundColor: on ? colors.crimson : pressed ? colors.bg2 : colors.tint }]}>
-                    <Text style={[styles.cellText, { color: on ? '#fff' : colors.label }, rtl && { fontFamily: FONTS.arBold, fontSize: 17 }]}>{label(it, L)}</Text>
+                    accessibilityLabel={`${label(it, L)}${on ? `, ${t.hereNow}` : ''}`} onPress={() => pick(i)}
+                    style={({ pressed }) => [styles.item, { flexDirection: rtl ? 'row-reverse' : 'row' }, pressed && { backgroundColor: colors.bg2 }, on && { backgroundColor: colors.tint }]}>
+                    <View style={[styles.itemBar, { backgroundColor: on ? colors.crimson : 'transparent' }]} />
+                    <View style={[styles.fill, it.level === 2 && (rtl ? styles.indentRtl : styles.indent)]}>
+                      <Text numberOfLines={2} style={[it.level === 1 ? (rtl ? styles.itemTitleAr : styles.itemTitle) : (rtl ? styles.itemSmallAr : styles.itemSmall), align, { color: on ? colors.crimson : colors.label }]}>{label(it, L)}</Text>
+                      {sub && it.level === 1 ? <Text numberOfLines={1} style={[styles.itemSub, align, { color: colors.label2 }]}>{sub}</Text> : null}
+                    </View>
                   </Pressable>
                 );
-              }
-              const sub = subLabel(it, L);
-              return (
-                <Pressable key={i} onLayout={onLayout} accessibilityRole="button" accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${label(it, L)}${on ? `, ${t.hereNow}` : ''}`} onPress={() => pick(i)}
-                  style={({ pressed }) => [styles.item, { flexDirection: rtl ? 'row-reverse' : 'row' }, pressed && { backgroundColor: colors.bg2 }, on && { backgroundColor: colors.tint }]}>
-                  <View style={[styles.itemBar, { backgroundColor: on ? colors.crimson : 'transparent' }]} />
-                  <View style={[styles.fill, it.level === 2 && (rtl ? styles.indentRtl : styles.indent)]}>
-                    <Text numberOfLines={2} style={[it.level === 1 ? (rtl ? styles.itemTitleAr : styles.itemTitle) : (rtl ? styles.itemSmallAr : styles.itemSmall), align, { color: on ? colors.crimson : colors.label }]}>{label(it, L)}</Text>
-                    {sub && it.level === 1 ? <Text numberOfLines={1} style={[styles.itemSub, align, { color: colors.label2 }]}>{sub}</Text> : null}
-                  </View>
-                  {on && <Text style={[styles.here, { color: colors.crimson }]}>{t.hereNow}</Text>}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+              })}
+            </ScrollView>
+          </Glass>
         </Animated.View>
-      </GestureHandlerRootView>
-    </Modal>
+      </View>
+    </View>
   );
 }
 
@@ -435,20 +442,16 @@ const styles = StyleSheet.create({
   bubbleTitle: { fontFamily: FONTS.svSemi, fontSize: 15 },
   bubbleTitleAr: { fontFamily: FONTS.arBold, fontSize: 16, lineHeight: 24 },
   bubbleSub: { fontSize: 12, marginTop: 1 },
-  backdrop: { backgroundColor: 'rgba(0,0,0,0.32)' },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxWidth: 640, alignSelf: 'center', width: '100%' },
-  sheetHead: { paddingTop: 8, paddingHorizontal: 20, paddingBottom: 10 },
-  grabber: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, opacity: 0.5, marginBottom: 10 },
-  headRow: { alignItems: 'center', gap: 12 },
-  sheetTitle: { fontSize: 22, fontWeight: '700' },
-  sheetSub: { fontSize: 13, marginTop: 2 },
-  closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  listPad: { paddingHorizontal: 12, paddingBottom: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18 },
+  panelWrap: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
+  panelOuter: { width: '100%', maxWidth: 520, transformOrigin: 'top' },
+  panel: { borderRadius: 24, overflow: 'hidden' },
+  listPad: { padding: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 14, justifyContent: 'flex-start' },
   gridRtl: { flexDirection: 'row-reverse' },
-  cell: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  cell: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   cellText: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  item: { alignItems: 'center', gap: 10, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 10 },
+  cellTextAr: { fontFamily: FONTS.arBold, fontSize: 17 },
+  item: { alignItems: 'center', gap: 10, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 10 },
   itemBar: { width: 3, alignSelf: 'stretch', borderRadius: 2 },
   indent: { paddingLeft: 16 },
   indentRtl: { paddingRight: 16 },
@@ -457,5 +460,4 @@ const styles = StyleSheet.create({
   itemSmall: { fontFamily: FONTS.sv, fontSize: 15 },
   itemSmallAr: { fontFamily: FONTS.ar, fontSize: 16, lineHeight: 24 },
   itemSub: { fontSize: 13, marginTop: 2 },
-  here: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
 });

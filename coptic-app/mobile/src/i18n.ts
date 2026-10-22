@@ -60,13 +60,11 @@ const sv = {
   hintPeek: (p: Lang) => `Tryck på en vers för att se den på ${p === 'ar' ? 'svenska' : 'arabiska'}.`,
   hintBoth: 'Håll in knappen för att visa båda språken samtidigt.',
   sections: 'Avsnitt',
-  outline: 'Innehåll',
   outlineOpen: 'Visa innehållet',
   hereNow: 'Du är här',
-  ofN: (i: number, n: number) => `${i} av ${n}`,
   verseOf: (v: string, n: number) => `Vers ${v} av ${n}`,
   verse: 'Vers',
-  railHint: 'Dra i linjen vid kanten för att hoppa i texten. Tryck på rutan överst för innehållet.',
+  railHint: 'Dra i linjen vid kanten för att hoppa i texten. Tryck på rutan överst för att se alla avsnitt.',
   railLabel: 'Var i texten',
 };
 
@@ -131,13 +129,11 @@ const ar: Strings = {
   hintPeek: (p: Lang) => (p === 'ar' ? 'اضغط على أي آية لترى ترجمتها بالسويدية.' : 'اضغط على أي آية لترى نصها العربي.'),
   hintBoth: 'اضغط مطولاً على الزر لعرض اللغتين معاً.',
   sections: 'الأقسام',
-  outline: 'المحتويات',
   outlineOpen: 'عرض المحتويات',
   hereNow: 'أنت هنا',
-  ofN: (i: number, n: number) => `${toArDigits(i)} من ${toArDigits(n)}`,
   verseOf: (v: string, n: number) => `الآية ${v} من ${toArDigits(n)}`,
   verse: 'الآية',
-  railHint: 'اسحب الخط على الحافة للتنقل في النص. اضغط على الشريط في الأعلى لعرض المحتويات.',
+  railHint: 'اسحب الخط على الحافة للتنقل في النص. اضغط على الشريط في الأعلى لعرض كل الأقسام.',
   railLabel: 'الموضع في النص',
 };
 

@@ -21,11 +21,12 @@ till vänster och arabiska till höger.
 Var i texten: när rubriken har rullat bort tar en bricka mitten av
 toppraden (tillbakaknappen krymper till en pil) och visar avsnittet du läser, vem som talar i liturgin (präst,
 diakon, folk) och hur långt du har kommit, till exempel "Katholikon ·
-1 Petr 1:3–12 · 4/6". Tryck på brickan för innehållet, där du ser var du
-är och kan hoppa. Medan du rullar visas en linje i marginalen utanför
+1 Petr 1:3–12 · 4/6". Tryck på brickan så fälls alla avsnitt ut under
+den, med det du läser markerat; tryck på ett avsnitt för att hoppa dit,
+eller på brickan eller utanför för att stänga. Medan du rullar visas en linje i marginalen utanför
 sidramen med ett streck per avsnitt, utplacerade efter textens längd. Dra längs linjen för
 att hoppa, med avsnittets namn bredvid fingret. I Bibeln visar brickan
-versen ("Vers 21 av 48") och innehållet är ett rutnät med verserna.
+versen ("Vers 21 av 48") och listan är ett rutnät med verserna.
 Texten tonar ut under toppraden och flikraden, så att knapparna aldrig
 ligger direkt på en textrad.
 
