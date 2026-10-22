@@ -79,7 +79,6 @@ export const FONTS = {
   sv: 'Literata_400Regular',
   svItalic: 'Literata_400Regular_Italic',
   svSemi: 'Literata_600SemiBold',
-  svBold: 'Literata_700Bold',
   cop: 'NotoSansCoptic_400Regular',
 };
 

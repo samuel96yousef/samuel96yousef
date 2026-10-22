@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,7 +8,7 @@ import { Arch } from '../../../components/Arch';
 import { Icon } from '../../../components/Icon';
 import { LargeTitle, SectionLabel } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
-import { agpeya, kholagy } from '../../../data';
+import { agpeyaIndex, kholagyIndex, loadPrayers } from '../../../data';
 import { HOURS, hourNow } from '../../../lib/coptic';
 import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
@@ -19,6 +20,10 @@ export default function Prayers() {
   const ar = lang === 'ar';
   const now = hourNow();
   const columns = width >= 720 ? 4 : 2;
+  // Read the texts while the list is looked at, so an hour opens at once.
+  useEffect(() => {
+    loadPrayers('agpeya').then(() => loadPrayers('kholagy')).catch(() => {});
+  }, []);
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
@@ -29,7 +34,7 @@ export default function Prayers() {
 
         <SectionLabel>{`${t.agpeya} · ${t.agpeyaSub}`}</SectionLabel>
         <View style={[styles.grid, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          {agpeya.map((h) => {
+          {agpeyaIndex.map((h) => {
             const sky = HOUR_SKY[h.id];
             const fg = sky?.dark ? '#FFFFFF' : '#2B1722';
             return (
@@ -51,7 +56,7 @@ export default function Prayers() {
 
         <SectionLabel>{`${t.kholagy} · ${t.kholagySub}`}</SectionLabel>
         <View style={[styles.list, { backgroundColor: colors.surface }]}>
-          {kholagy.map((p, i) => (
+          {kholagyIndex.map((p, i) => (
             <Pressable key={p.id} accessibilityRole="button" onPress={() => router.push(`/prayers/liturgy/${p.id}`)}
               style={({ pressed }) => [styles.row, { flexDirection: ar ? 'row-reverse' : 'row' }, pressed && { backgroundColor: colors.bg2 },
                 i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep }]}>

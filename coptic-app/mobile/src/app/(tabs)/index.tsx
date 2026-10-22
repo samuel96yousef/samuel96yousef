@@ -9,7 +9,7 @@ import { Icon } from '../../components/Icon';
 import { LargeTitle, SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
 import { BarButton, TopBar } from '../../components/TopBar';
-import { agpeya, useReadings } from '../../data';
+import { agpeyaIndex, getOverview, katameros } from '../../data';
 import { coptic, copticText, gregorianText, HOURS, hourNow, isFastDay, MONTHS, observances, season, startOfDay, toArDigits } from '../../lib/coptic';
 import { useSettings } from '../../settings';
 import { FONTS, HOUR_SKY } from '../../theme';
@@ -29,15 +29,17 @@ export default function Today() {
   const wide = useWindowDimensions().width >= 720;
   const now = useMinute();
   const today = startOfDay(now);
-  const { data } = useReadings(today);
+  // Nothing here waits for a Bible book: the readings are titles and
+  // references, and the word of the day ships with the lectionary.
+  const overview = getOverview(today);
   const c = coptic(today);
   const obs = observances(today);
   const seasonInfo = season(today);
   const hid = hourNow(now);
-  const hour = agpeya.find((h) => h.id === hid);
+  const hour = agpeyaIndex.find((h) => h.id === hid);
   const sky = HOUR_SKY[hid];
-  const lit = data?.sections.find((s) => s.key === 'liturgy');
-  const verse = lit?.units.find((u) => u.t === 'v');
+  const lit = overview.sections.find((s) => s.key === 'liturgy');
+  const verse = lit ? katameros.openings?.[lit.ref] : undefined;
   const ar = lang === 'ar';
   const row = ar ? ('row-reverse' as const) : ('row' as const);
   const second = primary === 'ar' ? 'sv' : 'ar';
@@ -68,12 +70,12 @@ export default function Today() {
     </FramedCard>
   );
 
-  const word = verse && lit ? (
+  const word = lit && verse ? (
     <View style={styles.word}>
       <SectionLabel>{t.word}</SectionLabel>
       {[primary, second].map((l, i) => (
         <Text key={l} style={[l === 'ar' ? styles.wordAr : styles.wordSv, { color: i ? colors.label2 : colors.label }, i ? (l === 'ar' ? styles.wordAr2 : styles.wordSv2) : null]}>
-          {l === 'ar' ? verse.ar : verse.sv}
+          {l === 'ar' ? verse[0] : verse[1]}
         </Text>
       ))}
       <Text style={[styles.wordRef, { color: colors.label2 }, ar && styles.right]}>{ar ? toArDigits(lit.refs.ar[lit.refs.ar.length - 1]) : lit.refs.sv[lit.refs.sv.length - 1]}</Text>
@@ -92,11 +94,11 @@ export default function Today() {
     </Pressable>
   ) : null;
 
-  const list = data && data.sections.length > 0 ? (
+  const list = overview.sections.length > 0 ? (
     <View>
       <SectionLabel>{t.todaysReadings}</SectionLabel>
       <View style={[styles.list, { backgroundColor: colors.surface }]}>
-        {data.sections.map((s, i) => (
+        {overview.sections.map((s, i) => (
           <Pressable
             key={s.key}
             accessibilityRole="button"

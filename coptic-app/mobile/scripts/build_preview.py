@@ -38,7 +38,7 @@ PAGE = """<title>Koptisk bönbok</title>
     document.head.prepend(base);
   })();
 </script>
-<div id="root"></div>
+{preload}<div id="root"></div>
 """
 
 
@@ -64,7 +64,11 @@ def main():
 
     with open(os.path.join(DIST, 'index.html'), encoding='utf-8') as f:
         scripts = re.findall(r'<script src="/(_expo/[^"]+)" defer></script>', f.read())
-    page = PAGE + ''.join(f'<script src="{s.replace("_expo/", "app/", 1)}" defer></script>\n' for s in scripts)
+    # The fonts are requested by the app only once its code has run; preloading
+    # them lets them download alongside the code instead of after it.
+    fonts = sorted(os.path.relpath(os.path.join(d, n), out) for d, _, ns in os.walk(os.path.join(out, 'assets')) for n in ns if n.endswith('.ttf'))
+    preload = ''.join(f'<link rel="preload" href="{f}" as="font" type="font/ttf" crossorigin>\n' for f in fonts)
+    page = PAGE.replace('{preload}', preload) + ''.join(f'<script src="{s.replace("_expo/", "app/", 1)}" defer></script>\n' for s in scripts)
     with open(os.path.join(out, 'index.html'), 'w', encoding='utf-8') as f:
         f.write(page)
 

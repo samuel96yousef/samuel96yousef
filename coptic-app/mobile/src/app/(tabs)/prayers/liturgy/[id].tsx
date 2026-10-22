@@ -1,11 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Chips } from '../../../../components/Chips';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
-import { kholagy } from '../../../../data';
+import { kholagyIndex, usePrayer } from '../../../../data';
 import { headingIndexes, headingOutline, liturgyRows } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 import { FONTS } from '../../../../theme';
@@ -14,8 +14,9 @@ import { FONTS } from '../../../../theme';
 export default function Liturgy() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, lang, colors, page } = useSettings();
-  const liturgy = kholagy.find((p) => p.id === id) ?? kholagy[0];
-  const rows = useMemo(() => liturgyRows(liturgy), [liturgy]);
+  const liturgy = kholagyIndex.find((p) => p.id === id) ?? kholagyIndex[0];
+  const { data } = usePrayer('kholagy', liturgy.id);
+  const rows = useMemo(() => (data ? liturgyRows(data) : []), [data]);
   const headings = useMemo(() => headingIndexes(rows), [rows]);
   const outline = useMemo(() => headingOutline(rows, { ar: liturgy.ar, sv: liturgy.sv }), [rows, liturgy]);
   const [jump, setJump] = useState<{ index: number; key: number } | null>(null);
@@ -35,7 +36,9 @@ export default function Liturgy() {
     <View style={styles.header}>
       <LargeTitle title={ar ? liturgy.ar : liturgy.sv} subtitle={t.kholagy} />
       <View style={[styles.legend, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
-      <Chips items={headings.map((h) => ({ key: String(h.i), label: ar ? h.ar : h.sv || h.ar }))} onPress={(k) => setJump({ index: Number(k), key: Date.now() })} />
+      {data
+        ? <Chips items={headings.map((h) => ({ key: String(h.i), label: ar ? h.ar : h.sv || h.ar }))} onPress={(k) => setJump({ index: Number(k), key: Date.now() })} />
+        : <ActivityIndicator color={colors.crimson} />}
     </View>
   );
 

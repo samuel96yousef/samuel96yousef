@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 import { addDays, coptic, easter, isoDate, observances, season } from '../src/lib/coptic';
-import { readingsFor, selectReadings } from '../src/lib/lectionary';
-import { parseRef } from '../src/lib/refs';
+import { dayOverview, readingsFor, selectReadings } from '../src/lib/lectionary';
+import { parseRef, versesOf } from '../src/lib/refs';
 import type { BibleBook, BookData, KatamerosData } from '../src/lib/types';
 
 const DATA = path.join(__dirname, '..', 'assets', 'data');
@@ -111,11 +111,16 @@ describe('Coptic calendar', () => {
     return cache.get(bid)!;
   } };
 
-  it('resolves 2026–2030 with text for every reference', async () => {
+  it('resolves 2026–2030 with text for every reference, and the overview agrees', async () => {
     const problems: string[] = [];
     for (let day = d('2026-01-01'); day < d('2031-01-01'); day = addDays(day, 1)) {
       const r = await readingsFor(day, kat, books, source);
       const iso = isoDate(day);
+      // The overview on "Today" must list the same sections and references, without loading the texts.
+      const o = dayOverview(day, kat, books);
+      const same = o.sections.length === r.sections.length && o.sections.every((s, i) => s.key === r.sections[i].key && s.sv === r.sections[i].sv
+        && s.refs.sv.join() === r.sections[i].refs.sv.join() && s.refs.ar.join() === r.sections[i].refs.ar.join());
+      if (!same) problems.push(`${iso}: overview differs from readings`);
       if (r.season === 'holy_week') continue;
       if (r.sections.length < 5) problems.push(`${iso}: ${r.sections.length} sections (${r.source})`);
       for (const s of r.sections) {
@@ -132,5 +137,17 @@ describe('Coptic calendar', () => {
     const rows = [...Object.values(kat.days), ...kat.sundays, ...Object.values(kat.lent), ...Object.values(kat.fifty)];
     const refs = rows.flatMap((r) => [r.vespers_gospel, r.matins_gospel, r.pauline, r.catholic, r.praxis, r.gospel, r.prophecies]);
     for (const ref of refs) if (ref) expect(() => parseRef(ref)).not.toThrow();
+  });
+
+  it('ships the first verse of every liturgy gospel, as the app would read it', async () => {
+    const rows = [...Object.values(kat.days), ...kat.sundays, ...Object.values(kat.lent), ...Object.values(kat.fifty)];
+    const problems: string[] = [];
+    for (const ref of new Set(rows.map((r) => r.gospel).filter((g): g is string => !!g))) {
+      const [p] = parseRef(ref);
+      const [first] = versesOf(await source.book(p.bid), p);
+      const want = first ? [first.v[1], first.v[2]] : undefined;
+      if (JSON.stringify(kat.openings?.[ref]) !== JSON.stringify(want)) problems.push(ref);
+    }
+    expect(problems).toEqual([]);
   });
 });

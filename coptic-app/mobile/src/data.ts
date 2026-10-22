@@ -3,33 +3,49 @@ import { File } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { agpeya, bibleAssets, books, katameros, kholagy } from '../assets/data';
-import { readingsFor } from './lib/lectionary';
-import type { BookData, DayReadings } from './lib/types';
+import { agpeyaIndex, bibleAssets, books, katameros, kholagyIndex, prayerAssets } from '../assets/data';
+import { isoDate } from './lib/coptic';
+import { dayOverview, readingsFor } from './lib/lectionary';
+import type { BookData, DayOverview, DayReadings, Prayer } from './lib/types';
 
-export { agpeya, books, katameros, kholagy };
+export { agpeyaIndex, books, katameros, kholagyIndex };
 
-// ---------- Bible books (assets, read on demand) ----------
+// ---------- Bible books and prayers (assets, read on demand) ----------
 
-const bookCache = new Map<number, Promise<BookData>>();
+async function readAsset<T>(module: number): Promise<T> {
+  const asset = Asset.fromModule(module);
+  await asset.downloadAsync();
+  const uri = asset.localUri ?? asset.uri;
+  const text = Platform.OS === 'web' ? await (await fetch(uri)).text() : await new File(uri).text();
+  return JSON.parse(text) as T;
+}
 
-export function loadBook(bid: number): Promise<BookData> {
-  let p = bookCache.get(bid);
+/** Load an asset once; a failed load is forgotten so it can be tried again. */
+function cached<K, T>(cache: Map<K, Promise<T>>, key: K, load: () => Promise<T>): Promise<T> {
+  let p = cache.get(key);
   if (!p) {
-    p = (async () => {
-      const asset = Asset.fromModule(bibleAssets[bid]);
-      await asset.downloadAsync();
-      const uri = asset.localUri ?? asset.uri;
-      const text = Platform.OS === 'web' ? await (await fetch(uri)).text() : await new File(uri).text();
-      return JSON.parse(text) as BookData;
-    })();
-    p.catch(() => bookCache.delete(bid));
-    bookCache.set(bid, p);
+    p = load();
+    p.catch(() => cache.delete(key));
+    cache.set(key, p);
   }
   return p;
 }
 
+const bookCache = new Map<number, Promise<BookData>>();
+export const loadBook = (bid: number) => cached(bookCache, bid, () => readAsset<BookData>(bibleAssets[bid]));
+
+export type PrayerBook = keyof typeof prayerAssets;
+const prayerCache = new Map<PrayerBook, Promise<Prayer[]>>();
+export const loadPrayers = (kind: PrayerBook) => cached(prayerCache, kind, () => readAsset<Prayer[]>(prayerAssets[kind]));
+
 export const getReadings = (d: Date) => readingsFor(d, katameros, books, { book: loadBook });
+
+/** The day's sections as titles and references: at once, with no Bible books loaded. Kept per day. */
+let overview: DayOverview | null = null;
+export function getOverview(d: Date): DayOverview {
+  if (overview?.iso !== isoDate(d)) overview = dayOverview(d, katameros, books);
+  return overview;
+}
 
 /** Run an async loader when `deps` change. Keeps the previous data while the next loads. */
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
@@ -46,6 +62,10 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   }, [key]);
   return { data: state.data, error: state.key === key ? state.error : undefined, loading: state.key !== key };
 }
+
+/** One hour of the Agpeya or one liturgy, loaded when opened. */
+export const usePrayer = (kind: PrayerBook, id: string) =>
+  useAsync(() => loadPrayers(kind).then((all) => all.find((p) => p.id === id) ?? all[0]), [kind, id]);
 
 export const useReadings = (d: Date): { data?: DayReadings; error?: Error; loading: boolean } =>
   useAsync(() => getReadings(d), [d.getFullYear(), d.getMonth(), d.getDate()]);

@@ -16,7 +16,7 @@
  */
 import { coptic, dayDiff, easter, isoDate, nativityRule, theophanyParamoun } from './coptic';
 import { bookOfRef, parseRef, psalmLabel, psalmRefFromTable, refLabel, versesOf } from './refs';
-import type { BibleBook, BookData, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, Unit } from './types';
+import type { BibleBook, BookData, DayOverview, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, Unit } from './types';
 
 /** Fixed feasts that keep their readings whatever the season (Coptic month-day). */
 const FEAST_DAYS = new Set(['1-1', '1-17', '1-18', '1-19', '4-29', '4-30', '5-6', '5-10', '5-11', '5-12', '5-13',
@@ -119,6 +119,33 @@ export function plannedSections(sel: Selection): { key: SectionKey; psalmId?: nu
   return out;
 }
 
+type Planned = ReturnType<typeof plannedSections>[number];
+
+/** A section's titles and references, and its psalm, worked out without loading any text. */
+function sectionHead(p: Planned, kat: KatamerosData, books: BibleBook[]) {
+  const [ar, sv, captionAr, captionSv] = TITLES[p.key];
+  const label = refLabel(p.ref, books);
+  const refs = { ar: [] as string[], sv: [] as string[] };
+  const withPsalm = p.key === 'vespers' || p.key === 'matins' || p.key === 'liturgy';
+  const psalm = withPsalm && p.psalmId != null ? kat.psalms[p.psalmId] : undefined;
+  const pRef = withPsalm ? p.psalmRef ?? (psalm ? psalmRefFromTable(psalm[0]) : '') : '';
+  const pLabel = pRef ? psalmLabel(pRef) : { ar: '', sv: '' };
+  if (pRef) { refs.ar.push(pLabel.ar); refs.sv.push(pLabel.sv.replace('Psaltaren', 'Ps')); }
+  refs.ar.push(label.ar);
+  refs.sv.push(label.sv);
+  return { key: p.key, ar, sv, captionAr, captionSv, refs, label, withPsalm, psalm, pRef, pLabel };
+}
+
+/** The day's sections as titles and references, at once and with no Bible books loaded. */
+export function dayOverview(d: Date, kat: KatamerosData, books: BibleBook[]): DayOverview {
+  const sel = selectReadings(d, kat);
+  const sections = plannedSections(sel).map((p) => {
+    const { key, ar, sv, captionAr, captionSv, refs } = sectionHead(p, kat, books);
+    return { key, ar, sv, captionAr, captionSv, refs, ref: p.ref };
+  });
+  return { iso: isoDate(d), coptic: coptic(d), season: sel.season, source: sel.source, sections };
+}
+
 export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[], source: BookSource): Promise<DayReadings> {
   const sel = selectReadings(d, kat);
   const plan = plannedSections(sel);
@@ -145,16 +172,11 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
   };
 
   const sections: Section[] = plan.map((p) => {
-    const [ar, sv, captionAr, captionSv] = TITLES[p.key];
-    const label = refLabel(p.ref, books);
+    const { ar, sv, captionAr, captionSv, refs, label, withPsalm, psalm, pRef, pLabel } = sectionHead(p, kat, books);
     const book = bookOfRef(p.ref);
     const units: Unit[] = [];
-    const refs = { ar: [] as string[], sv: [] as string[] };
 
-    if (p.key === 'vespers' || p.key === 'matins' || p.key === 'liturgy') {
-      const psalm = p.psalmId != null ? kat.psalms[p.psalmId] : undefined;
-      const pRef = p.psalmRef ?? (psalm ? psalmRefFromTable(psalm[0]) : '');
-      const pLabel = pRef ? psalmLabel(pRef) : { ar: '', sv: '' };
+    if (withPsalm) {
       for (const [fa, fs] of kat.formulas.gospel) {
         if (fa === 'psalmShahed') { if (pRef) units.push({ t: 'ref', ...pLabel }); }
         else if (fa === 'psalm') { if (psalm) units.push({ t: 'psalm', ar: psalm[1], sv: psalm[2] }); }
@@ -162,9 +184,6 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
         else if (fa === 'gospel') units.push(...passageUnits(p.ref, false));
         else units.push({ t: 'f', ar: fill(fa, book[2] ?? book[1]), sv: fill(fs, book[3] ?? '') });
       }
-      if (pRef) { refs.ar.push(pLabel.ar); refs.sv.push(pLabel.sv.replace('Psaltaren', 'Ps')); }
-      refs.ar.push(label.ar);
-      refs.sv.push(label.sv);
     } else {
       const group = kat.formulas[p.key === 'prophecy' ? 'prophecy' : p.key] ?? [];
       for (const [fa, fs] of group) {
@@ -172,8 +191,6 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
         else if (fa === 'text') units.push(...passageUnits(p.ref, p.key === 'prophecy'));
         else units.push({ t: 'f', ar: fill(fa, book[2] ?? book[1]), sv: fill(fs ?? '', book[3] ?? '') });
       }
-      refs.ar.push(label.ar);
-      refs.sv.push(label.sv);
     }
     return { key: p.key, ar, sv, captionAr, captionSv, refs, units };
   });

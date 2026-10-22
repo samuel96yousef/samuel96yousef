@@ -31,6 +31,8 @@ export interface KatamerosData {
   psalms: Record<string, [string, string, string]>;
   /** reading group → [arabic, swedish] lines; "shahed", "text", "psalm" etc. are placeholders */
   formulas: Record<string, [string, string][]>;
+  /** liturgy gospel reference → its first verse [arabic, swedish], so "Today" needs no Bible book */
+  openings?: Record<string, [string, string]>;
 }
 
 /** [verse number, arabic with diacritics, swedish] */
@@ -101,6 +103,19 @@ export interface CopticDate {
   year: number;
   month: number;
   day: number;
+}
+
+/** A prayer's name, without its text: what lists show before the text is loaded. */
+export type PrayerIndex = Pick<Prayer, 'id' | 'ar' | 'sv'>;
+
+/** A section's titles and references, before any text is loaded. */
+export interface SectionOverview extends Omit<Section, 'units'> {
+  ref: string;
+}
+
+/** A day's readings as titles and references only: enough for a list, with no Bible books loaded. */
+export interface DayOverview extends Omit<DayReadings, 'sections'> {
+  sections: SectionOverview[];
 }
 
 export interface DayReadings {

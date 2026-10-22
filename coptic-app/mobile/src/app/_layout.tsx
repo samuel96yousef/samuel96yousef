@@ -3,7 +3,6 @@ import { Amiri_700Bold } from '@expo-google-fonts/amiri/700Bold';
 import { Literata_400Regular } from '@expo-google-fonts/literata/400Regular';
 import { Literata_400Regular_Italic } from '@expo-google-fonts/literata/400Regular_Italic';
 import { Literata_600SemiBold } from '@expo-google-fonts/literata/600SemiBold';
-import { Literata_700Bold } from '@expo-google-fonts/literata/700Bold';
 import { NotoSansCoptic_400Regular } from '@expo-google-fonts/noto-sans-coptic/400Regular';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
@@ -20,7 +19,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Amiri_400Regular, Amiri_700Bold, Literata_400Regular, Literata_400Regular_Italic,
-    Literata_600SemiBold, Literata_700Bold, NotoSansCoptic_400Regular,
+    Literata_600SemiBold, NotoSansCoptic_400Regular,
   });
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

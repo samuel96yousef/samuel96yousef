@@ -82,8 +82,15 @@ src/data.ts         laddar texterna, bibelsök
 scripts/            export från APK:n och webbförhandsvisning
 ```
 
-Bibelns böcker ligger som filer (`.bible`) som läses in först när de behövs.
-Katameros, Agpeya och Kholagy ligger i appen direkt.
+Bibelns böcker och bönerna i Agpeya och Kholagy ligger som filer (`.bible`,
+`.prayers`) som läses in först när de behövs. Appen startar med bara
+kalendern, läsningsreglerna och namnen på bönerna. Första versen i varje
+liturgievangelium följer med Katameros, så att Idag är komplett från första
+bilden utan att någon bok läses in. Kör `npm run data` igen när exporten
+ändras.
+
+På webben laddas typsnitten parallellt med koden (`<link rel="preload">` i
+`scripts/build_preview.py`).
 
 ## Läsningsreglerna
 

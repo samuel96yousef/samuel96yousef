@@ -6,7 +6,7 @@ import { headingOutline, itemAt, liturgyRows, prayerRows, roleAt, verseOutline }
 import type { Prayer } from '../src/lib/types';
 
 const DATA = path.join(__dirname, '..', 'assets', 'data');
-const hasData = fs.existsSync(path.join(DATA, 'kholagy.json'));
+const hasData = fs.existsSync(path.join(DATA, 'kholagy.prayers'));
 const load = <T,>(name: string): T => JSON.parse(fs.readFileSync(path.join(DATA, name), 'utf8'));
 
 const title = { ar: 'ع', sv: 'T' };
@@ -59,11 +59,11 @@ describe('Wayfinding outlines', () => {
   });
 
   (hasData ? it : it.skip)('outlines every hour and liturgy in the data', () => {
-    for (const p of load<Prayer[]>('agpeya.json')) {
+    for (const p of load<Prayer[]>('agpeya.prayers')) {
       const o = headingOutline(prayerRows(p, title), title);
       expect(o.items.length).toBeGreaterThan(5);
     }
-    for (const p of load<Prayer[]>('kholagy.json')) {
+    for (const p of load<Prayer[]>('kholagy.prayers')) {
       const rows = liturgyRows(p);
       const o = headingOutline(rows, title);
       expect(o.items.length).toBeGreaterThan(5);
