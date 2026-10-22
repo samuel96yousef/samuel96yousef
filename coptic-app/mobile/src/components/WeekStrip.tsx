@@ -8,6 +8,8 @@ import { useSettings } from '../settings';
 
 /** Weeks reachable by swiping, either side of this one; the calendar reaches further. */
 const RANGE = 104;
+/** Weekday, tile and feast dot: a fixed height, so no browser can measure the strip short and cut it. */
+const STRIP_H = 84;
 
 /**
  * A week at a glance: each day with its Coptic date beneath, today marked,
@@ -39,6 +41,7 @@ export function WeekStrip({ day, onPick }: { day: Date; onPick: (d: Date) => voi
       {width > 0 && (
         <FlatList
           ref={list}
+          style={styles.list}
           horizontal
           pagingEnabled
           inverted={ar}
@@ -93,8 +96,9 @@ const Week = memo(function Week({ start, width, dayIso, todayIso, lang, onPick }
 });
 
 const styles = StyleSheet.create({
-  wrap: { marginHorizontal: -4 },
-  week: { justifyContent: 'space-between', paddingHorizontal: 4 },
+  wrap: { marginHorizontal: -4, height: STRIP_H },
+  list: { height: STRIP_H },
+  week: { justifyContent: 'space-between', paddingHorizontal: 4, height: STRIP_H, paddingTop: 2 },
   cell: { flex: 1, alignItems: 'center', gap: 4 },
   weekday: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
   weekdayAr: { letterSpacing: 0, fontSize: 12 },

@@ -5,8 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CopticCross } from '../../components/CopticCross';
+import { DayCard } from '../../components/DayCard';
 import { DayPicker } from '../../components/DayPicker';
-import { Glass } from '../../components/Glass';
 import { Icon } from '../../components/Icon';
 import { SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
@@ -14,7 +14,7 @@ import { BarButton, TopBar } from '../../components/TopBar';
 import { WeekStrip } from '../../components/WeekStrip';
 import { agpeyaIndex, getOverview, katameros } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
-import { coptic, copticText, dayDiff, dayMonthText, HOURS, hourNow, isFastDay, observances, season, toArDigits, weekdayText } from '../../lib/coptic';
+import { dayDiff, dayMonthText, HOURS, hourNow, toArDigits, weekdayText } from '../../lib/coptic';
 import { useSettings } from '../../settings';
 import { FONTS, HOUR_SKY } from '../../theme';
 
@@ -38,9 +38,6 @@ export default function Today() {
   // Nothing here waits for a Bible book: the readings are titles and
   // references, and the word of the day ships with the lectionary.
   const overview = getOverview(day);
-  const c = coptic(day);
-  const obs = observances(day);
-  const seasonInfo = season(day);
   const hid = hourNow(now);
   const hour = agpeyaIndex.find((h) => h.id === hid);
   const sky = HOUR_SKY[hid];
@@ -50,27 +47,23 @@ export default function Today() {
   const row = ar ? ('row-reverse' as const) : ('row' as const);
   const second = primary === 'ar' ? 'sv' : 'ar';
 
-  const chips = [
-    ...obs.map((o) => ({ text: ar ? o.ar : o.sv, tone: o.major ? 'gold' : 'crimson' })),
-    ...(seasonInfo ? [{ text: ar ? seasonInfo.ar : seasonInfo.sv, tone: 'quiet' }] : []),
-    ...(isFastDay(day) && !seasonInfo?.fasting ? [{ text: t.fastDay, tone: 'quiet' }] : []),
-  ];
   const diff = dayDiff(day, now);
   const sameYear = day.getFullYear() === now.getFullYear();
-  const dayMonth = `${dayMonthText(day, lang)}${sameYear ? '' : ` ${ar ? toArDigits(day.getFullYear()) : day.getFullYear()}`}`;
-  // "Idag torsdag 22 oktober"; another day reads "7 november lördag".
+  const year = sameYear ? '' : ` ${ar ? toArDigits(day.getFullYear()) : day.getFullYear()}`;
+  // "Idag torsdag 22 oktober"; another day reads "7 november lördag", with
+  // the year in the small text when it is another year, so the title stays on one line.
   const relative = isToday ? t.today : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : '';
-  const title = relative || dayMonth;
-  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonth}` : weekdayText(day, lang);
+  const title = relative || dayMonthText(day, lang);
+  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonthText(day, lang)}${year}` : `${weekdayText(day, lang)}${year}`;
 
   // The date as a week: a short title line with the calendar, the week with
   // the Coptic day under each date, and one line with the Coptic date and
   // what the day keeps. Swipe the week for others; the calendar goes further.
   const header = (
-    <View style={[styles.head, wide && styles.headWide, wide && ar && styles.headWideRtl]}>
+    <View style={[styles.head, { backgroundColor: colors.surface }, wide && styles.headWide, wide && ar && styles.headWideRtl]}>
       <View style={[styles.titleRow, { flexDirection: row }]}>
         <View style={[styles.titleText, { flexDirection: row }]}>
-          <Text accessibilityRole="header" style={[styles.title, { color: colors.label }]}>{title}</Text>
+          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, { color: colors.label }]}>{title}</Text>
           <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
         </View>
         {!isToday && (
@@ -81,28 +74,10 @@ export default function Today() {
         )}
         <Pressable accessibilityRole="button" accessibilityLabel={t.pickDay} onPress={() => setPicking(true)} hitSlop={6}
           style={({ pressed }) => pressed && styles.dim}>
-          <Glass style={styles.calendar} interactive>
-            <View style={styles.calendarInner}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
-          </Glass>
+          <View style={[styles.calendar, { backgroundColor: colors.tint }]}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
         </Pressable>
       </View>
       <WeekStrip day={day} onPick={pickDay} />
-      {/* Separate pieces, so Arabic and Swedish never get reordered by one another. */}
-      <View style={[styles.info, { flexDirection: row }]}>
-        <Text style={[ar ? [styles.infoAr, styles.infoMainAr] : [styles.infoSv, styles.infoMain], { color: colors.label }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
-        {ar
-          ? <Text style={[styles.infoSv, { color: colors.label2 }]}>{`${copticText(c, 'sv')} ${c.year}`}</Text>
-          : <Text style={[styles.infoAr, { color: colors.label2 }]}>{`${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}</Text>}
-      </View>
-      {chips.length > 0 && (
-        <Text style={[styles.keeps, ar && styles.right]}>
-          {chips.map((ch, i) => (
-            <Text key={ch.text} style={{ color: ch.tone === 'quiet' ? colors.label2 : ch.tone === 'gold' ? colors.gold : colors.crimson }}>
-              {i ? <Text style={{ color: colors.label3 }}>{'  ·  '}</Text> : null}{ch.text}
-            </Text>
-          ))}
-        </Text>
-      )}
     </View>
   );
 
@@ -172,7 +147,7 @@ export default function Today() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
         {header}
         <View style={wide ? [styles.cols, { flexDirection: row }] : styles.stack}>
-          <View style={[styles.col, wide && styles.colWide]}>{word}</View>
+          <View style={[styles.col, wide && styles.colWide]}><DayCard day={day} />{word}</View>
           <View style={[styles.col, wide && styles.colWide]}>{hourCard}{list}</View>
         </View>
       </ScrollView>
@@ -189,25 +164,19 @@ const styles = StyleSheet.create({
   col: { gap: 20, minWidth: 0, width: '100%' },
   // Only side by side do the columns share the width; stacked, each is as tall as its content.
   colWide: { flex: 1 },
-  head: { gap: 10, marginBottom: 18 },
+  // The week in its own card, like a widget.
+  head: { gap: 8, marginBottom: 20, borderRadius: 24, paddingTop: 14, paddingBottom: 10, paddingHorizontal: 14 },
   // A week is read at a glance; across a wide screen it would be too far apart.
   headWide: { maxWidth: 560, width: '100%' },
   headWideRtl: { alignSelf: 'flex-end' },
   titleRow: { alignItems: 'center', gap: 10 },
   titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
-  title: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  title: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
   subtitle: { fontSize: 15, flexShrink: 1 },
   dim: { opacity: 0.6 },
   todayPill: { borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
   todayText: { fontSize: 14, fontWeight: '700' },
-  calendar: { width: 38, height: 38, borderRadius: 19 },
-  calendarInner: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  info: { flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10, rowGap: 0, paddingHorizontal: 4 },
-  infoMain: { fontFamily: FONTS.svSemi },
-  infoMainAr: { fontFamily: FONTS.arBold },
-  infoSv: { fontFamily: FONTS.sv, fontSize: 16, lineHeight: 26 },
-  infoAr: { fontFamily: FONTS.ar, fontSize: 19, lineHeight: 30, writingDirection: 'rtl' },
-  keeps: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: -8, paddingHorizontal: 4 },
+  calendar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   wordCard: { paddingVertical: 30, paddingHorizontal: 30 },
   wordHead: { justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 10 },
   wordLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase' },
