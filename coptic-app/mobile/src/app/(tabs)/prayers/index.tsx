@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Arch } from '../../../components/Arch';
-import { Icon } from '../../../components/Icon';
+import { KholagyMenu } from '../../../components/KholagyMenu';
 import { LargeTitle, SectionLabel } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
 import { agpeyaIndex, kholagyIndex, loadPrayers } from '../../../data';
@@ -55,20 +55,7 @@ export default function Prayers() {
         </View>
 
         <SectionLabel>{`${t.kholagy} · ${t.kholagySub}`}</SectionLabel>
-        <View style={[styles.list, { backgroundColor: colors.surface }]}>
-          {kholagyIndex.map((p, i) => (
-            <Pressable key={p.id} accessibilityRole="button" onPress={() => router.push(`/prayers/liturgy/${p.id}`)}
-              style={({ pressed }) => [styles.row, { flexDirection: ar ? 'row-reverse' : 'row' }, pressed && { backgroundColor: colors.bg2 },
-                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep }]}>
-              <Icon name="liturgy" color={colors.crimson} />
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: colors.label }, ar && styles.right]}>{ar ? p.ar : p.sv}</Text>
-                <Text style={[styles.rowAr, { color: colors.label2 }, ar ? null : styles.right]}>{ar ? p.sv : p.ar}</Text>
-              </View>
-              <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
-            </Pressable>
-          ))}
-        </View>
+        <KholagyMenu items={kholagyIndex} />
       </ScrollView>
     </View>
   );
