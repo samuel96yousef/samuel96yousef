@@ -28,6 +28,7 @@ import type { Lang, Role, Unit } from '../lib/types';
 import { itemAt, type Outline } from '../rows';
 import { useSettings } from '../settings';
 import { FONTS, SPRING_SMOOTH, type PagePalette } from '../theme';
+import { Cartouche } from './Cartouche';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
 import { ReaderActions } from './ReaderActions';
@@ -159,19 +160,15 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
       );
     case 'cart':
       return (
-        <View style={[styles.cart, { borderColor: page.rule }]}>
-          <View style={[styles.cartInner, { borderColor: page.rule2 }]}>
-            {[P, O].filter(Boolean).map((l, i) => (
-              <Text key={l} style={l === 'ar'
-                ? { fontFamily: i ? FONTS.ar : FONTS.arBold, fontSize: base * (i ? 0.95 : 1.2), lineHeight: base * 1.9, color: i ? page.ink2 : page.ink, textAlign: 'center', writingDirection: 'rtl' }
-                : { fontFamily: i ? FONTS.sv : FONTS.svSemi, fontSize: base * (i ? 0.82 : 1.02), lineHeight: base * 1.45, color: i ? page.ink2 : page.ink, textAlign: 'center' }}>
-                {l === 'ar' ? row.ar : row.sv}
-              </Text>
-            ))}
-          </View>
-          <View style={[styles.diamond, styles.diamondL, { borderColor: page.rule, backgroundColor: page.page }]}><View style={[styles.diamondIn, { borderColor: page.rule2 }]} /></View>
-          <View style={[styles.diamond, styles.diamondR, { borderColor: page.rule, backgroundColor: page.page }]}><View style={[styles.diamondIn, { borderColor: page.rule2 }]} /></View>
-        </View>
+        <Cartouche>
+          {[P, O].filter(Boolean).map((l, i) => (
+            <Text key={l} style={l === 'ar'
+              ? { fontFamily: i ? FONTS.ar : FONTS.arBold, fontSize: base * (i ? 0.95 : 1.2), lineHeight: base * 1.9, color: i ? page.ink2 : page.ink, textAlign: 'center', writingDirection: 'rtl' }
+              : { fontFamily: i ? FONTS.sv : FONTS.svSemi, fontSize: base * (i ? 0.82 : 1.02), lineHeight: base * 1.45, color: i ? page.ink2 : page.ink, textAlign: 'center' }}>
+              {l === 'ar' ? row.ar : row.sv}
+            </Text>
+          ))}
+        </Cartouche>
       );
     case 'feast':
       return (
@@ -642,12 +639,6 @@ const styles = StyleSheet.create({
   run: { alignItems: 'stretch', paddingTop: 8, paddingBottom: 12 },
   runRule: { height: 3, marginTop: 6, transform: [{ scaleY: 1 }], borderTopRightRadius: 3, borderBottomRightRadius: 3, opacity: 0.85 },
   runRuleRtl: { borderTopLeftRadius: 3, borderBottomLeftRadius: 3 },
-  cart: { marginHorizontal: 30, marginVertical: 8, borderWidth: 1, padding: 3, position: 'relative' },
-  cartInner: { borderWidth: 0.75, paddingVertical: 6, paddingHorizontal: 10 },
-  diamond: { position: 'absolute', top: '50%', width: 30, height: 30, marginTop: -15, borderWidth: 1, transform: [{ rotate: '45deg' }], alignItems: 'center', justifyContent: 'center' },
-  diamondIn: { width: 18, height: 18, borderWidth: 0.75 },
-  diamondL: { left: -22 },
-  diamondR: { right: -22 },
   feast: { paddingVertical: 6, gap: 6 },
   title: { paddingTop: 26, paddingBottom: 6, alignItems: 'center' },
   role: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 14, paddingBottom: 2 },

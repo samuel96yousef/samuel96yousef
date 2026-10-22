@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '../../../../components/Icon';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
 import { books, loadBook, useAsync } from '../../../../data';
+import { markRead } from '../../../../lastRead';
 import { toArDigits } from '../../../../lib/coptic';
 import { chapterRows, verseOutline } from '../../../../rows';
 import { useSettings } from '../../../../settings';
@@ -18,6 +19,8 @@ export default function Chapter() {
   const n = Number(params.chapter) || 1;
   const verse = params.verse ? Number(params.verse) : undefined;
   const { data, loading } = useAsync(() => loadBook(b.bid), [b.bid]);
+  // Remember the chapter for "continue reading" on the book's page.
+  useEffect(() => { markRead(b.bid, n); }, [b.bid, n]);
   const rows = useMemo(() => (data ? chapterRows(b, n, data.find(([c]) => c === n)?.[1] ?? [], verse) : []), [data, b, n, verse]);
   const outline = useMemo(() => verseOutline(rows, { ar: `${b.ar} ${toArDigits(n)}`, sv: `${b.sv} ${n}` }), [rows, b, n]);
   const target = useMemo(() => {
