@@ -28,17 +28,10 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
   under den.
 - **Dockan på sidan.** ▲ föregående avsnitt, avsnittets nummer, ▼ nästa.
   ▲ går först till början av avsnittet du är i, som på en musikspelare.
-  **Håll in numret** så blir dockan sidan av en Apple Watch Ultra: en
-  grovräfflad krona i titan (naturlig i ljust läge, svart i mörkt) med en
-  röd ring på yttersidan, avsnittets nummer ovanför och antalet under.
-  Kronan vrids en tand per avsnitt.
-  Texten bakom tonas ned och avsnitten lägger sig i en båge runt kronan som
-  på en urtavla, vart och ett med sitt nummer, med det aktuella i en kapsel
-  och numret i en röd bricka.
-  Håll kvar fingret och dra: kronan klickar fram ett avsnitt i taget som en
-  riktig krona med lägen, numret pulserar, texten följer med, det klickar i
-  handen för varje avsnitt och tar emot med en stöt vid första och sista.
-  Ett snabbt svep rullar vidare innan urtavlan fälls in. Dra numret åt sidan för
+  **Håll in numret** så kommer ett hjul med avsnitten fram bredvid dockan,
+  som tidshjulet i iOS. Håll kvar fingret och dra för att snurra det:
+  texten följer med, det tickar för varje avsnitt, och ett snabbt svep
+  rullar vidare innan hjulet stannar och fälls in. Dra numret åt sidan för
   att flytta dockan till andra handen eller en annan höjd; appen kommer ihåg
   var den sitter. Ett kort tryck på numret fäller ut listan bredvid dockan.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
@@ -136,9 +129,7 @@ kräver nätverk till Expos servrar och gick inte att köra här) och hela
 webbversionen i Chromium i telefon- och surfplattestorlek, ljust och mörkt,
 svenska och arabiska, inklusive hopp till varje avsnitt, dockans pilar,
 hjulet och flytt av dockan. Inte testat: på riktiga iPhone- och
-Android-telefoner. Haptiken är inbyggd i appen. I webbversionen vibrerar
-Android, och på iPhone används Safaris knep med en dold strömbrytare, som
-inte säkert fungerar i en webbvy inuti en annan app. Hur fällningen
+Android-telefoner, där haptiken och glaset bara finns. Hur fällningen
 (halvöppen, bokläge) på en Duo påverkar layouten är inte gjort: Expo har
 inget färdigt sätt att läsa av gångjärnets läge. Glaseffekten (Liquid Glass) syns bara på
 iOS 26.

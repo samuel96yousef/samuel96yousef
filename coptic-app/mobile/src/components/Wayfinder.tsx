@@ -6,25 +6,23 @@
  *   are in, who is speaking in a liturgy, and how far you have read.
  * - The dock sits on the side, where the thumb is, as iPhone Duo moves
  *   controls to the edge of its outer screen: ▲ previous, ▼ next, and the
- *   section number between them. Hold the number and the dock turns into the
- *   side of an Apple Watch Ultra: a knurled titanium crown with a crimson ring
- *   that turns one tooth per section, the number above it and the total below,
- *   while the sections curve around it like a dial. Keep the finger down and
- *   drag to turn it, and the text follows. Drag the number sideways to
+ *   section number between them. Hold the number and a scroll wheel of
+ *   sections turns out beside it, like the iOS picker: keep the finger down
+ *   and drag to spin it, and the text follows. Drag the number sideways to
  *   move the dock to the other hand or another height.
  * - The list of sections opens where you tapped: down from the pill, or out
  *   from the dock.
  * - On the open book (an unfolded Duo), nothing you touch sits on the fold.
  */
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { bump, tick } from '../haptics';
 import { STRINGS } from '../i18n';
 import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
@@ -74,31 +72,21 @@ export function useWay<T extends string | number | boolean | undefined | null>(s
 
 // ---------- Layout ----------
 
-/** The dock: 38 pt wide, 4 pt from the edge, so it ends about where the text starts (the page frame begins at 23 pt). */
+/** The dock: 38 pt wide, 2 pt from the edge, so it ends where the text starts (the page frame begins at 23 pt). */
 const DOCK_W = 38;
-const DOCK_INSET = 4;
+const DOCK_INSET = 2;
 const BTN_H = 40;
 const MID_H = 52;
 const DOCK_H = BTN_H * 2 + MID_H;
-/** The dial: rows on a drum seen from the front, seven in view, curving away from the crown. */
-const ROW_H = 40;
+/** The wheel: rows on a drum seen from the front, seven in view. */
+const ROW_H = 34;
 const ROW_ANGLE = 0.3;
 const RADIUS = ROW_H / ROW_ANGLE;
 const WHEEL_H = ROW_H * 7;
-const ARC = 64;
-/** How far the crown gives past the first or last section before it stops, in rows. */
-const OVERSCROLL = 0.25;
 /** Holding the number this long, without moving, brings out the wheel. */
 const HOLD_MS = 220;
-/** The crown: a knurled titanium cylinder between the number and the total, turning one tooth per section. */
-const CROWN_H = 64;
-const CROWN_R = CROWN_H / 2;
-const TEETH = 18;
-const TOOTH_ANGLE = (2 * Math.PI) / TEETH;
-/** A tooth covers about half its share of the circumference; the rest is the groove. */
-const TOOTH_H = CROWN_R * TOOTH_ANGLE * 0.5;
-const RING_W = 5;
 
+const haptic = () => { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); };
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -182,7 +170,7 @@ export function ContextPill({ outline, rows, store, progress }: {
         accessibilityRole="button"
         accessibilityLabel={`${t.outlineOpen}. ${title}${sub ? `, ${sub}` : ''}`}
         aria-expanded={open}
-        onPress={() => { tick(); store.set({ sheet: store.get().sheet === 'top' ? false : 'top' }); }}
+        onPress={() => { haptic(); store.set({ sheet: store.get().sheet === 'top' ? false : 'top' }); }}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <Glass style={styles.pill} interactive>
@@ -211,12 +199,10 @@ export function ContextPill({ outline, rows, store, progress }: {
 // ---------- The dock ----------
 
 /** Previous, the section number, next: on the side, within reach of the thumb. */
-function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel }: {
+function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   outline: Outline; store: WayStore; frame: DockFrame; lang: Lang;
   /** Position of the wheel, in rows; shared with the wheel so it turns with the finger */
   wheel: SharedValue<number>;
-  /** The section in the middle of the dial while the crown turns */
-  turning: number | null;
   onJump: (row: number, fade: boolean) => void; onWheel: (center: number | null) => void;
 }) {
   const { t, colors, set } = useSettings();
@@ -228,7 +214,7 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
   const x = useSharedValue(frame.x);
   const y = useSharedValue(frame.top);
   const lift = useSharedValue(0);
-  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number; end: boolean } | null>(null);
+  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number } | null>(null);
   const droppedAt = useRef(0);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -253,16 +239,16 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
   const nextTarget = () => (verses ? landmark(cur, 1) : cur < items.length - 1 ? cur + 1 : -1);
   const go = (k: number) => {
     if (k < 0) return;
-    tick();
+    haptic();
     store.set({ sheet: false });
     onJump(items[k].index, true);
   };
 
-  /** The wheel lands on a row: click, and bring that section to the top. */
-  const land = (k: number) => {
+  /** The wheel lands on a row: tick, and bring that section to the top. */
+  const tick = (k: number) => {
     const g = gesture.current;
     if (g) g.at = k;
-    tick();
+    haptic();
     onWheel(k);
     onJump(items[k].index, false);
   };
@@ -274,7 +260,7 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
     g.from = g.at = Math.max(0, store.get().current);
     store.set({ sheet: false });
     wheel.set(g.from);
-    tick();
+    haptic();
     onWheel(g.from);
   };
 
@@ -283,7 +269,7 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
     runOnJS: true,
     onBegin: () => {
       const c = store.get().current;
-      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0, end: false };
+      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0 };
       lift.set(withTiming(1, { duration: 120 }));
       holdTimer.current = setTimeout(openWheel, HOLD_MS);
     },
@@ -297,7 +283,7 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
         if (Math.abs(e.translationX) > 12 && Math.abs(e.translationX) > Math.abs(e.translationY)) {
           clearTimeout(holdTimer.current);
           g.mode = 'move';
-          tick();
+          haptic();
         } else if (Math.abs(e.translationY) > 8) {
           clearTimeout(holdTimer.current);
           openWheel();
@@ -309,19 +295,10 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
         return;
       }
       // The rows follow the finger, as on a picker wheel: drag up to bring later sections to the middle.
-      const raw = g.from - e.translationY / ROW_H;
-      // Past the first or last section the crown gives a little, then stops with a bump.
-      const last = items.length - 1;
-      const over = raw < 0 ? raw : raw > last ? raw - last : 0;
-      const pos = over ? (over < 0 ? 0 : last) + Math.sign(over) * OVERSCROLL * (1 - Math.exp(-Math.abs(over) * 2)) : raw;
+      const pos = clamp(g.from - e.translationY / ROW_H, -0.45, items.length - 0.55);
+      wheel.set(pos);
       const k = clamp(Math.round(pos), 0, items.length - 1);
-      // Detents, as on the Digital Crown: the dial clicks over to each section
-      // and only gives a little under the finger, so it always rests centred.
-      wheel.set(over ? pos : withTiming(k + (pos - k) * 0.18, { duration: 120, easing: Easing.out(Easing.cubic) }));
-      const atEnd = Math.abs(over) > 0.15;
-      if (atEnd && !g.end) bump();
-      g.end = atEnd;
-      if (k !== g.at) land(k);
+      if (k !== g.at) tick(k);
     },
     onFinalize: () => {
       const g = gesture.current;
@@ -330,13 +307,13 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
       if (!g) { gesture.current = null; return; }
       if (g.mode === 'tap') {
         gesture.current = null;
-        tick();
+        haptic();
         store.set({ sheet: store.get().sheet === 'side' ? false : 'side' });
       } else if (g.mode === 'wheel') {
         // A flick carries on a little; then the wheel settles on a row and folds away.
         const target = clamp(Math.round(wheel.get() - (g.vy / ROW_H) * 0.18), 0, items.length - 1);
         wheel.set(reduce ? target : withSpring(target, SPRING_SMOOTH));
-        if (target !== g.at) land(target);
+        if (target !== g.at) tick(target);
         gesture.current = null;
         hideTimer.current = setTimeout(() => onWheel(null), 650);
       } else {
@@ -404,135 +381,54 @@ function Dock({ outline, store, frame, lang: L, wheel, turning, onJump, onWheel 
           </View>
         </GestureDetector>
         {button('next', nextOff)}
-        {turning !== null && (
-          <Crown wheel={wheel} side={frame.side} small={small}
-            big={verses ? label(items[turning], L) : digits(turning + 1, L)} />
-        )}
       </Glass>
     </Animated.View>
   );
 }
 
-// ---------- The crown ----------
+// ---------- The wheel ----------
 
-/** Titanium, as on the Apple Watch Ultra: natural in light mode, black in dark mode. */
-function titanium(dark: boolean) {
-  return dark
-    ? { body: ['#090807', '#171514', '#26231f', '#171514', '#090807'] as [string, string, ...string[]], tooth: ['#9a948d', '#5c5752', '#262320'] as [string, string, ...string[]] }
-    : { body: ['#47423d', '#736c64', '#8f887f', '#736c64', '#47423d'] as [string, string, ...string[]], tooth: ['#ffffff', '#d6cfc5', '#8a8279'] as [string, string, ...string[]] };
-}
-
-/** One tooth of the knurling: it rolls round the crown, foreshortening towards the top and bottom. */
-function Tooth({ i, wheel, colors }: { i: number; wheel: SharedValue<number>; colors: [string, string, ...string[]] }) {
-  const roll = useAnimatedStyle(() => {
-    // One section turns the crown by one tooth.
-    const raw = (i - wheel.get()) * TOOTH_ANGLE + Math.PI;
-    const a = ((raw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-    const front = Math.abs(a) < Math.PI / 2;
-    const c = Math.cos(a);
-    return { opacity: front ? 0.35 + 0.65 * c : 0, transform: [{ translateY: CROWN_R * Math.sin(a) }, { scaleY: front ? Math.max(0.08, c) : 0.08 }] };
-  });
-  return (
-    <Animated.View style={[styles.tooth, roll]}>
-      <LinearGradient colors={colors} style={StyleSheet.absoluteFill} />
-    </Animated.View>
-  );
-}
-
-/**
- * The dock while the dial turns, after the side of an Apple Watch Ultra: the
- * section number above, a knurled titanium crown with a crimson ring on its
- * outer face, and the total below. The number pulses on every step.
- */
-function Crown({ wheel, side, big, small }: { wheel: SharedValue<number>; side: DockPlace['side']; big: string; small: string }) {
-  const { colors, dark } = useSettings();
-  const reduce = useReducedMotion();
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    if (!reduce) pulse.set(withSequence(withTiming(1.18, { duration: 70 }), withTiming(1, { duration: 170, easing: Easing.out(Easing.quad) })));
-  }, [big, pulse, reduce]);
-  const pop = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
-  const metal = titanium(dark);
-  const outer = side === 'right' ? { right: 0 } : { left: 0 };
-  const inner = side === 'right' ? { left: 0 } : { right: 0 };
-  const teethSpan = side === 'right' ? { left: 2, right: RING_W } : { right: 2, left: RING_W };
-  const teeth: number[] = [];
-  for (let i = 0; i < TEETH; i++) teeth.push(i);
-  return (
-    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(120)} exiting={reduce ? undefined : FadeOut.duration(200)}
-      style={[styles.crownFace, { backgroundColor: dark ? '#242022' : '#FFFFFF' }]}>
-      <Animated.Text numberOfLines={1} adjustsFontSizeToFit style={[styles.crownNum, { color: colors.crimson }, pop]}>{big}</Animated.Text>
-      <View style={styles.crown}>
-        <LinearGradient colors={metal.body} locations={[0, 0.2, 0.5, 0.8, 1]} style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, teethSpan]}>
-          {teeth.map((i) => <Tooth key={i} i={i} wheel={wheel} colors={metal.tooth} />)}
-        </View>
-        {/* Where the crown meets the case, and the crimson ring on its outer face. */}
-        <View style={[styles.crownSeam, inner]} />
-        <LinearGradient colors={[colors.crimson, '#ff8a9a', colors.crimson]} locations={[0, 0.5, 1]} style={[styles.crownRing, outer]} />
-        <LinearGradient colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0)', 'rgba(255,255,255,0.08)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.5)']}
-          locations={[0, 0.3, 0.5, 0.7, 1]} style={StyleSheet.absoluteFill} />
-      </View>
-      <Text numberOfLines={1} style={[styles.dockSmall, { color: colors.label2 }]}>{small}</Text>
-    </Animated.View>
-  );
-}
-
-// ---------- The dial ----------
-
-/** One row of the dial: it rises, tilts back, shrinks and curves away from the crown as it leaves the middle. */
-function DialRow({ i, wheel, right, text, num, on, rtl }: { i: number; wheel: SharedValue<number>; right: boolean; text: string; num: string | null; on: boolean; rtl: boolean }) {
-  const { colors } = useSettings();
+/** One row on the drum: it rises, tilts away and fades as it turns from the middle. */
+function WheelRow({ i, wheel, text, on, color, onColor }: { i: number; wheel: SharedValue<number>; text: string; on: boolean; color: string; onColor: string }) {
   const turn = useAnimatedStyle(() => {
     const a = (i - wheel.get()) * ROW_ANGLE;
     const seen = Math.abs(a) < Math.PI / 2;
-    const edge = seen ? a : Math.sign(a) * Math.PI / 2;
-    const c = Math.cos(edge);
     return {
-      opacity: seen ? Math.pow(c, 1.3) : 0,
-      transform: [
-        { translateX: (1 - c) * ARC * (right ? -1 : 1) },
-        { perspective: 800 },
-        { translateY: RADIUS * Math.sin(edge) },
-        { rotateX: `${-edge}rad` },
-        { scale: 0.84 + 0.16 * c },
-      ],
+      opacity: seen ? Math.pow(Math.cos(a), 1.6) : 0,
+      transform: [{ perspective: 700 }, { translateY: RADIUS * Math.sin(seen ? a : Math.sign(a) * Math.PI / 2) }, { rotateX: `${-a}rad` }],
     };
   });
   return (
-    <Animated.View style={[styles.dialRow, { flexDirection: right ? 'row' : 'row-reverse' }, turn]}>
-      <Text numberOfLines={1} style={[on ? styles.dialOn : styles.dialText, rtl && styles.dialTextAr,
-        { color: on ? colors.crimson : colors.label, textAlign: right ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }]}>{text}</Text>
-      {num !== null && <Text style={[styles.dialNum, on ? [styles.dialNumOn, { backgroundColor: colors.crimson }] : { color: colors.label2 }]}>{num}</Text>}
+    <Animated.View style={[styles.wheelRow, turn]}>
+      <Text numberOfLines={1} style={[on ? styles.wheelOn : styles.wheelText, { color: on ? onColor : color }]}>{text}</Text>
     </Animated.View>
   );
 }
 
-/**
- * The sections around the crown while it turns, like the face of a dial: no
- * box, the text behind dimmed, the names curving away from the crown, each
- * with its number, and the current one in a glass capsule.
- */
-function Dial({ outline, center, wheel, frame, lang: L }: { outline: Outline; center: number; wheel: SharedValue<number>; frame: DockFrame; lang: Lang }) {
+/** The scroll wheel beside the dock while the number is held: like the iOS picker, with the current section in the band. */
+function Wheel({ outline, center, wheel, frame, lang: L }: { outline: Outline; center: number; wheel: SharedValue<number>; frame: DockFrame; lang: Lang }) {
   const { colors, dark } = useSettings();
   const reduce = useReducedMotion();
   const items = outline.items;
   const verses = outline.kind === 'verses';
   const tl = STRINGS[L];
-  const right = frame.side === 'right';
-  const width = Math.min(300, frame.width - DOCK_INSET - DOCK_W - 20);
-  const top = clamp(frame.top + DOCK_H / 2 - WHEEL_H / 2, frame.minTop - 24, frame.floor - WHEEL_H + 24);
-  const beside = right ? { right: DOCK_INSET + DOCK_W + 8 } : { left: DOCK_INSET + DOCK_W + 8 };
+  const bg = dark ? '#242022' : '#FFFFFF';
+  const width = Math.min(270, frame.width - DOCK_INSET - DOCK_W - 24);
+  const top = clamp(frame.top + DOCK_H / 2 - WHEEL_H / 2, frame.minTop, frame.floor - WHEEL_H);
+  const beside = frame.side === 'left' ? { left: DOCK_INSET + DOCK_W + 10 } : { right: DOCK_INSET + DOCK_W + 10 };
   const rows: number[] = [];
-  for (let i = Math.max(0, center - 5); i <= Math.min(items.length - 1, center + 5); i++) rows.push(i);
+  for (let i = Math.max(0, center - 6); i <= Math.min(items.length - 1, center + 6); i++) rows.push(i);
   return (
-    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(160)} exiting={reduce ? undefined : FadeOut.duration(220)}
-      style={[styles.dial, beside, { top, width, height: WHEEL_H }]}>
-      <View style={[styles.dialChip, { backgroundColor: dark ? 'rgba(52,45,49,0.96)' : 'rgba(255,255,255,0.98)', borderColor: colors.sep, boxShadow: `0 10px 30px -12px ${colors.shadow}` }]} />
+    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(140)} exiting={reduce ? undefined : FadeOut.duration(240)}
+      style={[styles.wheel, beside, { top, width, height: WHEEL_H, backgroundColor: bg, borderColor: colors.sep, boxShadow: `0 16px 36px -14px ${colors.shadow}` }]}>
+      <View style={[styles.wheelBand, { backgroundColor: colors.lens }]} />
       {rows.map((i) => (
-        <DialRow key={i} i={i} wheel={wheel} right={right} on={i === center} rtl={L === 'ar'}
-          text={verses ? `${tl.verse} ${label(items[i], L)}` : label(items[i], L)} num={verses ? null : digits(i + 1, L)} />
+        <WheelRow key={i} i={i} wheel={wheel} on={i === center} color={colors.label} onColor={colors.crimson}
+          text={verses ? `${tl.verse} ${label(items[i], L)}` : label(items[i], L)} />
       ))}
+      {/* The drum curves away at the top and bottom. */}
+      <LinearGradient pointerEvents="none" colors={[bg, `${bg}00`]} style={[styles.wheelShade, { top: 0 }]} />
+      <LinearGradient pointerEvents="none" colors={[`${bg}00`, bg]} style={[styles.wheelShade, { bottom: 0 }]} />
     </Animated.View>
   );
 }
@@ -547,7 +443,7 @@ interface Props {
 }
 
 export function Wayfinder({ outline, store, onJump }: Props) {
-  const { t, dark, hintOnce } = useSettings();
+  const { t, hintOnce } = useSettings();
   const reduce = useReducedMotion();
   const toast = useToast();
   const frame = useDockFrame();
@@ -584,15 +480,9 @@ export function Wayfinder({ outline, store, onJump }: Props) {
           onClose={closePanel} onHidden={hidePanel} onPick={(i) => onJump(items[i].index, !reduce)} />
       )}
 
-      {/* While the crown turns, the text steps back so the dial reads clearly. */}
-      {showDock && wheelAt !== null && (
-        <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(160)} exiting={reduce ? undefined : FadeOut.duration(220)}
-          style={[StyleSheet.absoluteFill, { backgroundColor: dark ? 'rgba(8,6,7,0.9)' : 'rgba(248,245,246,0.92)' }]} />
-      )}
+      {showDock && <Dock outline={outline} store={store} frame={frame} lang={L} wheel={wheel} onJump={onJump} onWheel={setWheelAt} />}
 
-      {showDock && <Dock outline={outline} store={store} frame={frame} lang={L} wheel={wheel} turning={wheelAt} onJump={onJump} onWheel={setWheelAt} />}
-
-      {showDock && wheelAt !== null && <Dial outline={outline} center={wheelAt} wheel={wheel} frame={frame} lang={L} />}
+      {showDock && wheelAt !== null && <Wheel outline={outline} center={wheelAt} wheel={wheel} frame={frame} lang={L} />}
     </View>
   );
 }
@@ -724,20 +614,12 @@ const styles = StyleSheet.create({
   dockBig: { fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 20 },
   dockBigAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 24 },
   dockSmall: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  crownFace: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'space-evenly' },
-  crownNum: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  crown: { width: DOCK_W - 6, height: CROWN_H, borderRadius: 7, overflow: 'hidden' },
-  tooth: { position: 'absolute', left: 0, right: 0, top: CROWN_R - TOOTH_H / 2, height: TOOTH_H, borderRadius: 1, overflow: 'hidden' },
-  crownSeam: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: 'rgba(0,0,0,0.45)' },
-  crownRing: { position: 'absolute', top: 0, bottom: 0, width: RING_W },
-  dial: { position: 'absolute', zIndex: 16 },
-  dialChip: { position: 'absolute', left: 0, right: 0, top: WHEEL_H / 2 - ROW_H / 2 - 2, height: ROW_H + 4, borderRadius: (ROW_H + 4) / 2, borderWidth: StyleSheet.hairlineWidth },
-  dialRow: { position: 'absolute', left: 16, right: 10, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, alignItems: 'center', gap: 10 },
-  dialText: { flex: 1, fontSize: 16, fontWeight: '500' },
-  dialOn: { flex: 1, fontSize: 16.5, fontWeight: '700' },
-  dialTextAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 26 },
-  dialNum: { width: 24, height: 24, lineHeight: 24, borderRadius: 12, overflow: 'hidden', fontSize: 13, fontWeight: '700', textAlign: 'center', fontVariant: ['tabular-nums'] },
-  dialNumOn: { color: '#FFFFFF' },
+  wheel: { position: 'absolute', borderRadius: 22, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, zIndex: 16 },
+  wheelBand: { position: 'absolute', left: 6, right: 6, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, borderRadius: 10 },
+  wheelRow: { position: 'absolute', left: 12, right: 12, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, justifyContent: 'center' },
+  wheelText: { fontSize: 15, textAlign: 'center' },
+  wheelOn: { fontSize: 15.5, fontWeight: '700', textAlign: 'center' },
+  wheelShade: { position: 'absolute', left: 0, right: 0, height: ROW_H * 2 },
   panelWrap: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
   panelOuter: { width: '100%', maxWidth: 520, transformOrigin: 'top' },
   sideWrap: { position: 'absolute', justifyContent: 'center' },
