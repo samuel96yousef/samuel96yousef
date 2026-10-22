@@ -64,12 +64,8 @@ const sv = {
   hereNow: 'Du är här',
   verseOf: (v: string, n: number) => `Vers ${v} av ${n}`,
   verse: 'Vers',
-  prevSection: 'Föregående avsnitt',
-  nextSection: 'Nästa avsnitt',
-  prevVerses: 'Fem verser bakåt',
-  nextVerses: 'Fem verser framåt',
-  allSections: 'Alla avsnitt',
-  dockHint: 'Pilarna vid kanten tar dig till föregående och nästa avsnitt. Dra i siffran för att bläddra, eller åt sidan för att flytta knapparna.',
+  railHint: 'Dra i linjen vid kanten för att hoppa i texten. Tryck på rutan överst för att se alla avsnitt.',
+  railLabel: 'Var i texten',
 };
 
 type Strings = typeof sv;
@@ -137,12 +133,8 @@ const ar: Strings = {
   hereNow: 'أنت هنا',
   verseOf: (v: string, n: number) => `الآية ${v} من ${toArDigits(n)}`,
   verse: 'الآية',
-  prevSection: 'القسم السابق',
-  nextSection: 'القسم التالي',
-  prevVerses: 'خمس آيات للخلف',
-  nextVerses: 'خمس آيات للأمام',
-  allSections: 'كل الأقسام',
-  dockHint: 'السهمان على الحافة ينقلانك إلى القسم السابق أو التالي. اسحب الرقم لتتصفح الأقسام، أو اسحبه جانباً لنقل الأزرار.',
+  railHint: 'اسحب الخط على الحافة للتنقل في النص. اضغط على الشريط في الأعلى لعرض كل الأقسام.',
+  railLabel: 'الموضع في النص',
 };
 
 export const STRINGS: Record<Lang, Strings> = { sv, ar };

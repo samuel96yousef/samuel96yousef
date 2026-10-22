@@ -9,8 +9,6 @@ import { DARK, LIGHT, PAGES, SPREAD_MIN_WIDTH, type PagePalette, type Palette, t
 
 export type Show = Lang | 'both';
 export type SpreadPref = 'auto' | 'on' | 'off';
-/** Where the reader's side dock rests: the screen edge, and how far down between the bars (0–1). */
-export interface DockPlace { side: 'left' | 'right'; y: number }
 
 export interface Settings {
   lang: Lang;
@@ -22,7 +20,6 @@ export interface Settings {
   spreadPref: SpreadPref;
   /** One-time hints already shown. Kept out of React state: marking one must not re-render every page. */
   hints: Record<string, boolean>;
-  dock: DockPlace;
 }
 
 interface SettingsContext extends Settings {
@@ -42,8 +39,7 @@ interface SettingsContext extends Settings {
 
 const KEY = 'settings.v1';
 const deviceLang: Lang = getLocales().some((l) => l.languageCode === 'ar') ? 'ar' : 'sv';
-// The dock starts on the right, a little below the middle: where a right thumb rests.
-const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', hints: {}, dock: { side: 'right', y: 0.62 } };
+const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', hints: {} };
 
 const Ctx = createContext<SettingsContext | null>(null);
 

@@ -439,6 +439,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     const y = contentOffset.y;
     if (y > 96 !== way.get().reading && (y > 96 || y < 48)) way.set({ reading: y > 96 });
     if (!outline) return;
+    way.poke();
     // Measure at most every 90 ms while scrolling, and once more when it stops.
     clearTimeout(trailing.current);
     const now = Date.now();
@@ -513,7 +514,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
       </Animated.View>
     </GestureDetector>
     <Chrome store={way} back={back} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
-    {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
+    {outline && outline.items.length > 0 && <Wayfinder outline={outline} rows={rows} store={way} onJump={jump} />}
     </View>
   );
 }

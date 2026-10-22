@@ -18,29 +18,17 @@ det andra språket och svep åt sidan för att byta. På bred skärm (uppfälld
 vikbar telefon, vriden telefon, surfplatta) visas ett uppslag med svenska
 till vänster och arabiska till höger.
 
-Var i texten och hur du rör dig, inspirerat av iPhone Duo: det som visar
-sitter överst, det du trycker på sitter på sidan där tummen når.
-
-- **Brickan överst.** När rubriken har rullat bort tar en bricka mitten av
-  toppraden (tillbakaknappen krymper till en pil) och visar avsnittet du
-  läser, vem som talar i liturgin och hur långt du har kommit, till exempel
-  "Katholikon · 1 Petr 1:3–12 · 4/6". Tryck på den så fälls alla avsnitt ut
-  under den.
-- **Dockan på sidan.** ▲ föregående avsnitt, avsnittets nummer, ▼ nästa.
-  ▲ går först till början av avsnittet du är i, som på en musikspelare. Dra
-  i numret uppåt eller nedåt för att stega genom avsnitten som med en Digital
-  Crown, med namnet bredvid fingret. Dra den åt sidan för att flytta den till
-  andra handen eller en annan höjd; appen kommer ihåg var den sitter. Tryck
-  på numret så glider listan ut bredvid dockan.
-- **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
-  på ett avsnitt för att hoppa dit, eller på brickan, dockan eller utanför
-  för att stänga.
-- **Uppfälld (bokuppslag).** Inget du trycker på ligger på vecket: brickan
-  och flikraden flyttar till ena sidan.
-
-I Bibeln visar brickan versen ("Vers 21 av 48"), pilarna hoppar fem verser
-och listan är ett rutnät med verserna. Texten tonar ut under toppraden och
-flikraden, så att knapparna aldrig ligger direkt på en textrad.
+Var i texten: när rubriken har rullat bort tar en bricka mitten av
+toppraden (tillbakaknappen krymper till en pil) och visar avsnittet du läser, vem som talar i liturgin (präst,
+diakon, folk) och hur långt du har kommit, till exempel "Katholikon ·
+1 Petr 1:3–12 · 4/6". Tryck på brickan så fälls alla avsnitt ut under
+den, med det du läser markerat; tryck på ett avsnitt för att hoppa dit,
+eller på brickan eller utanför för att stänga. Medan du rullar visas en linje i marginalen utanför
+sidramen med ett streck per avsnitt, utplacerade efter textens längd. Dra längs linjen för
+att hoppa, med avsnittets namn bredvid fingret. I Bibeln visar brickan
+versen ("Vers 21 av 48") och listan är ett rutnät med verserna.
+Texten tonar ut under toppraden och flikraden, så att knapparna aldrig
+ligger direkt på en textrad.
 
 Kholagy: prästens delar har röd etikett, diakonens guldfärgad etikett och
 guldlinje, folkets svar fetstil med röd linje så att församlingen hittar
@@ -71,7 +59,7 @@ Byt först `bundleIdentifier` och `package` i `app.json` (nu `se.example.koptisk
 ```
 src/app/            skärmar (Expo Router)
 src/components/     läsaren, sidramen, valvet, flikraden, språkknappen,
-                    Wayfinder (brickan, dockan och listan över avsnitt)
+                    Wayfinder (brickan, linjen och innehållet)
 src/lib/coptic.ts   koptisk kalender, påsk, högtider, fastor, timböner
 src/lib/lectionary.ts  reglerna för dagens läsningar
 src/data.ts         laddar texterna, bibelsök
@@ -125,11 +113,11 @@ vilken mapp som helst. Därför är `asyncRoutes` avstängt för webben i
 Testat: enhetstester, typkontroll, lint, `expo-doctor` (två kontroller
 kräver nätverk till Expos servrar och gick inte att köra här) och hela
 webbversionen i Chromium i telefon- och surfplattestorlek, ljust och mörkt,
-svenska och arabiska, inklusive hopp till varje avsnitt, dockans pilar,
-dragning i numret och flytt av dockan. Inte testat: på riktiga iPhone- och
-Android-telefoner, där haptiken och glaset bara finns. Hur fällningen
-(halvöppen, bokläge) på en Duo påverkar layouten är inte gjort: Expo har
-inget färdigt sätt att läsa av gångjärnets läge. Glaseffekten (Liquid Glass) syns bara på
+svenska och arabiska, inklusive hopp till varje avsnitt och dragning längs
+linjen. Inte testat: på riktiga iPhone- och Android-telefoner, där
+haptiken och glaset bara finns. Linjen vid kanten tar emot fingret bara
+när den syns, så att den inte stjäl vanliga scrollrörelser nära kanten;
+det behöver provas på telefon. Glaseffekten (Liquid Glass) syns bara på
 iOS 26.
 
 Scrollning: mätt i Chromium med fyra gånger långsammare processor under
