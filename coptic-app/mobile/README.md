@@ -27,11 +27,13 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
   "Katholikon · 1 Petr 1:3–12 · 4/6". Tryck på den så fälls alla avsnitt ut
   under den.
 - **Dockan på sidan.** ▲ föregående avsnitt, avsnittets nummer, ▼ nästa.
-  ▲ går först till början av avsnittet du är i, som på en musikspelare. Dra
-  i numret uppåt eller nedåt för att stega genom avsnitten som med en Digital
-  Crown, med namnet bredvid fingret. Dra den åt sidan för att flytta den till
-  andra handen eller en annan höjd; appen kommer ihåg var den sitter. Tryck
-  på numret så glider listan ut bredvid dockan.
+  ▲ går först till början av avsnittet du är i, som på en musikspelare.
+  **Håll in numret** så kommer ett hjul med avsnitten fram bredvid dockan,
+  som tidshjulet i iOS. Håll kvar fingret och dra för att snurra det:
+  texten följer med, det tickar för varje avsnitt, och ett snabbt svep
+  rullar vidare innan hjulet stannar och fälls in. Dra numret åt sidan för
+  att flytta dockan till andra handen eller en annan höjd; appen kommer ihåg
+  var den sitter. Ett kort tryck på numret fäller ut listan bredvid dockan.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
   på ett avsnitt för att hoppa dit, eller på brickan, dockan eller utanför
   för att stänga.
@@ -126,7 +128,7 @@ Testat: enhetstester, typkontroll, lint, `expo-doctor` (två kontroller
 kräver nätverk till Expos servrar och gick inte att köra här) och hela
 webbversionen i Chromium i telefon- och surfplattestorlek, ljust och mörkt,
 svenska och arabiska, inklusive hopp till varje avsnitt, dockans pilar,
-dragning i numret och flytt av dockan. Inte testat: på riktiga iPhone- och
+hjulet och flytt av dockan. Inte testat: på riktiga iPhone- och
 Android-telefoner, där haptiken och glaset bara finns. Hur fällningen
 (halvöppen, bokläge) på en Duo påverkar layouten är inte gjort: Expo har
 inget färdigt sätt att läsa av gångjärnets läge. Glaseffekten (Liquid Glass) syns bara på
