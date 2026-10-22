@@ -5,8 +5,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Chips } from '../../../../components/Chips';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
-import { ReaderActions } from '../../../../components/ReaderActions';
-import { TopBar } from '../../../../components/TopBar';
 import { kholagy } from '../../../../data';
 import { headingIndexes, headingOutline, liturgyRows } from '../../../../rows';
 import { useSettings } from '../../../../settings';
@@ -43,8 +41,7 @@ export default function Liturgy() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar back={t.prayers}><ReaderActions /></TopBar>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} />
     </View>
   );
 }

@@ -5,8 +5,6 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Icon } from '../../../../components/Icon';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
-import { ReaderActions } from '../../../../components/ReaderActions';
-import { TopBar } from '../../../../components/TopBar';
 import { books, loadBook, useAsync } from '../../../../data';
 import { toArDigits } from '../../../../lib/coptic';
 import { chapterRows, verseOutline } from '../../../../rows';
@@ -37,11 +35,11 @@ export default function Chapter() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar back={ar ? b.ar : b.sv}><ReaderActions /></TopBar>
       <Reader
         rows={rows}
         scrollTo={target}
         outline={outline}
+        back={ar ? b.ar : b.sv}
         header={<View style={styles.header}><LargeTitle title={`${ar ? b.ar : b.sv} ${n}`} subtitle={t.chapter(n)} />{loading && !data && <ActivityIndicator color={colors.crimson} />}</View>}
         footer={nav}
       />

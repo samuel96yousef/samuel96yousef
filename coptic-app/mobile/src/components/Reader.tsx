@@ -10,9 +10,13 @@
  * right, row by row so verses line up. The Swedish page swings open from the
  * spine when the device unfolds.
  *
+ * The reader owns its chrome: the top bar, with the context pill in the
+ * middle once the title has scrolled away, and the fades that let the text
+ * slip under the top bar and the tab bar instead of colliding with them.
  * With an outline, the wayfinder shows where in the text the reader is.
  */
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement } from 'react';
 import { Pressable, StyleSheet, Text, View, type FlatList, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, Keyframe, LinearTransition, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -26,8 +30,10 @@ import { useSettings } from '../settings';
 import { FONTS, SPRING, type PagePalette } from '../theme';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
+import { ReaderActions } from './ReaderActions';
 import { useToast } from './Toast';
-import { createWayStore, PILL_TOP, Wayfinder } from './Wayfinder';
+import { BAR_HEIGHT, TopBar } from './TopBar';
+import { ContextPill, createWayStore, Wayfinder } from './Wayfinder';
 
 export type Row =
   | { k: 'top' }
@@ -262,11 +268,13 @@ interface ReaderProps {
   scrollTo?: { index: number; key: number } | null;
   /** Sections or verses for the wayfinder */
   outline?: Outline | null;
+  /** Label of the back button in the top bar, if any */
+  back?: string;
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set } = s;
   const insets = useSafeAreaInsets();
@@ -289,6 +297,8 @@ export function Reader({ rows, header, footer, scrollTo, outline }: ReaderProps)
   const lastLocate = useRef(0);
   const trailing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const markSet = useMemo(() => new Set(outline?.items.map((i) => i.index)), [outline]);
+  // Once the title has scrolled away, the pill takes the middle of the top bar.
+  const reading = useSyncExternalStore(way.subscribe, () => way.get().first >= 2, () => false);
 
   const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t }), [page, scale, t]);
   const both = show === 'both';
@@ -300,10 +310,10 @@ export function Reader({ rows, header, footer, scrollTo, outline }: ReaderProps)
   }, []);
 
   const offset = insets.top + 60;
-  // Jumps land just below the context pill.
-  const jumpOffset = insets.top + PILL_TOP + 36;
-  // A section counts as entered once its top passes under the pill.
-  const readLine = insets.top + PILL_TOP + 42;
+  // Jumps land just below the top fade.
+  const jumpOffset = insets.top + BAR_HEIGHT + 20;
+  // A section counts as entered once its top slips into the top fade.
+  const readLine = insets.top + BAR_HEIGHT + 26;
 
   /**
    * Scroll a row to the top. A row far below what the list has laid out
@@ -497,7 +507,45 @@ export function Reader({ rows, header, footer, scrollTo, outline }: ReaderProps)
         />
       </Animated.View>
     </GestureDetector>
-    {outline && outline.items.length > 0 && <Wayfinder outline={outline} rows={rows} store={way} progress={progress} onJump={jump} />}
+    <EdgeFades reading={reading} />
+    <TopBar back={back} compact={reading && !!outline} center={outline && reading ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null}>
+      <ReaderActions />
+    </TopBar>
+    {outline && outline.items.length > 0 && <Wayfinder outline={outline} rows={rows} store={way} onJump={jump} />}
+    </View>
+  );
+}
+
+/**
+ * The text fades out under the top bar and the tab bar, like the iOS 26
+ * scroll edge effect, so the floating buttons never sit on a line of text.
+ * At the top of the screen the fade is the app background, matching the
+ * header; once reading, it is the page colour inside the page margins.
+ */
+function EdgeFades({ reading }: { reading: boolean }) {
+  const { colors, page } = useSettings();
+  const insets = useSafeAreaInsets();
+  const vis = useSharedValue(reading ? 1 : 0);
+  useEffect(() => { vis.set(withTiming(reading ? 1 : 0, { duration: 220 })); }, [reading, vis]);
+  const onPage = useAnimatedStyle(() => ({ opacity: vis.get() }));
+  const solid = insets.top + BAR_HEIGHT;
+  const topH = solid + 24;
+  const bottomH = insets.bottom + 100;
+  const top = (c: string, h: number, stop: number) => (
+    <LinearGradient colors={[c, c, `${c}00`]} locations={[0, stop / h, 1]} style={[styles.fadeTop, { height: h }]} />
+  );
+  const bottom = (c: string) => (
+    <LinearGradient colors={[`${c}00`, c, c]} locations={[0, 0.5, 1]} style={[styles.fadeBottom, { height: bottomH }]} />
+  );
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {/* The header's large title starts at the top padding, so the background fade ends there. */}
+      {top(colors.bg, insets.top + 60, insets.top + 44)}
+      {bottom(colors.bg)}
+      <Animated.View style={[styles.fadePage, onPage]}>
+        {top(page.page, topH, solid)}
+        {bottom(page.page)}
+      </Animated.View>
     </View>
   );
 }
@@ -565,6 +613,10 @@ function RowView({ row, index, ctx, spread, primary, both, peeked, onPeek, anima
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
+  fadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  // Same side margins as the page, so the margins keep the background colour.
+  fadePage: { position: 'absolute', top: 0, bottom: 0, left: 12, right: 12 },
   spreadRow: { flexDirection: 'row', direction: 'ltr', marginHorizontal: 12 },
   half: { flex: 1 },
   originRight: { transformOrigin: 'right center' },

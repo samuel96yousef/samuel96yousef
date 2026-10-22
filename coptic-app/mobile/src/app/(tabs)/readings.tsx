@@ -7,8 +7,6 @@ import { Chips } from '../../components/Chips';
 import { DateBar } from '../../components/DateBar';
 import { LargeTitle } from '../../components/LargeTitle';
 import { Reader } from '../../components/Reader';
-import { ReaderActions } from '../../components/ReaderActions';
-import { TopBar } from '../../components/TopBar';
 import { useReadings } from '../../data';
 import { STRINGS } from '../../i18n';
 import { coptic, fromIso, MONTHS, startOfDay } from '../../lib/coptic';
@@ -58,7 +56,6 @@ export default function Readings() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar><ReaderActions /></TopBar>
       <Reader rows={rows} header={header} scrollTo={jump} outline={outline} />
     </View>
   );

@@ -4,8 +4,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
-import { ReaderActions } from '../../../../components/ReaderActions';
-import { TopBar } from '../../../../components/TopBar';
 import { agpeya } from '../../../../data';
 import { HOURS } from '../../../../lib/coptic';
 import { headingOutline, prayerRows } from '../../../../rows';
@@ -20,8 +18,7 @@ export default function Hour() {
   const ar = lang === 'ar';
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar back={t.prayers}><ReaderActions /></TopBar>
-      <Reader rows={rows} outline={outline} header={<View style={styles.header}><LargeTitle title={ar ? hour.ar : hour.sv} subtitle={ar ? HOURS[hour.id]?.ar : HOURS[hour.id]?.sv} /></View>} />
+      <Reader rows={rows} outline={outline} back={t.prayers} header={<View style={styles.header}><LargeTitle title={ar ? hour.ar : hour.sv} subtitle={ar ? HOURS[hour.id]?.ar : HOURS[hour.id]?.sv} /></View>} />
     </View>
   );
 }

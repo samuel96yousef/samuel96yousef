@@ -18,14 +18,16 @@ det andra språket och svep åt sidan för att byta. På bred skärm (uppfälld
 vikbar telefon, vriden telefon, surfplatta) visas ett uppslag med svenska
 till vänster och arabiska till höger.
 
-Var i texten: när rubriken har rullat bort visas en bricka under
-toppknapparna med avsnittet du läser, vem som talar i liturgin (präst,
+Var i texten: när rubriken har rullat bort tar en bricka mitten av
+toppraden (tillbakaknappen krymper till en pil) och visar avsnittet du läser, vem som talar i liturgin (präst,
 diakon, folk) och hur långt du har kommit, till exempel "Katholikon ·
 1 Petr 1:3–12 · 4/6". Tryck på brickan för innehållet, där du ser var du
-är och kan hoppa. Medan du rullar visas en linje vid kanten med ett
-streck per avsnitt, utplacerade efter textens längd. Dra längs linjen för
+är och kan hoppa. Medan du rullar visas en linje i marginalen utanför
+sidramen med ett streck per avsnitt, utplacerade efter textens längd. Dra längs linjen för
 att hoppa, med avsnittets namn bredvid fingret. I Bibeln visar brickan
 versen ("Vers 21 av 48") och innehållet är ett rutnät med verserna.
+Texten tonar ut under toppraden och flikraden, så att knapparna aldrig
+ligger direkt på en textrad.
 
 Kholagy: prästens delar har röd etikett, diakonens guldfärgad etikett och
 guldlinje, folkets svar fetstil med röd linje så att församlingen hittar

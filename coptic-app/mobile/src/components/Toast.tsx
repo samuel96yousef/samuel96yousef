@@ -4,10 +4,11 @@ import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../settings';
+import { BAR_HEIGHT } from './TopBar';
 
 const Ctx = createContext<(msg: string, ms?: number) => void>(() => {});
 
-/** A short message at the top of the screen, like an iOS banner. */
+/** A short message at the top of the screen, like an iOS banner, just below the top bar's buttons. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [msg, setMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -23,7 +24,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={show}>
       {children}
       {msg && (
-        <Animated.View entering={FadeInUp.springify()} exiting={FadeOutUp} style={[styles.wrap, { top: insets.top + 8 }]} pointerEvents="none">
+        <Animated.View entering={FadeInUp.springify()} exiting={FadeOutUp} style={[styles.wrap, { top: insets.top + BAR_HEIGHT + 4 }]} pointerEvents="none">
           <ToastBody text={msg} />
         </Animated.View>
       )}
