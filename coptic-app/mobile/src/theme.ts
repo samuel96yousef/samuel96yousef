@@ -96,5 +96,7 @@ export const HOUR_SKY: Record<string, { colors: [string, string, ...string[]]; d
 };
 
 export const SPRING = { damping: 18, stiffness: 220, mass: 1 };
+/** Nearly critically damped: settles without a visible bounce. For sheets, bars and page moves. */
+export const SPRING_SMOOTH = { damping: 28, stiffness: 240, mass: 1 };
 export const SPRING_LIVELY = { damping: 14, stiffness: 240, mass: 0.9 };
 export const SPREAD_MIN_WIDTH = 720;

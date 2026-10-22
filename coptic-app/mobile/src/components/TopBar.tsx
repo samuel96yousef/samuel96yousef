@@ -5,14 +5,15 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../settings';
-import { FONTS, SPRING } from '../theme';
+import { FONTS } from '../theme';
 import { Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
 
 /** Height of the top bar below the safe area: 6 pt gap, 44 pt buttons, 6 pt gap. */
 export const BAR_HEIGHT = 56;
 
-const layout = LinearTransition.springify().damping(SPRING.damping).stiffness(SPRING.stiffness);
+// Timed, not sprung: the back button should shrink without wobbling.
+const layout = LinearTransition.duration(220);
 
 /**
  * Floating glass buttons over the content, as in iOS 26. `center` fills the

@@ -16,10 +16,10 @@
  * With an outline, the wayfinder shows where in the text the reader is.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement } from 'react';
-import { Pressable, StyleSheet, Text, View, type FlatList, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, Keyframe, LinearTransition, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, Keyframe, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 
@@ -27,13 +27,13 @@ import { toArDigits } from '../lib/coptic';
 import type { Lang, Role, Unit } from '../lib/types';
 import { itemAt, type Outline } from '../rows';
 import { useSettings } from '../settings';
-import { FONTS, SPRING, type PagePalette } from '../theme';
+import { FONTS, SPRING_SMOOTH, type PagePalette } from '../theme';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
 import { ReaderActions } from './ReaderActions';
 import { useToast } from './Toast';
 import { BAR_HEIGHT, TopBar } from './TopBar';
-import { ContextPill, createWayStore, Wayfinder } from './Wayfinder';
+import { ContextPill, createWayStore, useWay, Wayfinder, type WayStore } from './Wayfinder';
 
 export type Row =
   | { k: 'top' }
@@ -297,8 +297,6 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
   const lastLocate = useRef(0);
   const trailing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const markSet = useMemo(() => new Set(outline?.items.map((i) => i.index)), [outline]);
-  // Once the title has scrolled away, the pill takes the middle of the top bar.
-  const reading = useSyncExternalStore(way.subscribe, () => way.get().first >= 2, () => false);
 
   const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t }), [page, scale, t]);
   const both = show === 'both';
@@ -373,7 +371,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
       opacity.set(0);
       shift.set(-d * 24);
       opacity.set(withTiming(1, { duration: 260 }));
-      shift.set(withSpring(0, SPRING));
+      shift.set(withSpring(0, SPRING_SMOOTH));
     }
   }, [primary, show, spread, restore, reduce, opacity, shift]);
 
@@ -390,7 +388,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     let cur = itemAt(items, first);
     const id = ++seq.current;
     const cands: number[] = [];
-    for (let k = cur + 1; k < items.length && cands.length < 24; k++) if (marks.current.has(items[k].index)) cands.push(k);
+    for (let k = cur + 1; k < items.length && cands.length < 8; k++) if (marks.current.has(items[k].index)) cands.push(k);
     if (!cands.length) { way.set({ first, current: cur }); return; }
     let pending = cands.length;
     const ys: number[] = [];
@@ -411,7 +409,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
       opacity.set(withTiming(1, { duration: 280 }));
     }
     scrollToRow(index, jumpOffset);
-    if (outline) way.set({ current: itemAt(outline.items, index), first: Math.max(way.get().first, 2) });
+    if (outline) way.set({ current: itemAt(outline.items, index) });
   }, [jumpOffset, outline, way, scrollToRow, reduce, opacity]);
 
   useEffect(() => {
@@ -437,6 +435,9 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     const max = contentSize.height - layoutMeasurement.height;
     scrolledAt.current = Date.now();
     progress.set(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 0);
+    // Reading once the large title is under the top bar; apart thresholds, so it does not flicker at the edge.
+    const y = contentOffset.y;
+    if (y > 96 !== way.get().reading && (y > 96 || y < 48)) way.set({ reading: y > 96 });
     if (!outline) return;
     way.poke();
     // Measure at most every 90 ms while scrolling, and once more when it stops.
@@ -475,6 +476,10 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
 
   const fade = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: shift.get() }] }));
 
+  const extraData = useMemo(() => [ctx, spread, primary, both, peeks], [ctx, spread, primary, both, peeks]);
+  const footerView = useMemo(() => <View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>, [insets.bottom, footer]);
+  const contentStyle = useMemo(() => ({ paddingTop: insets.top + 60 }), [insets.top]);
+
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} spread={spread} primary={primary} both={both}
       peeked={peeks.has(index)} onPeek={togglePeek} animateOpen={!reduce && Date.now() - spreadAt.current < 900}
@@ -483,23 +488,24 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
 
   return (
     <View style={styles.fill}>
-    <GestureDetector gesture={pan}>
+    {/* pan-y: vertical scrolling stays with the browser; only sideways swipes reach the gesture. */}
+    <GestureDetector gesture={pan} touchAction="pan-y">
       <Animated.View style={[styles.fill, fade]}>
-        <Animated.FlatList
-          ref={listRef as never}
+        {/* A plain FlatList: Animated.FlatList wraps every row in an animated view, which made scrolling stutter. */}
+        <FlatList
+          ref={listRef}
           data={rows}
           keyExtractor={(_, i) => `${spread ? 's' : 'p'}${i}`}
           renderItem={renderItem}
-          extraData={[ctx, spread, primary, both, peeks]}
+          extraData={extraData}
           ListHeaderComponent={header ?? undefined}
-          ListFooterComponent={<View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>}
-          contentContainerStyle={{ paddingTop: insets.top + 60 }}
+          ListFooterComponent={footerView}
+          contentContainerStyle={contentStyle}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={viewability}
           onScroll={onScroll}
           onScrollBeginDrag={() => { target.current = null; }}
           scrollEventThrottle={32}
-          itemLayoutAnimation={reduce ? undefined : LinearTransition.springify().damping(SPRING.damping).stiffness(SPRING.stiffness)}
           initialNumToRender={14}
           windowSize={11}
           onScrollToIndexFailed={onScrollFailed}
@@ -507,12 +513,22 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
         />
       </Animated.View>
     </GestureDetector>
-    <EdgeFades reading={reading} />
-    <TopBar back={back} compact={reading && !!outline} center={outline && reading ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null}>
-      <ReaderActions />
-    </TopBar>
+    <Chrome store={way} back={back} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
     {outline && outline.items.length > 0 && <Wayfinder outline={outline} rows={rows} store={way} onJump={jump} />}
     </View>
+  );
+}
+
+/** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
+function Chrome({ store, back, pill }: { store: WayStore; back?: string; pill: ReactElement | null }) {
+  const reading = useWay(store, (s) => s.reading);
+  return (
+    <>
+      <EdgeFades reading={reading} />
+      <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
+        <ReaderActions />
+      </TopBar>
+    </>
   );
 }
 

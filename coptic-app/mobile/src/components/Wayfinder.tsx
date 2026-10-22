@@ -23,7 +23,7 @@ import { toArDigits } from '../lib/coptic';
 import type { Lang } from '../lib/types';
 import { roleAt, rowWeights, type Outline, type OutlineItem } from '../rows';
 import { useSettings } from '../settings';
-import { FONTS, SPRING } from '../theme';
+import { FONTS, SPRING_SMOOTH } from '../theme';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 import type { Row } from './Reader';
@@ -41,10 +41,12 @@ export interface WayState {
   awake: boolean;
   /** The contents sheet is open */
   sheet: boolean;
+  /** The large title has scrolled under the top bar */
+  reading: boolean;
 }
 
 export function createWayStore() {
-  let state: WayState = { first: 0, current: -1, awake: false, sheet: false };
+  let state: WayState = { first: 0, current: -1, awake: false, sheet: false, reading: false };
   let active = 0;
   const subs = new Set<() => void>();
   const set = (p: Partial<WayState>) => {
@@ -63,6 +65,11 @@ export function createWayStore() {
   };
 }
 export type WayStore = ReturnType<typeof createWayStore>;
+
+/** One value from the store; the component re-renders only when that value changes, not on every scroll. */
+export function useWay<T extends string | number | boolean | undefined>(store: WayStore, select: (s: WayState) => T): T {
+  return useSyncExternalStore(store.subscribe, () => select(store.get()), () => select(store.get()));
+}
 
 // ---------- Layout ----------
 
@@ -113,25 +120,24 @@ export function ContextPill({ outline, rows, store, progress }: {
 }) {
   const { t, colors } = useSettings();
   const reduce = useReducedMotion();
-  const way = useSyncExternalStore(store.subscribe, store.get, store.get);
   const L = useTextLang();
   const tl = STRINGS[L];
   const items = outline.items;
   const verses = outline.kind === 'verses';
   const hasRoles = useMemo(() => rows.some((r) => r.k === 'role'), [rows]);
-  const bar = useAnimatedStyle(() => ({ width: `${Math.round(progress.get() * 1000) / 10}%` }));
+  const cur = useWay(store, (s) => s.current);
+  const role = useWay(store, (s) => (hasRoles ? roleAt(rows, Math.max(s.first + 1, items[s.current]?.index ?? 0)) : undefined));
+  // A transform, not a width: it moves on the compositor without a layout pass.
+  const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.get() }] }));
 
-  const cur = way.current;
   const item = cur >= 0 ? items[cur] : undefined;
   let title: string;
   let sub: string | undefined;
-  let role: ReturnType<typeof roleAt>;
   if (verses) {
     title = outline.title[L];
     sub = item ? tl.verseOf(label(item, L), items.length) : undefined;
   } else {
     title = item ? label(item, L) : outline.title[L];
-    role = hasRoles ? roleAt(rows, Math.max(way.first + 1, item?.index ?? 0)) : undefined;
     sub = role ? tl.roles[role] : item ? subLabel(item, L) ?? outline.title[L] : undefined;
   }
   const counter = !verses && item ? `${digits(cur + 1, L)}/${digits(items.length, L)}` : null;
@@ -185,7 +191,9 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const toast = useToast();
-  const way = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const cur = useWay(store, (s) => s.current);
+  const wayAwake = useWay(store, (s) => s.awake);
+  const sheetOpen = useWay(store, (s) => s.sheet);
   const [drag, setDrag] = useState<number | null>(null);
   const [railH, setRailH] = useState(0);
   const dragRef = useRef<number | null>(null);
@@ -205,22 +213,22 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
   }, [rows, primary, show, items, railH, verses]);
 
   const showRail = items.length > 1;
-  const awake = way.awake || drag !== null;
+  const awake = wayAwake || drag !== null;
 
   useEffect(() => { mountedAt.current = Date.now(); }, []);
 
   // Fade the rail out a moment after the text stops.
   useEffect(() => {
     vis.set(withTiming(awake ? 1 : 0, { duration: awake ? 140 : 420 }));
-    if (!way.awake || drag !== null) return;
+    if (!wayAwake || drag !== null) return;
     const id = setInterval(() => { if (store.idleFor() > 1500) store.set({ awake: false }); }, 300);
     return () => clearInterval(id);
-  }, [awake, way.awake, drag, store, vis]);
+  }, [awake, wayAwake, drag, store, vis]);
 
   // The first time the rail shows, say what it does (after the tap-to-translate hint).
   useEffect(() => {
-    if (way.awake && showRail && Date.now() - mountedAt.current > 4000 && hintOnce('rail')) toast(t.railHint, 5200);
-  }, [way.awake, showRail, hintOnce, toast, t]);
+    if (wayAwake && showRail && Date.now() - mountedAt.current > 4000 && hintOnce('rail')) toast(t.railHint, 5200);
+  }, [wayAwake, showRail, hintOnce, toast, t]);
 
   const choose = (y: number) => {
     if (!ys.length) return;
@@ -241,7 +249,6 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
 
   const railStyle = useAnimatedStyle(() => ({ opacity: vis.get() }));
 
-  const cur = way.current;
   const item = cur >= 0 ? items[cur] : undefined;
   const rtl = L === 'ar';
   const align: TextStyle = rtl ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left' };
@@ -299,7 +306,7 @@ export function Wayfinder({ outline, rows, store, onJump }: Props) {
         </View>
       )}
 
-      {way.sheet && (
+      {sheetOpen && (
         <OutlineSheet outline={outline} current={cur} lang={L} onClose={() => store.set({ sheet: false })}
           onPick={(i) => onJump(items[i].index, !reduce)} />
       )}
@@ -322,7 +329,7 @@ function OutlineSheet({ outline, current, lang: L, onClose, onPick }: {
   const rtl = L === 'ar';
   const verses = outline.kind === 'verses';
 
-  useEffect(() => { y.set(reduce ? 0 : withSpring(0, SPRING)); }, [y, reduce]);
+  useEffect(() => { y.set(reduce ? 0 : withSpring(0, SPRING_SMOOTH)); }, [y, reduce]);
 
   const close = (then?: () => void) => {
     if (closing.current) return;
@@ -338,7 +345,7 @@ function OutlineSheet({ outline, current, lang: L, onClose, onPick }: {
     onUpdate: (e) => y.set(Math.max(0, e.translationY)),
     onDeactivate: (e) => {
       if (e.translationY > 90 || e.velocityY > 800) close();
-      else y.set(withSpring(0, SPRING));
+      else y.set(withSpring(0, SPRING_SMOOTH));
     },
   });
 
@@ -418,8 +425,8 @@ const styles = StyleSheet.create({
   roleDot: { width: 6, height: 6, borderRadius: 3 },
   counter: { fontSize: 11.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
   track: { position: 'absolute', left: 18, right: 18, bottom: 3, height: 2, borderRadius: 1, overflow: 'hidden' },
-  fillBar: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: 1 },
-  fromRight: { left: undefined, right: 0 },
+  fillBar: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 1, transformOrigin: 'left' },
+  fromRight: { transformOrigin: 'right' },
   rail: { position: 'absolute', width: 30, zIndex: 14 },
   railHit: { flex: 1 },
   railGlass: { position: 'absolute', top: 0, bottom: 0, width: 22, borderRadius: 11 },

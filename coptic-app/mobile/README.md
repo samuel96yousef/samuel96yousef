@@ -118,3 +118,9 @@ haptiken och glaset bara finns. Linjen vid kanten tar emot fingret bara
 när den syns, så att den inte stjäl vanliga scrollrörelser nära kanten;
 det behöver provas på telefon. Glaseffekten (Liquid Glass) syns bara på
 iOS 26.
+
+Scrollning: mätt i Chromium med fyra gånger långsammare processor under
+snabba svep i en lång liturgi. Läsaren använder en vanlig `FlatList`
+(Reanimateds animerade lista lade en animerad vy runt varje rad), raderna
+har ingen layoutanimation, och på webben ritas knapparna utan bakgrundsoskärpa
+eftersom oskärpa över text som rör sig ritas om varje bildruta.

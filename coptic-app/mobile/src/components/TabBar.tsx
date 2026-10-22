@@ -3,11 +3,11 @@ import { usePathname } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, type LayoutRectangle } from 'react-native';
-import Animated, { LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn, ZoomOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../settings';
-import { SPRING, SPRING_LIVELY } from '../theme';
+import { SPRING_LIVELY, SPRING_SMOOTH } from '../theme';
 import { Glass } from './Glass';
 import { Icon, type IconName } from './Icon';
 import { LangPill } from './LangPill';
@@ -19,7 +19,8 @@ const LABEL_KEY = { index: 'today', readings: 'readings', prayers: 'prayers', bi
 export const isReaderPath = (p: string) =>
   p === '/readings' || /^\/prayers\/(hour|liturgy)\//.test(p) || /^\/bible\/\d+\/\d+/.test(p);
 
-const layout = LinearTransition.springify().damping(SPRING.damping).stiffness(SPRING.stiffness);
+// The bar compacts without a bounce; only the lens under the active tab is lively.
+const layout = LinearTransition.springify().damping(SPRING_SMOOTH.damping).stiffness(SPRING_SMOOTH.stiffness);
 
 export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
   const { t, colors, spread, lang } = useSettings();
@@ -75,7 +76,7 @@ export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
         </Glass>
       </Animated.View>
       {reading && (
-        <Animated.View entering={ZoomIn.springify()} exiting={ZoomOut.duration(160)} layout={layout}>
+        <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(140)} layout={layout}>
           <LangPill />
         </Animated.View>
       )}

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { STRINGS, type Strings } from './i18n';
@@ -18,6 +18,7 @@ export interface Settings {
   scale: number;
   read: ReadTheme;
   spreadPref: SpreadPref;
+  /** One-time hints already shown. Kept out of React state: marking one must not re-render every page. */
   hints: Record<string, boolean>;
 }
 
@@ -47,10 +48,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const scheme = useColorScheme();
   const { width } = useWindowDimensions();
+  const hints = useRef<Record<string, boolean>>({});
+  const latest = useRef(s);
+  useEffect(() => { latest.current = s; }, [s]);
+
+  const save = useCallback((next: Settings) => {
+    AsyncStorage.setItem(KEY, JSON.stringify({ ...next, hints: hints.current })).catch(() => {});
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((raw) => { if (raw) setS({ ...DEFAULTS, ...JSON.parse(raw) }); })
+      .then((raw) => {
+        if (!raw) return;
+        const stored: Settings = { ...DEFAULTS, ...JSON.parse(raw) };
+        hints.current = stored.hints ?? {};
+        setS(stored);
+      })
       .catch(() => {})
       .finally(() => setReady(true));
   }, []);
@@ -58,24 +71,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const set = useCallback((patch: Partial<Settings>) => {
     setS((prev) => {
       const next = { ...prev, ...patch };
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+      save(next);
       return next;
     });
-  }, []);
+  }, [save]);
 
   const setLang = useCallback((lang: Lang) => {
     setS((prev) => {
       const next: Settings = { ...prev, lang, primary: lang, show: prev.show === 'both' ? 'both' : lang };
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+      save(next);
       return next;
     });
-  }, []);
+  }, [save]);
 
   const hintOnce = useCallback((key: string) => {
-    if (s.hints[key]) return false;
-    set({ hints: { ...s.hints, [key]: true } });
+    if (hints.current[key]) return false;
+    hints.current = { ...hints.current, [key]: true };
+    save(latest.current);
     return true;
-  }, [s.hints, set]);
+  }, [save]);
 
   const value = useMemo<SettingsContext>(() => {
     const dark = scheme === 'dark';
