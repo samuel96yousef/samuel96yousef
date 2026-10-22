@@ -73,43 +73,49 @@ export default function Today() {
   // The date, once: the weekday and Gregorian date small above, the Coptic
   // date as the title, the Arabic (or Swedish) date and the Coptic month in
   // Coptic beneath. Tap the title for the calendar; the arrows step a day.
+  const stepper = (
+    <Glass style={styles.stepper} interactive>
+      <View style={[styles.stepperRow, { flexDirection: row }]}>
+        <Step n={-1} onPress={() => pickDay(addDays(day, -1))} />
+        {!isToday && (
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6} style={({ pressed }) => pressed && styles.dim}>
+            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
+          </Pressable>
+        )}
+        <Step n={1} onPress={() => pickDay(addDays(day, 1))} />
+      </View>
+    </Glass>
+  );
+
+  // The date in three tight rows: the Gregorian date and the Coptic month
+  // with the arrows beside them; the Coptic date as the title, with the date
+  // in the other language on the same line; and what the day keeps.
   const header = (
     <View style={styles.head}>
-      <Text style={[styles.eyebrow, { color: colors.crimson }, ar && styles.eyebrowAr]}>{eyebrow}</Text>
-      <View style={[styles.titleRow, { flexDirection: row }, wide && styles.titleRowWide]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${copticText(c, lang)}, ${gregorianText(day, lang)}. ${t.pickDay}`}
-          onPress={() => setPicking(true)} style={({ pressed }) => [styles.titleTap, { flexDirection: row }, pressed && styles.dim]}>
-          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, ar && styles.titleAr, { color: colors.label }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
-          <Icon name="chevD" size={18} color={colors.crimson} strokeWidth={2.6} />
-        </Pressable>
-        <Glass style={styles.stepper} interactive>
-          <View style={[styles.stepperRow, { flexDirection: row }]}>
-            <Step n={-1} onPress={() => pickDay(addDays(day, -1))} />
-            {!isToday && (
-              <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6} style={({ pressed }) => pressed && styles.dim}>
-                <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
-              </Pressable>
-            )}
-            <Step n={1} onPress={() => pickDay(addDays(day, 1))} />
-          </View>
-        </Glass>
+      <View style={[styles.topRow, { flexDirection: row }, wide && styles.topRowWide]}>
+        <Text numberOfLines={2} style={[styles.eyebrow, { color: colors.crimson }, ar && styles.eyebrowAr]}>
+          {eyebrow}
+          <Text style={styles.eyebrowCop}>{`  ·  ${MONTHS[c.month - 1][2]}`}</Text>
+        </Text>
+        {stepper}
       </View>
-      {/* Separate pieces, so Arabic, Swedish and Coptic never get reordered by one another. */}
-      <View style={[styles.sub, { flexDirection: row }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${copticText(c, lang)}, ${gregorianText(day, lang)}. ${t.pickDay}`}
+        onPress={() => setPicking(true)} style={({ pressed }) => [styles.titleTap, { flexDirection: row }, pressed && styles.dim]}>
+        <Text accessibilityRole="header" style={[styles.title, ar && styles.titleAr, { color: colors.label }]}>{copticText(c, ar ? 'ar' : 'sv')}</Text>
+        <Icon name="chevD" size={17} color={colors.crimson} strokeWidth={2.6} />
+        {/* A separate piece, so Arabic and Swedish never get reordered by one another. */}
         {ar
-          ? <Text style={[styles.subSv, { color: colors.label2 }]}>{`${copticText(c, 'sv')} ${c.year}`}</Text>
-          : <Text style={[styles.subAr, { color: colors.label2 }]}>{`${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}</Text>}
-        <Text style={[styles.subSv, { color: colors.label3 }]}>·</Text>
-        <Text style={[styles.subCop, { color: colors.label2 }]}>{MONTHS[c.month - 1][2]}</Text>
-      </View>
+          ? <Text style={[styles.alt, { color: colors.label2 }]}>{`${copticText(c, 'sv')} ${c.year}`}</Text>
+          : <Text style={[styles.alt, styles.altAr, { color: colors.label2 }]}>{`${copticText(c, 'ar')} ${toArDigits(c.year)} ش`}</Text>}
+      </Pressable>
       {chips.length > 0 && (
-        <View style={[styles.chips, { flexDirection: row }]}>
-          {chips.map((ch) => (
-            <View key={ch.text} style={[styles.chip, { backgroundColor: ch.tone === 'quiet' ? colors.bg2 : ch.tone === 'gold' ? 'rgba(151,111,34,0.14)' : colors.tint }]}>
-              <Text style={[styles.chipText, { color: ch.tone === 'quiet' ? colors.label2 : ch.tone === 'gold' ? colors.gold : colors.crimson }]}>{ch.text}</Text>
-            </View>
+        <Text style={[styles.keeps, ar && styles.right]}>
+          {chips.map((ch, i) => (
+            <Text key={ch.text} style={{ color: ch.tone === 'quiet' ? colors.label2 : ch.tone === 'gold' ? colors.gold : colors.crimson }}>
+              {i ? <Text style={{ color: colors.label3 }}>{'  ·  '}</Text> : null}{ch.text}
+            </Text>
           ))}
-        </View>
+        </Text>
       )}
     </View>
   );
@@ -197,26 +203,24 @@ const styles = StyleSheet.create({
   col: { gap: 20, minWidth: 0, width: '100%' },
   // Only side by side do the columns share the width; stacked, each is as tall as its content.
   colWide: { flex: 1 },
-  head: { marginBottom: 20 },
-  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase' },
+  head: { marginBottom: 16 },
+  topRow: { alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  // On a wide screen the arrows stay beside the date rather than across the page.
+  topRowWide: { justifyContent: 'flex-start', gap: 20 },
+  eyebrow: { flexShrink: 1, fontSize: 13, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase' },
   eyebrowAr: { textAlign: 'right', writingDirection: 'rtl', letterSpacing: 0, textTransform: 'none', fontSize: 14 },
-  titleRow: { alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 2 },
-  titleRowWide: { justifyContent: 'flex-start', gap: 20 },
-  titleTap: { alignItems: 'center', gap: 6, flexShrink: 1 },
-  title: { fontSize: 34, fontWeight: '700', lineHeight: 41, flexShrink: 1 },
+  eyebrowCop: { fontFamily: FONTS.cop, fontWeight: 'normal', letterSpacing: 0.4, textTransform: 'none' },
+  titleTap: { alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, rowGap: 0, marginTop: 2 },
+  title: { fontSize: 32, fontWeight: '700', lineHeight: 38 },
   titleAr: { writingDirection: 'rtl' },
+  alt: { fontSize: 17, lineHeight: 26 },
+  altAr: { fontFamily: FONTS.ar, fontSize: 20, lineHeight: 30, writingDirection: 'rtl' },
+  keeps: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: 2 },
   dim: { opacity: 0.6 },
   stepper: { borderRadius: 999 },
-  stepperRow: { alignItems: 'center', gap: 2, padding: 3 },
-  stepBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  stepperRow: { alignItems: 'center', gap: 2, padding: 2 },
+  stepBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   todayText: { fontSize: 14, fontWeight: '700', paddingHorizontal: 6 },
-  sub: { alignItems: 'center', gap: 8, marginTop: 2 },
-  subAr: { fontFamily: FONTS.ar, fontSize: 18, lineHeight: 28, writingDirection: 'rtl' },
-  subSv: { fontSize: 15, lineHeight: 28 },
-  subCop: { fontFamily: FONTS.cop, fontSize: 14, lineHeight: 28 },
-  chips: { flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  chipText: { fontSize: 13, fontWeight: '600' },
   wordCard: { paddingVertical: 30, paddingHorizontal: 30 },
   wordHead: { justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 10 },
   wordLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase' },
