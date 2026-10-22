@@ -14,9 +14,17 @@ Arabisk-svensk app för en koptisk församling i Sverige, byggd med Expo
 
 Språk i läsningen: en sida i taget på huvudspråket. Språkknappen (ع | Sv)
 byter språk, håll in för båda språken, tryck på en vers för att se den på
-det andra språket och svep åt sidan för att byta. På bred skärm (uppfälld
-vikbar telefon, vriden telefon, surfplatta) visas ett uppslag med svenska
-till vänster och arabiska till höger.
+det andra språket och svep åt sidan för att byta.
+
+På stor skärm (uppfälld vikbar telefon, surfplatta) öppnas texten som en
+bok: svenska på vänster sida och arabiska på höger, rad för rad så att
+verserna står mitt för varandra. Dra en sida mot ryggen, tryck nära dess
+ytterkant eller använd piltangenterna för att bläddra. Sidan viks över
+ryggen och baksidan är nästa vänstersida; ett kort drag fjädrar tillbaka.
+Med arabiska som appspråk bläddrar boken åt andra hållet, som en arabisk
+bok. Ett stycke som inte får plats fortsätter på nästa uppslag, med minst
+två rader på var sida om brytningen, och en rubrik hamnar aldrig sist på en
+sida. En liggande telefon är för låg för sidor och rullar som vanligt.
 
 Var i texten och hur du rör dig, inspirerat av iPhone Duo: det som visar
 sitter överst, det du trycker på sitter på sidan där tummen når.
@@ -39,8 +47,9 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
   på ett avsnitt för att hoppa dit, eller på brickan, dockan eller utanför
   för att stänga.
-- **Uppfälld (bokuppslag).** Inget du trycker på ligger på vecket: brickan
-  och flikraden flyttar till ena sidan.
+- **Uppfälld (bok).** Inget du trycker på ligger på vecket: brickan och
+  flikraden flyttar till ena sidan, och dockan och listan bläddrar till
+  uppslaget där avsnittet börjar.
 
 I Bibeln visar brickan versen ("Vers 21 av 48"), pilarna hoppar fem verser
 och listan är ett rutnät med verserna. Texten tonar ut under toppraden och
@@ -74,8 +83,9 @@ Byt först `bundleIdentifier` och `package` i `app.json` (nu `se.example.koptisk
 
 ```
 src/app/            skärmar (Expo Router)
-src/components/     läsaren, sidramen, valvet, flikraden, språkknappen,
-                    Wayfinder (brickan, dockan och listan över avsnitt)
+src/components/     läsaren, boken (Book), sidramen, valvet, flikraden,
+                    språkknappen, Wayfinder (brickan, dockan och listan)
+src/book.ts         hur texten delas upp i bokens sidor
 src/lib/coptic.ts   koptisk kalender, påsk, högtider, fastor, timböner
 src/lib/lectionary.ts  reglerna för dagens läsningar
 src/data.ts         laddar texterna, bibelsök

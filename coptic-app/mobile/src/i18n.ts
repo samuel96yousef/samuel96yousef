@@ -57,7 +57,7 @@ const sv = {
   themes: { auto: 'Auto', paper: 'Papper', sepia: 'Sepia', night: 'Natt' },
   spread: 'Bokuppslag',
   spreadOpts: { auto: 'Auto', on: 'På', off: 'Av' },
-  spreadHelp: 'Auto visar svenska och arabiska sida vid sida när skärmen är bred nog, till exempel när en vikbar telefon fälls upp eller när du vrider telefonen.',
+  spreadHelp: 'Auto öppnar texten som en bok, svenska och arabiska på var sin sida, när skärmen är stor nog: när en vikbar telefon fälls upp eller på en surfplatta. Bläddra genom att dra i en sida, trycka nära kanten eller med piltangenterna.',
   spreadNote: 'Bokuppslag · svenska till vänster, arabiska till höger',
   about: 'Om appen',
   aboutText: 'Texterna kommer från CopticPrayers-appens material. Rättigheterna till de svenska översättningarna behöver klaras ut innan appen publiceras.',
@@ -74,6 +74,9 @@ const sv = {
   prevVerses: 'Fem verser bakåt',
   nextVerses: 'Fem verser framåt',
   allSections: 'Alla avsnitt',
+  pageOf: (n: string, total: string | null) => (total ? `Sida ${n} av ${total}` : `Sida ${n}`),
+  nextPage: 'Nästa sida',
+  prevPage: 'Föregående sida',
   dockHint: 'Pilarna vid kanten tar dig till föregående och nästa avsnitt. Håll in siffran och dra för att snurra fram ett avsnitt, eller dra den åt sidan för att flytta knapparna.',
 };
 
@@ -135,7 +138,7 @@ const ar: Strings = {
   themes: { auto: 'تلقائي', paper: 'ورق', sepia: 'دافئ', night: 'ليلي' },
   spread: 'الكتاب المفتوح',
   spreadOpts: { auto: 'تلقائي', on: 'تشغيل', off: 'إيقاف' },
-  spreadHelp: 'في الوضع التلقائي تظهر العربية والسويدية جنباً إلى جنب عندما تكون الشاشة عريضة بما يكفي، مثل فتح الهاتف القابل للطي أو تدوير الهاتف.',
+  spreadHelp: 'في الوضع التلقائي يُفتح النص ككتاب، العربية والسويدية على صفحتين متقابلتين، عندما تكون الشاشة كبيرة بما يكفي، مثل فتح الهاتف القابل للطي أو على الجهاز اللوحي. قلّب الصفحات بسحبها أو بالضغط قرب الحافة أو بمفاتيح الأسهم.',
   spreadNote: 'كتاب مفتوح · السويدية يساراً والعربية يميناً',
   about: 'عن التطبيق',
   aboutText: 'النصوص مأخوذة من مواد تطبيق CopticPrayers. يجب توضيح حقوق الترجمات السويدية قبل نشر التطبيق.',
@@ -152,6 +155,9 @@ const ar: Strings = {
   prevVerses: 'خمس آيات للخلف',
   nextVerses: 'خمس آيات للأمام',
   allSections: 'كل الأقسام',
+  pageOf: (n: string, total: string | null) => (total ? `صفحة ${n} من ${total}` : `صفحة ${n}`),
+  nextPage: 'الصفحة التالية',
+  prevPage: 'الصفحة السابقة',
   dockHint: 'السهمان على الحافة ينقلانك إلى القسم السابق أو التالي. اضغط مطولاً على الرقم واسحب لتدير العجلة، أو اسحبه جانباً لنقل الأزرار.',
 };
 

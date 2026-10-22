@@ -99,3 +99,5 @@ export const SPRING = { damping: 18, stiffness: 220, mass: 1 };
 export const SPRING_SMOOTH = { damping: 28, stiffness: 240, mass: 1 };
 export const SPRING_LIVELY = { damping: 14, stiffness: 240, mass: 0.9 };
 export const SPREAD_MIN_WIDTH = 720;
+/** Below this the open book's pages hold only a few lines (a phone on its side), so the text scrolls instead. */
+export const SPREAD_MIN_HEIGHT = 520;

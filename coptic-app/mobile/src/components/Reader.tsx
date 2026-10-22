@@ -6,9 +6,8 @@
  * language under every unit as a smaller subtitle. A sideways swipe swaps
  * languages, keeping the current verse at the top.
  *
- * Unfolded (wide): an open book, Swedish on the left page and Arabic on the
- * right, row by row so verses line up. The Swedish page swings open from the
- * spine when the device unfolds.
+ * Unfolded (wide): an open book (Book), Swedish on the left page and Arabic
+ * on the right, row by row so verses line up, turned page by page.
  *
  * The reader owns its chrome: the top bar, with the context pill in the
  * middle once the title has scrolled away, and the fades that let the text
@@ -19,15 +18,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, Keyframe, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 
+import type { Grid } from '../book';
 import { toArDigits } from '../lib/coptic';
 import type { Lang, Role, Unit } from '../lib/types';
 import { itemAt, type Outline } from '../rows';
 import { useSettings } from '../settings';
 import { FONTS, SPRING_SMOOTH, type PagePalette } from '../theme';
+import { Book } from './Book';
 import { Cartouche } from './Cartouche';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
@@ -51,12 +52,6 @@ const PEEKABLE = new Set<Unit['t']>(['v', 'psalm', 'f', 'p', 'secret']);
 const EMPTY: ReadonlySet<number> = new Set();
 const ALWAYS_BOTH = new Set<Unit['t']>(['ref', 'h', 'H', 'note', 'rubric']);
 const other = (l: Lang): Lang => (l === 'ar' ? 'sv' : 'ar');
-
-const PageOpen = new Keyframe({
-  0: { transform: [{ perspective: 1400 }, { rotateY: '-95deg' }], opacity: 0.3 },
-  40: { opacity: 1 },
-  100: { transform: [{ perspective: 1400 }, { rotateY: '0deg' }], opacity: 1 },
-}).duration(720);
 
 interface Ctx {
   page: PagePalette;
@@ -101,6 +96,15 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
       return ar ? { ...dir, fontFamily: people ? FONTS.arBold : FONTS.ar, fontSize: base * 1.3, lineHeight: base * 2.5, color: page.ink }
         : { ...dir, fontFamily: people ? FONTS.svSemi : FONTS.sv, fontSize: base, lineHeight: base * 1.62, color: page.ink };
   }
+}
+
+/** Where the lines of a row's text fall, so the open book can break a long row between two lines. */
+function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
+  if (row.k !== 'u' || row.u.t === 'role') return null;
+  const t = row.u.t;
+  const lh = textStyle(lang, t, ctx, false, row.role).lineHeight;
+  // The first line starts below the unit's top padding (styles.unit, unitCenter, unitH, unith).
+  return lh ? { top: t === 'H' ? 26 : t === 'h' ? 16 : t === 'ref' ? 14 : 5, lh } : null;
 }
 
 function UnitText({ u, lang, ctx, secondary, showC, role }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role }) {
@@ -282,7 +286,6 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
   // Unfolded verses belong to one text and one display mode; anything else starts folded.
   const [peekState, setPeekState] = useState<{ rows: Row[]; show: string; set: ReadonlySet<number> }>({ rows, show, set: EMPTY });
   const peeks = peekState.rows === rows && peekState.show === show ? peekState.set : EMPTY;
-  const spreadAt = useRef(0);
   const swipeDir = useRef(0);
   const opacity = useSharedValue(1);
   const shift = useSharedValue(0);
@@ -297,6 +300,16 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
 
   const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t }), [page, scale, t]);
   const both = show === 'both';
+
+  // The open book: the row it turns to, and whether the device has just unfolded.
+  const [goTo, setGoTo] = useState<{ index: number; key: number } | null>(null);
+  const bookJump = useRef<number | null>(null);
+  const [seenSpread, setSeenSpread] = useState(spread);
+  const [opening, setOpening] = useState(false);
+  if (seenSpread !== spread) {
+    setSeenSpread(spread);
+    setOpening(spread);
+  }
 
   // First visit: explain tap-to-translate.
   useEffect(() => {
@@ -360,8 +373,8 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
     const p = prev.current;
     prev.current = { primary, show, spread };
     if (p.primary === primary && p.show === show && p.spread === spread) return;
-    if (p.spread !== spread) spreadAt.current = Date.now();
-    restore(firstVisible.current);
+    // The open book finds its own page.
+    if (!spread) restore(firstVisible.current);
     if (p.primary !== primary && !reduce) {
       const d = swipeDir.current || (primary === 'sv' ? 1 : -1);
       swipeDir.current = 0;
@@ -401,13 +414,47 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
   /** Jump to a row. Long smooth scrolls are slow and land on stale positions, so a jump cuts, with a short fade. */
   const jump = useCallback((index: number, fade: boolean) => {
     if (index < 0) return;
+    if (spread) {
+      bookJump.current = index;
+      setGoTo({ index, key: Date.now() });
+      if (outline) way.set({ current: itemAt(outline.items, index) });
+      return;
+    }
     if (fade && !reduce) {
       opacity.set(0.2);
       opacity.set(withTiming(1, { duration: 280 }));
     }
     scrollToRow(index, jumpOffset);
     if (outline) way.set({ current: itemAt(outline.items, index) });
-  }, [jumpOffset, outline, way, scrollToRow, reduce, opacity]);
+  }, [jumpOffset, outline, way, scrollToRow, reduce, opacity, spread]);
+
+  // ---------- The open book ----------
+  const hasHeader = !!header;
+  const lastFirst = useRef(-1);
+  const onSpread = useCallback(({ first, last, k, total }: { first: number; last: number; k: number; total: number | null }) => {
+    firstVisible.current = first;
+    seen.current = { first };
+    if (total) progress.set(total > 1 ? k / (total - 1) : 0);
+    way.set({ reading: k > 0 || !hasHeader });
+    if (!outline) return;
+    // After a jump the section jumped to is current, even if the spread opens with the one before.
+    const target = bookJump.current;
+    if (target != null && target >= first && target <= last) {
+      bookJump.current = null;
+      lastFirst.current = first;
+      way.set({ first, current: itemAt(outline.items, target) });
+      return;
+    }
+    if (first === lastFirst.current) return;
+    lastFirst.current = first;
+    way.set({ first, current: itemAt(outline.items, first) });
+  }, [outline, progress, way, hasHeader]);
+  const getStart = useCallback(() => firstVisible.current, []);
+  const renderBookRow = useCallback((row: Row, lang: Lang) => {
+    const content = <RowContent row={row} langs={[lang]} ctx={ctx} />;
+    return row.k === 'u' && row.highlight ? <View style={{ backgroundColor: page.peek }}>{content}</View> : content;
+  }, [ctx, page.peek]);
+  const gridOf = useCallback((row: Row, lang: Lang) => lineGrid(row, lang, ctx), [ctx]);
 
   useEffect(() => {
     if (!scrollTo || scrollTo.index < 0) return;
@@ -472,26 +519,29 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
 
   const fade = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: shift.get() }] }));
 
-  const extraData = useMemo(() => [ctx, spread, primary, both, peeks], [ctx, spread, primary, both, peeks]);
+  const extraData = useMemo(() => [ctx, primary, both, peeks], [ctx, primary, both, peeks]);
   const footerView = useMemo(() => <View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>, [insets.bottom, footer]);
   const contentStyle = useMemo(() => ({ paddingTop: insets.top + 60 }), [insets.top]);
 
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
-    <ReaderRow row={item} index={index} ctx={ctx} spread={spread} primary={primary} both={both}
-      peeked={peeks.has(index)} onPeek={togglePeek} animateOpen={!reduce && Date.now() - spreadAt.current < 900}
-      mark={markSet.has(index)} onMark={onMark} />
-  ), [ctx, spread, primary, both, peeks, togglePeek, reduce, markSet, onMark]);
+    <ReaderRow row={item} index={index} ctx={ctx} primary={primary} both={both}
+      peeked={peeks.has(index)} onPeek={togglePeek} mark={markSet.has(index)} onMark={onMark} />
+  ), [ctx, primary, both, peeks, togglePeek, markSet, onMark]);
 
   return (
     <View style={styles.fill}>
-    {/* pan-y: vertical scrolling stays with the browser; only sideways swipes reach the gesture. */}
+    {spread ? (
+      <Book rows={rows} renderRow={renderBookRow} gridOf={gridOf} sizeKey={String(ctx.base)} header={header} footer={footer}
+        start={getStart} goTo={goTo} opening={opening} onSpread={onSpread} />
+    ) : (
+    /* pan-y: vertical scrolling stays with the browser; only sideways swipes reach the gesture. */
     <GestureDetector gesture={pan} touchAction="pan-y">
       <Animated.View style={[styles.fill, fade]}>
         {/* A plain FlatList: Animated.FlatList wraps every row in an animated view, which made scrolling stutter. */}
         <FlatList
           ref={listRef}
           data={rows}
-          keyExtractor={(_, i) => `${spread ? 's' : 'p'}${i}`}
+          keyExtractor={(_, i) => String(i)}
           renderItem={renderItem}
           extraData={extraData}
           ListHeaderComponent={header ?? undefined}
@@ -509,18 +559,20 @@ export function Reader({ rows, header, footer, scrollTo, outline, back }: Reader
         />
       </Animated.View>
     </GestureDetector>
-    <Chrome store={way} back={back} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    )}
+    <Chrome store={way} back={back} book={spread} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
     {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, pill }: { store: WayStore; back?: string; pill: ReactElement | null }) {
+function Chrome({ store, back, book, pill }: { store: WayStore; back?: string; book: boolean; pill: ReactElement | null }) {
   const reading = useWay(store, (s) => s.reading);
   return (
     <>
-      <EdgeFades reading={reading} />
+      {/* Text slides under the bars only when it scrolls; the open book's pages stop short of them. */}
+      {!book && <EdgeFades reading={reading} />}
       <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
         <ReaderActions />
       </TopBar>
@@ -563,7 +615,7 @@ function EdgeFades({ reading }: { reading: boolean }) {
 }
 
 interface RowProps {
-  row: Row; index: number; ctx: Ctx; spread: boolean; primary: Lang; both: boolean; peeked: boolean; onPeek: (i: number) => void; animateOpen: boolean;
+  row: Row; index: number; ctx: Ctx; primary: Lang; both: boolean; peeked: boolean; onPeek: (i: number) => void;
 }
 
 /** Rows the wayfinder measures (section titles, headings, verses) get a wrapper it can find on screen. */
@@ -576,30 +628,8 @@ const ReaderRow = memo(function ReaderRow({ mark, onMark, ...p }: RowProps & { m
   );
 });
 
-function RowView({ row, index, ctx, spread, primary, both, peeked, onPeek, animateOpen }: RowProps) {
+function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
   const { page } = ctx;
-  if (spread) {
-    if (row.k === 'top' || row.k === 'bottom') {
-      const Edge = row.k === 'top' ? PageTop : PageBottom;
-      return (
-        <View style={styles.spreadRow}>
-          <Animated.View entering={animateOpen ? PageOpen : undefined} style={[styles.half, styles.originRight]}><Edge side="left" /></Animated.View>
-          <View style={styles.half}><Edge side="right" /></View>
-        </View>
-      );
-    }
-    const highlight = row.k === 'u' && row.highlight ? { backgroundColor: page.peek } : null;
-    return (
-      <View style={styles.spreadRow}>
-        <Animated.View entering={animateOpen ? PageOpen : undefined} style={[styles.half, styles.originRight]}>
-          <PageBody side="left" style={[styles.cell, highlight]}><RowContent row={row} langs={['sv']} ctx={ctx} /></PageBody>
-        </Animated.View>
-        <View style={styles.half}>
-          <PageBody side="right" style={[styles.cell, highlight]}><RowContent row={row} langs={['ar']} ctx={ctx} /></PageBody>
-        </View>
-      </View>
-    );
-  }
   if (row.k === 'top') return <PageTop />;
   if (row.k === 'bottom') return <PageBottom />;
   const langs: Lang[] = [primary, other(primary)];
@@ -629,12 +659,7 @@ const styles = StyleSheet.create({
   fadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   // Same side margins as the page, so the margins keep the background colour.
   fadePage: { position: 'absolute', top: 0, bottom: 0, left: 12, right: 12 },
-  spreadRow: { flexDirection: 'row', direction: 'ltr', marginHorizontal: 12 },
-  half: { flex: 1 },
-  originRight: { transformOrigin: 'right center' },
   bodyPad: { paddingVertical: 0 },
-  // Both pages of a row share its height, so the shorter side has no gap below it.
-  cell: { flexGrow: 1 },
   tap: { borderRadius: 10, marginHorizontal: -8, paddingHorizontal: 8 },
   run: { alignItems: 'stretch', paddingTop: 8, paddingBottom: 12 },
   runRule: { height: 3, marginTop: 6, transform: [{ scaleY: 1 }], borderTopRightRadius: 3, borderBottomRightRadius: 3, opacity: 0.85 },

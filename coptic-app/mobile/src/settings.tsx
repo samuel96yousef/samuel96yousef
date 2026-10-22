@@ -5,7 +5,7 @@ import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { STRINGS, type Strings } from './i18n';
 import type { Lang } from './lib/types';
-import { DARK, LIGHT, PAGES, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
+import { DARK, LIGHT, PAGES, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
 
 export type Show = Lang | 'both';
 export type SpreadPref = 'auto' | 'on' | 'off';
@@ -51,7 +51,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [ready, setReady] = useState(false);
   const scheme = useColorScheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const hints = useRef<Record<string, boolean>>({});
   const latest = useRef(s);
   useEffect(() => { latest.current = s; }, [s]);
@@ -98,9 +98,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SettingsContext>(() => {
     const dark = scheme === 'dark';
     const page = PAGES[s.read === 'auto' ? (dark ? 'night' : 'paper') : s.read];
-    const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && width >= SPREAD_MIN_WIDTH);
+    const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && width >= SPREAD_MIN_WIDTH && height >= SPREAD_MIN_HEIGHT);
     return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, set, setLang, hintOnce };
-  }, [s, ready, scheme, width, set, setLang, hintOnce]);
+  }, [s, ready, scheme, width, height, set, setLang, hintOnce]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

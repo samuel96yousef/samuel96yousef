@@ -48,7 +48,8 @@ export default function Readings() {
         onPress={(key) => setJump({ index: sectionIndex(rows, key), key: Date.now() })}
       />
       {spread && <Text style={[styles.note, { color: colors.label2 }, ar && styles.right]}>{t.spreadNote}</Text>}
-      <Arch ar={`قراءات شهر ${MONTHS[c.month - 1][1]}`} sv={t.readingsArch(MONTHS[c.month - 1][0])} cop={MONTHS[c.month - 1][2]} />
+      {/* The open book frames its own pages; the arch would leave the first spread little room. */}
+      {!spread && <Arch ar={`قراءات شهر ${MONTHS[c.month - 1][1]}`} sv={t.readingsArch(MONTHS[c.month - 1][0])} cop={MONTHS[c.month - 1][2]} />}
       {loading && !data && <ActivityIndicator style={styles.loading} color={colors.crimson} />}
       {error && <Text style={[styles.note, { color: colors.crimson }]}>{error.message}</Text>}
     </View>
