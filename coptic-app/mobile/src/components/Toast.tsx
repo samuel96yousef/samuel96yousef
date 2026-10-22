@@ -1,14 +1,19 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '../settings';
-import { BAR_HEIGHT } from './TopBar';
+
+/** The floating tab bar and the language pill, with a little air. */
+const TAB_CLEARANCE = 92;
 
 const Ctx = createContext<(msg: string, ms?: number) => void>(() => {});
 
-/** A short message at the top of the screen, like an iOS banner, just below the top bar's buttons. */
+/**
+ * A short message just above the tab bar, where it never covers a screen's
+ * own header or the first lines of text.
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [msg, setMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -24,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={show}>
       {children}
       {msg && (
-        <Animated.View entering={FadeInUp.springify()} exiting={FadeOutUp} style={[styles.wrap, { top: insets.top + BAR_HEIGHT + 4 }]} pointerEvents="none">
+        <Animated.View entering={FadeInDown.springify()} exiting={FadeOutDown} style={[styles.wrap, { bottom: insets.bottom + TAB_CLEARANCE }]} pointerEvents="none">
           <ToastBody text={msg} />
         </Animated.View>
       )}

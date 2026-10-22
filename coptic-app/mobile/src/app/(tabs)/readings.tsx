@@ -2,20 +2,19 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Arch } from '../../components/Arch';
 import { Chips } from '../../components/Chips';
 import { DateBar } from '../../components/DateBar';
 import { DayPicker } from '../../components/DayPicker';
 import { Icon } from '../../components/Icon';
 import { Reader } from '../../components/Reader';
 import { ReaderActions } from '../../components/ReaderActions';
-import { WeekStrip } from '../../components/WeekStrip';
 import { useReadings } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
 import { STRINGS } from '../../i18n';
-import { coptic, fromIso, isoDate, MONTHS } from '../../lib/coptic';
+import { addDays, coptic, copticText, fromIso, gregorianText, isoDate } from '../../lib/coptic';
 import { dayOutline, dayRows, sectionIndex } from '../../rows';
 import { useSettings } from '../../settings';
+import { FONTS } from '../../theme';
 
 export default function Readings() {
   const { t, lang, colors, spread } = useSettings();
@@ -59,25 +58,29 @@ export default function Readings() {
     </View>
   ) : (
     <View style={styles.header}>
-      {/* As on "Today": the title, the day and the reader's buttons in one card, the same week below. */}
-      <View style={[styles.card, { backgroundColor: colors.surface }]}>
-        <View style={[styles.titleRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, { color: colors.label }, ar && styles.right]}>{t.readings}</Text>
-          {!isToday && (
-            <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())}
-              style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
-              <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
-            </Pressable>
-          )}
-          <Pressable accessibilityRole="button" accessibilityLabel={t.pickDay} onPress={() => setPicking(true)} hitSlop={6} style={({ pressed }) => pressed && styles.dim}>
-            <View style={[styles.round, { backgroundColor: colors.tint }]}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
+      {/* The day in one slim card, then straight to the text: the page itself carries the title. */}
+      <View style={[styles.bar, { backgroundColor: colors.surface, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <Step n={-1} onPress={() => pickDay(addDays(date, -1))} />
+        <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
+          style={({ pressed }) => [styles.when, pressed && styles.dim]}>
+          <Text numberOfLines={1} style={[ar ? styles.dayAr : styles.day, { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
+          <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            <Text numberOfLines={1} style={[styles.sub, { color: isToday ? colors.crimson : colors.label2 }]}>
+              {isToday ? `${t.today} · ` : ''}{gregorianText(date, lang, date.getFullYear() !== new Date().getFullYear())}
+            </Text>
+            <Icon name="chevD" size={12} color={colors.label2} strokeWidth={2.4} />
+          </View>
+        </Pressable>
+        <Step n={1} onPress={() => pickDay(addDays(date, 1))} />
+        {!isToday && (
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())}
+            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
           </Pressable>
-          <ReaderActions inline />
-        </View>
-        <WeekStrip day={date} onPick={pickDay} />
+        )}
+        <ReaderActions inline />
       </View>
       {chips}
-      <Arch ar={`قراءات شهر ${MONTHS[c.month - 1][1]}`} sv={t.readingsArch(MONTHS[c.month - 1][0])} cop={MONTHS[c.month - 1][2]} />
       {loading && !data && <ActivityIndicator style={styles.loading} color={colors.crimson} />}
       {error && <Text style={[styles.note, { color: colors.crimson }]}>{error.message}</Text>}
     </View>
@@ -91,16 +94,31 @@ export default function Readings() {
   );
 }
 
+/** A quiet chevron to the day before or after; it points the reading way in Arabic too. */
+function Step({ n, onPress }: { n: number; onPress: () => void }) {
+  const { t, lang, colors } = useSettings();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={n < 0 ? t.prevDay : t.nextDay} onPress={onPress} hitSlop={8}
+      style={({ pressed }) => [styles.step, pressed && { backgroundColor: colors.bg2 }]}>
+      <View style={lang === 'ar' && styles.flip}><Icon name={n < 0 ? 'chevL' : 'chevR'} size={18} color={colors.label2} strokeWidth={2.4} /></View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 6 },
-  card: { borderRadius: 24, paddingTop: 14, paddingBottom: 10, paddingHorizontal: 14, gap: 8, marginBottom: 14 },
-  titleRow: { alignItems: 'center', gap: 8 },
-  title: { flex: 1, fontSize: 24, fontWeight: '700', lineHeight: 30 },
-  todayPill: { borderRadius: 999, paddingHorizontal: 11, height: 34, justifyContent: 'center' },
-  todayText: { fontSize: 14, fontWeight: '700' },
-  round: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  header: { paddingHorizontal: 16, paddingBottom: 4 },
+  bar: { alignItems: 'center', gap: 6, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 8, marginBottom: 12 },
+  step: { width: 30, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  when: { flex: 1, minWidth: 0, paddingHorizontal: 2 },
+  day: { fontFamily: FONTS.svSemi, fontSize: 19, lineHeight: 25 },
+  dayAr: { fontFamily: FONTS.arBold, fontSize: 21, lineHeight: 30, writingDirection: 'rtl' },
+  subRow: { alignItems: 'center', gap: 4 },
+  sub: { flexShrink: 1, fontSize: 12.5, fontWeight: '600' },
+  todayPill: { borderRadius: 999, paddingHorizontal: 11, height: 32, justifyContent: 'center' },
+  todayText: { fontSize: 13, fontWeight: '700' },
   dim: { opacity: 0.6 },
+  flip: { transform: [{ scaleX: -1 }] },
   bookHead: { alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 12 },
   bookChips: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
   note: { fontSize: 13, marginBottom: 8 },
