@@ -249,6 +249,7 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
   transform: scale(0.985);
   transition: opacity 0.26s ease, transform 0.55s var(--spring), visibility 0s linear 0.3s;
   scrollbar-width: thin;
+  overflow-anchor: none;
 }
 .view.active { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
 .view.pushed { transform: translateX(32%); }
@@ -367,8 +368,12 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
 .chip.quiet { background: var(--bg-2); color: var(--label-2); }
 
 .word { padding: 4px 6px 0; }
-.word .ar { margin: 0; font: 400 25px/1.95 var(--f-ar); color: var(--label); }
-.word .sv { margin: 10px 0 0; font: 400 18px/1.55 var(--f-sv); color: var(--label); }
+.word p { margin: 0; }
+.word .ar { font: 400 25px/1.95 var(--f-ar); color: var(--label); }
+.word .sv { font: 400 19px/1.55 var(--f-sv); color: var(--label); }
+.word .second { margin-top: 10px; color: var(--label-2); }
+.word .ar.second { font-size: 21px; }
+.word .sv.second { font-size: 16px; }
 .word .ref { margin: 10px 0 0; font-size: 13px; color: var(--label-2); }
 
 .hourcard {
@@ -521,7 +526,7 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
 
 /* ---------- Reading pages ---------- */
 
-.doc { font-size: calc(18px * var(--scale, 1)); color: var(--ink); }
+.doc { font-size: calc(18px * var(--scale, 1)); color: var(--ink); touch-action: pan-y pinch-zoom; }
 .page {
   position: relative;
   background: var(--page);
@@ -581,13 +586,19 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
 .cartouche::after { right: -1.55em; }
 .cartouche .c-ar { display: block; font: 700 1.2em/1.6 var(--f-ar); }
 .cartouche .c-sv { display: block; font: 600 0.82em/1.35 var(--f-sv); color: var(--ink-2); }
+.cartouche .c-sv.pri { font-size: 1.02em; line-height: 1.45; color: var(--ink); }
+.cartouche .c-ar:not(.pri) { font-size: 0.95em; font-weight: 400; color: var(--ink-2); }
 .subtitle-row { text-align: center; padding: 0 0 0.6em; }
 .subtitle-row .ar { font: 400 1.05em/1.7 var(--f-ar); }
 .subtitle-row .sv { font: italic 400 0.86em/1.5 var(--f-sv); color: var(--ink-2); }
+.subtitle-row p { margin: 0; }
+.subtitle-row .sv.pri { font-style: normal; font-size: 0.95em; color: var(--ink); }
+.subtitle-row .ar.sub { font-size: 0.92em; color: var(--ink-2); }
 
 .rs-title { text-align: center; padding-top: 1.5em; }
 .rs-title .ar { display: block; font: 700 1.6em/1.45 var(--f-ar); }
 .rs-title .sv { display: block; font: 700 0.72em/1.4 var(--f-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--rule); }
+.rs-title .ar.small { font-size: 1em; color: var(--ink-2); }
 .rs-title .sv.big { font: 600 1.32em/1.6 var(--f-sv); letter-spacing: 0; text-transform: none; color: var(--ink); }
 .rs-cap { text-align: center; font: italic 400 0.82em/1.45 var(--f-sv); color: var(--ink-2); padding: 0.15em 0 0.4em; }
 
@@ -595,7 +606,6 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
 .u p { margin: 0; }
 .u .ar { font: 400 1.3em/1.95 var(--f-ar); text-align: start; overflow-wrap: break-word; }
 .u .sv { font: 400 1em/1.62 var(--f-sv); overflow-wrap: break-word; hyphens: auto; }
-.u.both .sv { margin-top: 0.3em; }
 .u.f .ar { font-size: 1.1em; color: var(--ink-2); }
 .u.f .sv { font-style: italic; font-size: 0.9em; color: var(--ink-2); }
 .u.ref { text-align: center; padding-top: 0.8em; }
@@ -611,7 +621,6 @@ body.staged .fold-control { display: flex; flex-direction: column; align-items: 
   background-size: 5px 4px;
   opacity: 0.75;
 }
-.u.both.ref .sv { margin-top: 0; }
 .vn { font: 600 0.6em/1 var(--f-ui); color: var(--rule); vertical-align: 0.55em; margin-inline-end: 0.2em; }
 .u .ar .vn { font-size: 0.48em; }
 .u.h .ar, .u.H .ar { font-weight: 700; text-align: center; }
@@ -762,6 +771,81 @@ input[type="range"] { width: 100%; accent-color: var(--crimson); }
   transition: transform 0.5s var(--spring);
 }
 .toast.show { transform: translate(-50%, 0); }
+
+/* ---------- Text language: peek, both, pill ---------- */
+
+/* The other language is always in the DOM, folded away until asked for. */
+.alt-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 0.5s var(--spring), opacity 0.3s ease; }
+.alt-in { min-height: 0; overflow: hidden; }
+.u.peek .alt-wrap,
+.doc[data-mode="both"] .alt-wrap,
+.u.ref .alt-wrap, .u.h .alt-wrap, .u.H .alt-wrap { grid-template-rows: 1fr; opacity: 1; }
+.u .alt { margin-top: 0.4em; padding-inline-start: 0.75em; border-inline-start: 2px solid var(--rule-2); color: var(--ink-2); }
+.u .alt.sv { font-size: 0.9em; line-height: 1.55; font-style: normal; }
+.u .alt.ar { font-size: 1.1em; line-height: 1.9; }
+.u.ref .alt, .u.h .alt, .u.H .alt { margin-top: 0.1em; padding: 0; border: 0; text-align: center; }
+.u.ref .alt.sv, .u.h .alt.sv { font-size: 0.82em; }
+.u.H .alt.sv { font: 700 0.62em/1.5 var(--f-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--rule); }
+.u.H .alt.ar { font-size: 1.2em; }
+.u.f .alt.sv { font-style: italic; }
+.u.tap { cursor: pointer; border-radius: 10px; transition: background-color 0.25s ease, box-shadow 0.25s ease; }
+.u.tap:active,
+.u.peek { background: color-mix(in srgb, var(--rule) 6%, transparent); box-shadow: 0 0 0 0.4em color-mix(in srgb, var(--rule) 6%, transparent); }
+.u.tap:focus-visible { outline: 2px solid var(--rule); outline-offset: 0.4em; }
+.doc[data-mode="single"][data-pri="ar"] .rs-cap { display: none; }
+.doc[data-pri="sv"] .u.H > .sv { font: 600 1.05em/1.4 var(--f-sv); letter-spacing: 0.08em; color: var(--ink); }
+
+.langpill {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(14px + var(--sab));
+  inset-inline-end: max(14px, env(safe-area-inset-right, 0px));
+  display: flex;
+  padding: 4px;
+  border-radius: 999px;
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.5s var(--spring-lively);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.app.reading .langpill { opacity: 1; transform: none; pointer-events: auto; }
+.langpill button {
+  position: relative;
+  z-index: 1;
+  width: 52px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font: 700 16px/1 var(--f-ui);
+  color: var(--label-2);
+  transition: color 0.2s ease, transform 0.3s var(--spring-lively);
+  -webkit-touch-callout: none;
+}
+.langpill button:active { transform: scale(0.9); }
+.langpill button[aria-pressed="true"] { color: var(--crimson); }
+.langpill .lp-ar { font: 700 25px/1 var(--f-ar); transform: translateY(-4px); }
+.lp-lens {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--lens);
+  transition: transform 0.55s var(--spring-lively), width 0.55s var(--spring-lively);
+}
+.langpill.bounce { animation: nudge 0.45s var(--spring-lively); }
+@keyframes nudge { 35% { transform: scale(1.07); } }
+
+/* While reading, the tab bar compacts and steps to the leading edge to make room. */
+.app.reading .tabbar { padding: 4px; transform: translateX(calc(max(14px, env(safe-area-inset-left, 0px)) - 50cqi)); }
+.app.reading[dir="rtl"] .tabbar { transform: translateX(calc(50cqi - max(14px, env(safe-area-inset-right, 0px)) - 100%)); }
+.app.reading .tab { width: 54px; height: 44px; }
+.app.reading .tab span { opacity: 0; position: absolute; pointer-events: none; }
+.app.reading .lens { top: 4px; height: 44px; }
 
 /* ---------- Fold transition (View Transitions API) ---------- */
 

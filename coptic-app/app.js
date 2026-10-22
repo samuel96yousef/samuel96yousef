@@ -23,6 +23,10 @@
       todaysReadings: 'Dagens läsningar', word: 'Dagens ord', readAll: 'Läs dagens läsningar', now: 'Nu', prayNow: 'Be nu',
       year: (y) => `Martyrernas år ${y}`, fastDay: 'Fastedag', goToday: 'Idag', prevDay: 'Föregående dag', nextDay: 'Nästa dag',
       showAr: 'العربية', showBoth: 'Båda', showSv: 'Svenska',
+      langSwitch: 'Textspråk',
+      hintPeek: (p) => `Tryck på en vers för att se den på ${p === 'ar' ? 'svenska' : 'arabiska'}.`,
+      hintBoth: 'Håll in knappen för att visa båda språken samtidigt.',
+      showTextsHelp: 'I läsningen byter du språk med knappen nere i hörnet eller genom att svepa åt sidan. Tryck på en vers för att se just den på det andra språket.',
       spreadNote: 'Bokuppslag · svenska till vänster, arabiska till höger',
       outside: (a, b) => `Prototypen innehåller läsningar för ${a}–${b}. Du ser närmaste dag.`,
       holyWeek: 'Under påskveckan läses Pascha-boken. Den kommer i ett senare steg.',
@@ -46,6 +50,10 @@
       todaysReadings: 'قراءات اليوم', word: 'كلمة اليوم', readAll: 'اقرأ قراءات اليوم', now: 'الآن', prayNow: 'صلِّ الآن',
       year: (y) => `سنة ${toAr(y)} للشهداء`, fastDay: 'يوم صوم', goToday: 'اليوم', prevDay: 'اليوم السابق', nextDay: 'اليوم التالي',
       showAr: 'العربية', showBoth: 'كلاهما', showSv: 'Svenska',
+      langSwitch: 'لغة النص',
+      hintPeek: (p) => (p === 'ar' ? 'اضغط على أي آية لترى ترجمتها بالسويدية.' : 'اضغط على أي آية لترى نصها العربي.'),
+      hintBoth: 'اضغط مطولاً على الزر لعرض اللغتين معاً.',
+      showTextsHelp: 'أثناء القراءة بدّل اللغة بالزر في الأسفل أو بالسحب جانباً. اضغط على أي آية لتراها باللغة الأخرى.',
       spreadNote: 'كتاب مفتوح · السويدية يساراً والعربية يميناً',
       outside: (a, b) => `يحتوي النموذج على قراءات من ${a} إلى ${b}. يُعرض أقرب يوم.`,
       holyWeek: 'في أسبوع الآلام تُقرأ قراءات البصخة، وستُضاف في خطوة لاحقة.',
@@ -184,13 +192,18 @@
   const todayIso = isoOf(new Date());
   const clampIso = (iso) => (!keys.length ? iso : iso < keys[0] ? keys[0] : iso > keys[keys.length - 1] ? keys[keys.length - 1] : iso);
 
+  // First run follows the phone's language; the text language follows the app language.
+  const deviceLang = (navigator.languages || [navigator.language || '']).some((l) => /^ar\b/i.test(l)) ? 'ar' : 'sv';
+  const lang0 = store.get('lang', deviceLang);
+  const primary0 = store.get('primary', lang0);
   const state = {
     tab: 'today',
     stack: [],
     hour: null,
     date: clampIso(todayIso),
-    lang: store.get('lang', 'sv'),
-    show: store.get('show', 'both'),
+    lang: lang0,
+    primary: primary0, // the language a single page is read in: 'ar' | 'sv'
+    show: store.get('show', primary0), // 'ar' | 'sv' | 'both'
     scale: store.get('scale', 1),
     read: store.get('read', 'auto'),
     spreadPref: store.get('spreadPref', 'auto'),
@@ -312,17 +325,69 @@
     }
   }
 
+  // One page, one primary language. Every text unit also carries the other
+  // language, folded away; tapping the unit unfolds it ("peek"). In "both"
+  // mode the other language is always unfolded, set smaller as a subtitle.
+  const PEEKABLE = new Set(['v', 'psalm', 'f', 'p']);
+  const other = (l) => (l === 'ar' ? 'sv' : 'ar');
+  const para = (l, html, cls = '') => `<p class="${l} ${cls}" lang="${l}" dir="${l === 'ar' ? 'rtl' : 'ltr'}">${html}</p>`;
+  const fold = (inner) => `<div class="alt-wrap"><div class="alt-in">${inner}</div></div>`;
+
+  function rowSingle(r, i, doc) {
+    const P = state.primary, O = other(P);
+    const at = `data-row="${i}"`;
+    const pick = (o, l) => (l === 'ar' ? o.ar : o.sv);
+    switch (r.k) {
+      case 'run':
+        return `<div class="runhead ${P === 'ar' ? 'rtl' : ''}" ${at}>${P === 'ar' ? `<span lang="ar" dir="rtl">${esc(doc.runAr)}</span>` : `<span dir="ltr">${esc(doc.runSv)}</span>`}</div>`;
+      case 'cart': {
+        const c = (l) => `<span class="c-${l} ${l === P ? 'pri' : ''}" lang="${l}" dir="${l === 'ar' ? 'rtl' : 'ltr'}">${esc(l === 'ar' ? doc.titleAr : doc.titleSv)}</span>`;
+        return `<div ${at}><div class="cartouche">${c(P)}${c(O)}</div></div>`;
+      }
+      case 'feast':
+        return `<div class="subtitle-row" ${at}>${doc.feasts.map((f) => para(P, esc(pick(f, P)), 'pri') + para(O, esc(pick(f, O)), 'sub')).join('')}</div>`;
+      case 'title':
+        return `<h2 class="rs-title" data-sec="${r.s.key}" ${at}>${P === 'ar'
+          ? `<span class="ar" lang="ar" dir="rtl">${esc(r.s.ar)}</span><span class="sv" dir="ltr">${esc(r.s.sv)}</span>`
+          : `<span class="sv big" dir="ltr">${esc(r.s.sv)}</span><span class="ar small" lang="ar" dir="rtl">${esc(r.s.ar)}</span>`}</h2>`;
+      case 'cap':
+        return `<p class="rs-cap" dir="ltr" ${at}>${esc(r.s.cap)}</p>`;
+      case 'sep':
+        return `<div class="sep" ${at}>${cross()}</div>`;
+      case 'u': {
+        const u = r.u;
+        const num = r.showC ? `${u.c}:${u.n}` : u.n;
+        const html = (l) => {
+          let s = pick(u, l);
+          if (!s) return '';
+          if (u.t === 'ref' && l === 'ar') s = arRef(s);
+          const vn = u.t === 'v' ? `<sup class="vn">${l === 'ar' ? toAr(num) : num}</sup>` : '';
+          return vn + esc(s);
+        };
+        let pri = html(P), alt = html(O), pl = P;
+        if (!pri) { pri = alt; alt = ''; pl = O; }
+        if (!pri) return `<div class="u" ${at}></div>`;
+        const tap = alt && PEEKABLE.has(u.t);
+        return `<div class="u ${u.t}${tap ? ' tap' : ''}" ${at}${tap ? ' tabindex="0" aria-expanded="false"' : ''}>`
+          + para(pl, pri) + (alt ? fold(para(other(pl), alt, 'alt')) : '') + '</div>';
+      }
+      default: return '';
+    }
+  }
+
   const frame = () => `<div class="frame" aria-hidden="true">${['tl', 'tr', 'bl', 'br'].map((p) => `<span class="corner ${p}">${cross()}</span>`).join('')}</div>`;
 
   function docHtml(doc) {
     const rows = rowsOf(doc);
     if (state.spread) {
-      return `<div class="spread" style="--rows:${rows.length}">
+      return `<div class="doc" data-mode="spread"><div class="spread" style="--rows:${rows.length}">
         <article class="page page-sv" lang="sv">${frame()}${rows.map((r, i) => rowHtml(r, i, doc, 'sv')).join('')}</article>
         <article class="page page-ar" lang="ar" dir="rtl">${frame()}${rows.map((r, i) => rowHtml(r, i, doc, 'ar')).join('')}</article>
-      </div>`;
+      </div></div>`;
     }
-    return `<article class="page page-single">${frame()}${rows.map((r, i) => rowHtml(r, i, doc, state.show)).join('')}</article>`;
+    const mode = state.show === 'both' ? 'both' : 'single';
+    return `<div class="doc" data-mode="${mode}" data-pri="${state.primary}">
+      <article class="page page-single">${frame()}${rows.map((r, i) => rowSingle(r, i, doc)).join('')}</article></div>`;
   }
 
   // ---------- Shared pieces ----------
@@ -387,8 +452,7 @@
 
     const word = firstVerse ? `<div class="word">
       <div class="section-label">${L.word}</div>
-      <p class="ar" lang="ar" dir="rtl">${esc(firstVerse.ar)}</p>
-      <p class="sv" lang="sv" dir="ltr">${esc(firstVerse.sv)}</p>
+      ${[state.primary, other(state.primary)].map((l, n) => para(l, esc(l === 'ar' ? firstVerse.ar : firstVerse.sv), n ? 'second' : '')).join('')}
       <p class="ref">${esc(ar ? arRef(lit.refs.ar[1]) : lit.refs.sv[1])}</p>
     </div>` : '';
 
@@ -432,9 +496,7 @@
     if (entry && entry.season === 'holy_week') notices.push(L.holyWeek);
     if (entry && entry.approx) notices.push(L.approx);
     const doc = dayDoc(state.date);
-    const tools = state.spread
-      ? `<p class="spread-note">${icon('book')}${L.spreadNote}</p>`
-      : seg('show', [['ar', `<span class="ar-lbl">${L.showAr}</span>`], ['both', L.showBoth], ['sv', L.showSv]], state.show);
+    const tools = state.spread ? `<p class="spread-note">${icon('book')}${L.spreadNote}</p>` : '';
 
     views.readings.innerHTML = `<div class="inner">
       <h1 class="large-title">${L.readings}</h1>
@@ -452,7 +514,7 @@
     </div>
     <div class="inner">
       ${arch(`قراءات شهر ${MONTHS[c.month - 1][1]}`, L.readingsArch(MONTHS[c.month - 1][0]), MONTHS[c.month - 1][2])}
-      <div class="doc">${docHtml(doc)}</div>
+      ${docHtml(doc)}
     </div>`;
   }
 
@@ -477,14 +539,12 @@
     if (!state.hour) { views.hour.innerHTML = ''; return; }
     const L = t(), ar = state.lang === 'ar';
     const h = DATA.agpeya.find((x) => x.id === state.hour);
-    const tools = state.spread
-      ? `<p class="spread-note">${icon('book')}${L.spreadNote}</p>`
-      : seg('show', [['ar', `<span class="ar-lbl">${L.showAr}</span>`], ['both', L.showBoth], ['sv', L.showSv]], state.show);
+    const tools = state.spread ? `<p class="spread-note">${icon('book')}${L.spreadNote}</p>` : '';
     views.hour.innerHTML = `<div class="inner">
       <h1 class="large-title">${esc(ar ? h.ar : h.sv)}</h1>
       <p class="subtitle">${esc(ar ? HOURS[h.id].ar : HOURS[h.id].sv)}</p>
       <div class="reader-tools">${tools}</div>
-      <div class="doc">${docHtml(hourDoc(state.hour))}</div>
+      ${docHtml(hourDoc(state.hour))}
     </div>`;
   }
 
@@ -507,7 +567,7 @@
     $('#sheet').innerHTML = `<div class="grabber" aria-hidden="true"></div>
       <div class="sheet-head"><h2 id="sheet-title">${L.settings}</h2><button class="close-btn" data-close-sheet aria-label="${L.close}">${icon('x')}</button></div>
       <div class="set-group"><span class="lbl">${L.appLang}</span>${seg('lang', [['sv', 'Svenska'], ['ar', '<span class="ar-lbl">العربية</span>']], state.lang)}</div>
-      <div class="set-group"><span class="lbl">${L.showTexts}</span>${seg('show', [['ar', `<span class="ar-lbl">${L.showAr}</span>`], ['both', L.showBoth], ['sv', L.showSv]], state.show)}</div>
+      <div class="set-group"><span class="lbl">${L.showTexts}</span>${seg('show', [['ar', `<span class="ar-lbl">${L.showAr}</span>`], ['both', L.showBoth], ['sv', L.showSv]], state.show)}<p class="help">${L.showTextsHelp}</p></div>
       <div class="set-group"><label for="size">${L.textSize}</label>
         <div class="size-row"><span class="a-small" aria-hidden="true">A</span><input id="size" type="range" min="0.85" max="1.6" step="0.05" value="${state.scale}"><span class="a-big" aria-hidden="true">A</span></div>
         <div class="preview"><p class="ar" lang="ar" dir="rtl">سبحوا الرب تسبيحاً جديداً</p><p class="sv" dir="ltr">Sjung för Herren en ny sång</p></div>
@@ -562,6 +622,7 @@
     renderBible();
     renderSheet();
     activate(false);
+    updatePill();
   }
   const renderReaders = () => { renderReadings(); renderHour(); placeThumbs(app); };
 
@@ -578,7 +639,9 @@
     views.hour.classList.add('pushed');
     renderNav();
     tabbar.classList.remove('min');
+    updateReading();
     requestAnimationFrame(() => placeThumbs(views[v]));
+    if ((v === 'readings' || v === 'hour') && !state.spread && state.show !== 'both') hintOnce('peek', t().hintPeek(state.primary), 700);
   }
 
   function goTab(tab) {
@@ -706,8 +769,10 @@
     if (!on) { setSwingY(view); setVtClip(view); }
     const apply = () => {
       state.spread = on;
+      if (on) $('#toast').classList.remove('show'); // tap/peek hints don't apply to the spread
       renderReaders();
       renderNav();
+      updateReading();
       if (anchor) restoreAnchor(view, anchor);
       if (on) { setSwingY(view); setVtClip(view); }
     };
@@ -817,13 +882,156 @@
   // ---------- Toast ----------
 
   let toastTimer;
-  function toast(msg) {
+  function toast(msg, ms = 2200) {
     const el = $('#toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
+  function hintOnce(key, msg, delay = 0) {
+    if (store.get('hint.' + key, false)) return;
+    store.set('hint.' + key, true);
+    setTimeout(() => toast(msg, 3800), delay);
+  }
+
+  // ---------- Text language ----------
+  // A floating pill (ع | Sv) next to the tab bar switches the reading
+  // language. Holding it shows both languages. Swiping sideways on the text
+  // swaps languages, and tapping a verse unfolds it in the other language.
+
+  const pill = $('#langpill');
+  const SPRING = getComputedStyle(document.documentElement).getPropertyValue('--spring').trim() || 'ease-out';
+
+  function updateReading() {
+    const v = currentView();
+    app.classList.toggle('reading', (v === 'readings' || v === 'hour') && !state.spread);
+    requestAnimationFrame(() => { placePillLens(); placeLens(); });
+  }
+
+  function updatePill() {
+    pill.setAttribute('aria-label', t().langSwitch);
+    $$('[data-lp]', pill).forEach((b) => b.setAttribute('aria-pressed', String(state.show === 'both' || state.show === b.dataset.lp)));
+    pill.classList.toggle('both', state.show === 'both');
+    placePillLens();
+  }
+
+  function placePillLens() {
+    const lens = $('.lp-lens', pill);
+    const btns = $$('[data-lp]', pill);
+    if (!pill.offsetWidth) return;
+    const on = state.show === 'both' ? btns : btns.filter((b) => b.dataset.lp === state.show);
+    const left = Math.min(...on.map((b) => b.offsetLeft));
+    const right = Math.max(...on.map((b) => b.offsetLeft + b.offsetWidth));
+    lens.style.width = `${right - left}px`;
+    lens.style.transform = `translateX(${left}px)`;
+  }
+
+  function bouncePill() {
+    pill.classList.remove('bounce');
+    void pill.offsetWidth;
+    pill.classList.add('bounce');
+  }
+
+  // Keep the reader's current verse in place while translations unfold.
+  function holdAnchor(view, a, ms) {
+    if (!a) return;
+    const end = performance.now() + ms;
+    const step = () => { restoreAnchor(view, a); if (performance.now() < end) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+
+  let langBusy = false;
+  async function setShow(show, primary = state.primary, dir = 0) {
+    if (show === state.show && primary === state.primary) { bouncePill(); return; }
+    if (langBusy) return;
+    const view = views[currentView()];
+    const reader = !!view.dataset.reader && !state.spread;
+    const persist = () => { state.show = show; state.primary = primary; store.set('show', show); store.set('primary', primary); updatePill(); updateSeg('show', show); };
+
+    // Only "both" on/off: unfold or fold the translations in place, no re-render.
+    if (primary === state.primary && !state.spread) {
+      const a = reader ? captureAnchor(view) : null;
+      persist();
+      $$('.doc[data-mode="single"], .doc[data-mode="both"]', app).forEach((doc) => {
+        doc.dataset.mode = show === 'both' ? 'both' : 'single';
+        $$('.u.peek', doc).forEach((u) => { u.classList.remove('peek'); u.setAttribute('aria-expanded', 'false'); });
+      });
+      holdAnchor(view, a, 600);
+      return;
+    }
+
+    // Primary language changes: slide the page out, re-render, slide the new one in.
+    langBusy = true;
+    const docEl = reader && $('.doc', view);
+    const a = reader ? captureAnchor(view) : null;
+    const d = dir || (primary === 'sv' ? 1 : -1);
+    const animate = docEl && docEl.animate && !reduced();
+    if (animate) {
+      await docEl.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${d * 16}px)` }],
+        { duration: 120, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+    }
+    persist();
+    renderReaders();
+    renderHome();
+    if (a) restoreAnchor(view, a);
+    const nd = animate && $('.doc', view);
+    if (nd) {
+      const frames = [{ opacity: 0, transform: `translateX(${-d * 22}px)` }, { opacity: 1, transform: 'none' }];
+      try { nd.animate(frames, { duration: 480, easing: SPRING }); } catch { nd.animate(frames, { duration: 320, easing: 'ease-out' }); }
+    }
+    langBusy = false;
+  }
+
+  function pickLang(l) {
+    const was = state.show;
+    setShow(l, l);
+    if (was !== l && was !== 'both') hintOnce('both', t().hintBoth, 600);
+  }
+
+  // Long-press on the pill toggles "both".
+  let lpTimer = null;
+  let lpFired = false;
+  pill.addEventListener('pointerdown', () => {
+    lpFired = false;
+    clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => {
+      lpFired = true;
+      if (navigator.vibrate) navigator.vibrate(8);
+      store.set('hint.both', true);
+      setShow(state.show === 'both' ? state.primary : 'both');
+    }, 450);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => pill.addEventListener(ev, () => clearTimeout(lpTimer)));
+  pill.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  function togglePeek(u) {
+    const on = u.classList.toggle('peek');
+    u.setAttribute('aria-expanded', String(on));
+    store.set('hint.peek', true);
+  }
+
+  // Sideways swipe on the text swaps the reading language (touch and pen only).
+  let swipe = null;
+  let swallowClick = false;
+  document.addEventListener('pointerdown', (e) => {
+    swipe = null;
+    if (e.pointerType === 'mouse' || state.spread || !e.target.closest('.view.active .doc')) return;
+    const r = app.getBoundingClientRect();
+    if (e.clientX - r.left < 28 || r.right - e.clientX < 28) return;
+    swipe = { x: e.clientX, y: e.clientY, t: performance.now() };
+  }, { passive: true });
+  document.addEventListener('pointercancel', () => { swipe = null; });
+  document.addEventListener('pointerup', (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, dt = performance.now() - swipe.t;
+    swipe = null;
+    if (Math.abs(dx) < 64 || Math.abs(dx) < 2 * Math.abs(dy) || dt > 700) return;
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 400);
+    const np = other(state.primary);
+    setShow(state.show === 'both' ? 'both' : np, np, Math.sign(dx));
+  });
 
   // ---------- Settings ----------
 
@@ -834,16 +1042,20 @@
 
   function setOption(key, v) {
     if (key === 'fold') { setUnfolded(v === 'unfolded'); return; }
+    if (key === 'show') { setShow(v, v === 'both' ? state.primary : v); return; }
     if (state[key] === v) return;
     state[key] = v;
     store.set(key, v);
     updateSeg(key, v);
-    if (key === 'lang') { renderAll(); openSheetKeep(); return; }
-    if (key === 'show') {
-      const view = views[currentView()];
-      const a = view.dataset.reader ? captureAnchor(view) : null;
-      renderReaders();
-      if (a) restoreAnchor(view, a);
+    if (key === 'lang') {
+      // Switching the app language also makes it the reading language.
+      state.primary = v;
+      if (state.show !== 'both') state.show = v;
+      store.set('primary', state.primary);
+      store.set('show', state.show);
+      renderAll();
+      openSheetKeep();
+      return;
     }
     if (key === 'spreadPref') {
       const w = device.clientWidth;
@@ -859,9 +1071,15 @@
   // ---------- Events ----------
 
   document.addEventListener('click', (e) => {
+    if (swallowClick) { swallowClick = false; return; }
     const el = e.target.closest('button');
-    if (!el) return;
+    if (!el) {
+      const u = e.target.closest('.doc[data-mode="single"] .u.tap');
+      if (u && !String(window.getSelection ? window.getSelection() : '').trim()) togglePeek(u);
+      return;
+    }
     const d = el.dataset;
+    if (d.lp) { if (lpFired) { lpFired = false; return; } return pickLang(d.lp); }
     if (d.tab) return goTab(d.tab);
     if (el.closest('.seg') && d.v) return setOption(el.closest('.seg').dataset.seg, d.v);
     if (d.openHour) return openHour(d.openHour);
@@ -894,7 +1112,10 @@
   backdrop.addEventListener('click', closeSheet);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet();
+    const u = (e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('.doc[data-mode="single"] .u.tap');
+    if (u) { e.preventDefault(); togglePeek(u); }
   });
+  tabbar.addEventListener('transitionend', (e) => { if (e.target.classList.contains('tab') && e.propertyName === 'width') placeLens(); });
   document.addEventListener('input', (e) => {
     if (e.target.id !== 'size') return;
     state.scale = Number(e.target.value);

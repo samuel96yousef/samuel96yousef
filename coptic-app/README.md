@@ -34,6 +34,22 @@ Inställningar: appens språk (svenska eller arabiska med spegelvänd layout),
 vilka texter som visas (arabiska, båda, svenska), textstorlek, läsläge
 (papper, sepia, natt) och bokuppslag.
 
+## Byta språk i läsningen
+
+Texten visas på ett språk i taget, så sidan blir lugn som i kyrkboken.
+Det andra språket finns alltid ett tryck bort:
+
+- **Språkknappen** (ع | Sv) svävar nere i hörnet medan du läser, där tummen
+  är. Tryck för att byta språk. Du stannar på samma vers.
+- **Håll in knappen** för att visa båda språken. Översättningen vecklas ut
+  under varje vers i mindre stil. Håll in igen för att gå tillbaka.
+- **Tryck på en vers** för att se just den på det andra språket.
+- **Svep åt sidan** på texten för att byta språk.
+- **Fäll upp eller vrid telefonen** för att få båda språken sida vid sida.
+
+Första gången följer appen telefonens språk, och läsningen följer appens
+språk. Valet sparas.
+
 ## Designspråk
 
 **Från kyrkboken.** Sidorna är byggda som Katameros-sidorna i bilderna: vitt
