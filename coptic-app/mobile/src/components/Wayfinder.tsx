@@ -6,14 +6,16 @@
  *   are in, who is speaking in a liturgy, and how far you have read.
  * - The dock sits on the side, where the thumb is, as iPhone Duo moves
  *   controls to the edge of its outer screen: ▲ previous, ▼ next, and the
- *   section number between them. Drag the number up or down to step through
- *   sections like a Digital Crown; drag it sideways to move the dock to the
- *   other hand or another height.
+ *   section number between them. Hold the number and a scroll wheel of
+ *   sections turns out beside it, like the iOS picker: keep the finger down
+ *   and drag to spin it, and the text follows. Drag the number sideways to
+ *   move the dock to the other hand or another height.
  * - The list of sections opens where you tapped: down from the pill, or out
  *   from the dock.
  * - On the open book (an unfolded Duo), nothing you touch sits on the fold.
  */
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
@@ -76,9 +78,13 @@ const DOCK_INSET = 2;
 const BTN_H = 40;
 const MID_H = 52;
 const DOCK_H = BTN_H * 2 + MID_H;
-/** Finger travel per step when the number is dragged like a crown. */
-const STEP_SECTION = 24;
-const STEP_VERSE = 12;
+/** The wheel: rows on a drum seen from the front, seven in view. */
+const ROW_H = 34;
+const ROW_ANGLE = 0.3;
+const RADIUS = ROW_H / ROW_ANGLE;
+const WHEEL_H = ROW_H * 7;
+/** Holding the number this long, without moving, brings out the wheel. */
+const HOLD_MS = 220;
 
 const haptic = () => { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); };
 const digits = (n: number | string, l: Lang) => (l === 'ar' ? toArDigits(n) : String(n));
@@ -193,9 +199,11 @@ export function ContextPill({ outline, rows, store, progress }: {
 // ---------- The dock ----------
 
 /** Previous, the section number, next: on the side, within reach of the thumb. */
-function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
+function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   outline: Outline; store: WayStore; frame: DockFrame; lang: Lang;
-  onJump: (row: number, fade: boolean) => void; onCrown: (i: number | null) => void;
+  /** Position of the wheel, in rows; shared with the wheel so it turns with the finger */
+  wheel: SharedValue<number>;
+  onJump: (row: number, fade: boolean) => void; onWheel: (center: number | null) => void;
 }) {
   const { t, colors, set } = useSettings();
   const reduce = useReducedMotion();
@@ -206,8 +214,10 @@ function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
   const x = useSharedValue(frame.x);
   const y = useSharedValue(frame.top);
   const lift = useSharedValue(0);
-  const gesture = useRef<{ mode: 'tap' | 'crown' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number } | null>(null);
+  const gesture = useRef<{ mode: 'tap' | 'wheel' | 'move'; from: number; at: number; x: number; y: number; dx: number; dy: number; vy: number } | null>(null);
   const droppedAt = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Follow the saved place, except just after a drop, while the dock springs there itself.
   useEffect(() => {
@@ -234,49 +244,80 @@ function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
     onJump(items[k].index, true);
   };
 
+  /** The wheel lands on a row: tick, and bring that section to the top. */
+  const tick = (k: number) => {
+    const g = gesture.current;
+    if (g) g.at = k;
+    haptic();
+    onWheel(k);
+    onJump(items[k].index, false);
+  };
+  const openWheel = () => {
+    const g = gesture.current;
+    if (!g || g.mode !== 'tap') return;
+    clearTimeout(hideTimer.current);
+    g.mode = 'wheel';
+    g.from = g.at = Math.max(0, store.get().current);
+    store.set({ sheet: false });
+    wheel.set(g.from);
+    haptic();
+    onWheel(g.from);
+  };
+
   const pan = usePanGesture({
     minDistance: 0,
     runOnJS: true,
     onBegin: () => {
       const c = store.get().current;
-      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0 };
+      gesture.current = { mode: 'tap', from: c, at: c, x: x.get(), y: y.get(), dx: 0, dy: 0, vy: 0 };
       lift.set(withTiming(1, { duration: 120 }));
+      holdTimer.current = setTimeout(openWheel, HOLD_MS);
     },
     onUpdate: (e) => {
       const g = gesture.current;
       if (!g) return;
       g.dx = e.translationX;
       g.dy = e.translationY;
+      g.vy = e.velocityY;
       if (g.mode === 'tap') {
-        if (Math.abs(e.translationX) > 12 && Math.abs(e.translationX) > Math.abs(e.translationY)) g.mode = 'move';
-        else if (Math.abs(e.translationY) > 8) g.mode = 'crown';
-        else return;
-        haptic();
+        if (Math.abs(e.translationX) > 12 && Math.abs(e.translationX) > Math.abs(e.translationY)) {
+          clearTimeout(holdTimer.current);
+          g.mode = 'move';
+          haptic();
+        } else if (Math.abs(e.translationY) > 8) {
+          clearTimeout(holdTimer.current);
+          openWheel();
+        } else return;
       }
       if (g.mode === 'move') {
         x.set(g.x + e.translationX);
         y.set(g.y + e.translationY);
         return;
       }
-      // Down moves forward through the text, as scrolling does.
-      const k = clamp(Math.max(0, g.from) + Math.round(e.translationY / (verses ? STEP_VERSE : STEP_SECTION)), 0, items.length - 1);
-      if (k === g.at) return;
-      g.at = k;
-      haptic();
-      onCrown(k);
-      onJump(items[k].index, false);
+      // The rows follow the finger, as on a picker wheel: drag up to bring later sections to the middle.
+      const pos = clamp(g.from - e.translationY / ROW_H, -0.45, items.length - 0.55);
+      wheel.set(pos);
+      const k = clamp(Math.round(pos), 0, items.length - 1);
+      if (k !== g.at) tick(k);
     },
     onFinalize: () => {
       const g = gesture.current;
-      gesture.current = null;
+      clearTimeout(holdTimer.current);
       lift.set(withTiming(0, { duration: 160 }));
-      if (!g) return;
+      if (!g) { gesture.current = null; return; }
       if (g.mode === 'tap') {
+        gesture.current = null;
         haptic();
         store.set({ sheet: store.get().sheet === 'side' ? false : 'side' });
-      } else if (g.mode === 'crown') {
-        onCrown(null);
+      } else if (g.mode === 'wheel') {
+        // A flick carries on a little; then the wheel settles on a row and folds away.
+        const target = clamp(Math.round(wheel.get() - (g.vy / ROW_H) * 0.18), 0, items.length - 1);
+        wheel.set(reduce ? target : withSpring(target, SPRING_SMOOTH));
+        if (target !== g.at) tick(target);
+        gesture.current = null;
+        hideTimer.current = setTimeout(() => onWheel(null), 650);
       } else {
+        gesture.current = null;
         // Snap to the nearer edge, at the height the finger left it.
         const side = g.x + g.dx + DOCK_W / 2 < frame.width / 2 ? 'left' : 'right';
         const top = clamp(g.y + g.dy, frame.minTop, frame.maxTop);
@@ -287,6 +328,7 @@ function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
       }
     },
   });
+  useEffect(() => () => { clearTimeout(holdTimer.current); clearTimeout(hideTimer.current); }, []);
 
   const place = useAnimatedStyle(() => ({
     transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: 1 + lift.get() * 0.06 }],
@@ -344,6 +386,53 @@ function Dock({ outline, store, frame, lang: L, onJump, onCrown }: {
   );
 }
 
+// ---------- The wheel ----------
+
+/** One row on the drum: it rises, tilts away and fades as it turns from the middle. */
+function WheelRow({ i, wheel, text, on, color, onColor }: { i: number; wheel: SharedValue<number>; text: string; on: boolean; color: string; onColor: string }) {
+  const turn = useAnimatedStyle(() => {
+    const a = (i - wheel.get()) * ROW_ANGLE;
+    const seen = Math.abs(a) < Math.PI / 2;
+    return {
+      opacity: seen ? Math.pow(Math.cos(a), 1.6) : 0,
+      transform: [{ perspective: 700 }, { translateY: RADIUS * Math.sin(seen ? a : Math.sign(a) * Math.PI / 2) }, { rotateX: `${-a}rad` }],
+    };
+  });
+  return (
+    <Animated.View style={[styles.wheelRow, turn]}>
+      <Text numberOfLines={1} style={[on ? styles.wheelOn : styles.wheelText, { color: on ? onColor : color }]}>{text}</Text>
+    </Animated.View>
+  );
+}
+
+/** The scroll wheel beside the dock while the number is held: like the iOS picker, with the current section in the band. */
+function Wheel({ outline, center, wheel, frame, lang: L }: { outline: Outline; center: number; wheel: SharedValue<number>; frame: DockFrame; lang: Lang }) {
+  const { colors, dark } = useSettings();
+  const reduce = useReducedMotion();
+  const items = outline.items;
+  const verses = outline.kind === 'verses';
+  const tl = STRINGS[L];
+  const bg = dark ? '#242022' : '#FFFFFF';
+  const width = Math.min(270, frame.width - DOCK_INSET - DOCK_W - 24);
+  const top = clamp(frame.top + DOCK_H / 2 - WHEEL_H / 2, frame.minTop, frame.floor - WHEEL_H);
+  const beside = frame.side === 'left' ? { left: DOCK_INSET + DOCK_W + 10 } : { right: DOCK_INSET + DOCK_W + 10 };
+  const rows: number[] = [];
+  for (let i = Math.max(0, center - 6); i <= Math.min(items.length - 1, center + 6); i++) rows.push(i);
+  return (
+    <Animated.View pointerEvents="none" entering={reduce ? undefined : FadeIn.duration(140)} exiting={reduce ? undefined : FadeOut.duration(240)}
+      style={[styles.wheel, beside, { top, width, height: WHEEL_H, backgroundColor: bg, borderColor: colors.sep, boxShadow: `0 16px 36px -14px ${colors.shadow}` }]}>
+      <View style={[styles.wheelBand, { backgroundColor: colors.lens }]} />
+      {rows.map((i) => (
+        <WheelRow key={i} i={i} wheel={wheel} on={i === center} color={colors.label} onColor={colors.crimson}
+          text={verses ? `${tl.verse} ${label(items[i], L)}` : label(items[i], L)} />
+      ))}
+      {/* The drum curves away at the top and bottom. */}
+      <LinearGradient pointerEvents="none" colors={[bg, `${bg}00`]} style={[styles.wheelShade, { top: 0 }]} />
+      <LinearGradient pointerEvents="none" colors={[`${bg}00`, bg]} style={[styles.wheelShade, { bottom: 0 }]} />
+    </Animated.View>
+  );
+}
+
 // ---------- The wayfinder ----------
 
 interface Props {
@@ -354,14 +443,15 @@ interface Props {
 }
 
 export function Wayfinder({ outline, store, onJump }: Props) {
-  const { t, colors, hintOnce } = useSettings();
+  const { t, hintOnce } = useSettings();
   const reduce = useReducedMotion();
   const toast = useToast();
   const frame = useDockFrame();
   const cur = useWay(store, (s) => s.current);
   const reading = useWay(store, (s) => s.reading);
   const sheet = useWay(store, (s) => s.sheet);
-  const [crown, setCrown] = useState<number | null>(null);
+  const [wheelAt, setWheelAt] = useState<number | null>(null);
+  const wheel = useSharedValue(0);
   // The list stays mounted, where it opened from, while it folds away.
   const [panelFrom, setPanelFrom] = useState<'top' | 'side' | null>(null);
   if (sheet && sheet !== panelFrom) setPanelFrom(sheet);
@@ -372,9 +462,7 @@ export function Wayfinder({ outline, store, onJump }: Props) {
   const mountedAt = useRef(0);
 
   const L = useTextLang();
-  const tl = STRINGS[L];
   const items = outline.items;
-  const verses = outline.kind === 'verses';
   const showDock = reading && items.length > 1 && sheet !== 'top';
 
   useEffect(() => { mountedAt.current = Date.now(); }, []);
@@ -384,10 +472,6 @@ export function Wayfinder({ outline, store, onJump }: Props) {
     if (showDock && Date.now() - mountedAt.current > 4000 && hintOnce('dock')) toast(t.dockHint, 6000);
   }, [showDock, hintOnce, toast, t]);
 
-  const rtl = L === 'ar';
-  const align: TextStyle = rtl ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left' };
-  const bubble = crown !== null ? items[crown] : undefined;
-  const beside = frame.side === 'left' ? { left: DOCK_INSET + DOCK_W + 10 } : { right: DOCK_INSET + DOCK_W + 10 };
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -396,21 +480,9 @@ export function Wayfinder({ outline, store, onJump }: Props) {
           onClose={closePanel} onHidden={hidePanel} onPick={(i) => onJump(items[i].index, !reduce)} />
       )}
 
-      {showDock && <Dock outline={outline} store={store} frame={frame} lang={L} onJump={onJump} onCrown={setCrown} />}
+      {showDock && <Dock outline={outline} store={store} frame={frame} lang={L} wheel={wheel} onJump={onJump} onWheel={setWheelAt} />}
 
-      {bubble && (
-        <View pointerEvents="none" style={[styles.bubble, beside, {
-          top: frame.top + DOCK_H / 2 - 26,
-          backgroundColor: colors.surface, borderColor: colors.sep, boxShadow: `0 10px 26px -10px ${colors.shadow}`,
-        }]}>
-          <Text numberOfLines={1} style={[rtl ? styles.bubbleTitleAr : styles.bubbleTitle, align, { color: colors.label }]}>
-            {verses ? `${tl.verse} ${label(bubble, L)}` : label(bubble, L)}
-          </Text>
-          {(verses ? outline.title[L] : subLabel(bubble, L)) ? (
-            <Text numberOfLines={1} style={[styles.bubbleSub, align, { color: colors.label2 }]}>{verses ? outline.title[L] : subLabel(bubble, L)}</Text>
-          ) : null}
-        </View>
-      )}
+      {showDock && wheelAt !== null && <Wheel outline={outline} center={wheelAt} wheel={wheel} frame={frame} lang={L} />}
     </View>
   );
 }
@@ -542,10 +614,12 @@ const styles = StyleSheet.create({
   dockBig: { fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 20 },
   dockBigAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 18, lineHeight: 24 },
   dockSmall: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  bubble: { position: 'absolute', maxWidth: 260, minWidth: 120, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, zIndex: 16 },
-  bubbleTitle: { fontFamily: FONTS.svSemi, fontSize: 15 },
-  bubbleTitleAr: { fontFamily: FONTS.arBold, fontSize: 16, lineHeight: 24 },
-  bubbleSub: { fontSize: 12, marginTop: 1 },
+  wheel: { position: 'absolute', borderRadius: 22, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, zIndex: 16 },
+  wheelBand: { position: 'absolute', left: 6, right: 6, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, borderRadius: 10 },
+  wheelRow: { position: 'absolute', left: 12, right: 12, top: WHEEL_H / 2 - ROW_H / 2, height: ROW_H, justifyContent: 'center' },
+  wheelText: { fontSize: 15, textAlign: 'center' },
+  wheelOn: { fontSize: 15.5, fontWeight: '700', textAlign: 'center' },
+  wheelShade: { position: 'absolute', left: 0, right: 0, height: ROW_H * 2 },
   panelWrap: { position: 'absolute', left: 12, right: 12, alignItems: 'center' },
   panelOuter: { width: '100%', maxWidth: 520, transformOrigin: 'top' },
   sideWrap: { position: 'absolute', justifyContent: 'center' },

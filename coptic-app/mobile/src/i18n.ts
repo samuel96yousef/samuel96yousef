@@ -69,7 +69,7 @@ const sv = {
   prevVerses: 'Fem verser bakåt',
   nextVerses: 'Fem verser framåt',
   allSections: 'Alla avsnitt',
-  dockHint: 'Pilarna vid kanten tar dig till föregående och nästa avsnitt. Dra i siffran för att bläddra, eller åt sidan för att flytta knapparna.',
+  dockHint: 'Pilarna vid kanten tar dig till föregående och nästa avsnitt. Håll in siffran och dra för att snurra fram ett avsnitt, eller dra den åt sidan för att flytta knapparna.',
 };
 
 type Strings = typeof sv;
@@ -142,7 +142,7 @@ const ar: Strings = {
   prevVerses: 'خمس آيات للخلف',
   nextVerses: 'خمس آيات للأمام',
   allSections: 'كل الأقسام',
-  dockHint: 'السهمان على الحافة ينقلانك إلى القسم السابق أو التالي. اسحب الرقم لتتصفح الأقسام، أو اسحبه جانباً لنقل الأزرار.',
+  dockHint: 'السهمان على الحافة ينقلانك إلى القسم السابق أو التالي. اضغط مطولاً على الرقم واسحب لتدير العجلة، أو اسحبه جانباً لنقل الأزرار.',
 };
 
 export const STRINGS: Record<Lang, Strings> = { sv, ar };
