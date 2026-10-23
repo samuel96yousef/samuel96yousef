@@ -60,8 +60,8 @@ export default function Today() {
   // the Coptic day under each date, and one line with the Coptic date and
   // what the day keeps. Swipe the week for others; the calendar goes further.
   const header = (
-    <View style={[styles.head, { backgroundColor: colors.surface }, wide && styles.headWide, wide && ar && styles.headWideRtl]}>
-      <View style={[styles.titleRow, { flexDirection: row }]}>
+    <View style={[styles.head, { backgroundColor: colors.surface }, wide && [styles.headWide, { flexDirection: row }]]}>
+      <View style={[styles.titleRow, { flexDirection: row }, wide && styles.titleRowWide]}>
         <View style={[styles.titleText, { flexDirection: row }]}>
           <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, !relative && styles.titleDate, { color: colors.label }]}>{title}</Text>
           <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
@@ -82,7 +82,8 @@ export default function Today() {
           <View style={[styles.calendar, { backgroundColor: colors.bg2 }]}><Icon name="gear" size={19} color={colors.label} strokeWidth={2} /></View>
         </Pressable>
       </View>
-      <WeekStrip day={day} onPick={pickDay} />
+      {/* Across a wide screen the week keeps a hand's width, beside the title rather than under it. */}
+      <View style={wide && styles.weekWide}><WeekStrip day={day} onPick={pickDay} /></View>
     </View>
   );
 
@@ -107,8 +108,8 @@ export default function Today() {
   ) : null;
 
   const hourCard = hour && sky ? (
-    <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hid}`)} style={({ pressed }) => [pressed && styles.pressed]}>
-      <LinearGradient colors={sky.colors} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={styles.hourCard}>
+    <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hid}`)} style={({ pressed }) => [wide && styles.cell, pressed && styles.pressed]}>
+      <LinearGradient colors={sky.colors} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={[styles.hourCard, wide && styles.fillCell]}>
         <View style={[styles.sun, sky.moon ? styles.moon : { backgroundColor: '#FFF4CC' }, ar ? { left: 26 } : { right: 26 }]} />
         <Text style={[styles.hourEyebrow, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{t.now} · {ar ? HOURS[hid].ar : HOURS[hid].sv}</Text>
         <Text style={[styles.hourName, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{ar ? hour.ar : hour.sv}</Text>
@@ -121,14 +122,17 @@ export default function Today() {
   const list = overview.sections.length > 0 ? (
     <View>
       <SectionLabel>{isToday ? t.todaysReadings : t.readingsFor(dayMonthText(day, lang))}</SectionLabel>
-      <View style={[styles.list, { backgroundColor: colors.surface }]}>
+      <View style={[styles.list, { backgroundColor: colors.surface }, wide && [styles.listWide, { flexDirection: row }]]}>
         {overview.sections.map((s, i) => (
           <Pressable
             key={s.key}
             accessibilityRole="button"
             // `at` makes every tap a new visit, so the section is found again even if the reader moved on.
             onPress={() => router.push({ pathname: '/readings', params: { section: s.key, at: String(Date.now()) } })}
-            style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 }, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep }]}
+            // Wide, the sections sit two by two, read across like the lines of a page.
+            style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 },
+              (wide ? i > 1 : i > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep },
+              wide && styles.rowHalf, wide && i % 2 === 1 && { [ar ? 'borderRightWidth' : 'borderLeftWidth']: StyleSheet.hairlineWidth, borderColor: colors.sep }]}
           >
             <CopticCross size={20} color={colors.crimson} />
             <View style={styles.rowText}>
@@ -150,10 +154,21 @@ export default function Today() {
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 130 }]}>
         {header}
-        <View style={wide ? [styles.cols, { flexDirection: row }] : styles.stack}>
-          <View style={[styles.col, wide && styles.colWide]}><DayCard day={day} />{word}</View>
-          <View style={[styles.col, wide && styles.colWide]}>{hourCard}{list}</View>
-        </View>
+        {wide ? (
+          // Wide: in rows, so no column runs on with empty space beside it. The
+          // day and the hour side by side and as tall as each other, then the
+          // word as a page across, then the readings two by two.
+          <View style={styles.stack}>
+            <View style={[styles.pair, { flexDirection: row }]}>
+              <View style={styles.cell}><DayCard day={day} style={styles.fillCell} /></View>
+              {hourCard}
+            </View>
+            {word}
+            {list}
+          </View>
+        ) : (
+          <View style={styles.stack}><DayCard day={day} />{word}{hourCard}{list}</View>
+        )}
       </ScrollView>
       <DayPicker visible={picking} day={day} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
     </View>
@@ -163,16 +178,15 @@ export default function Today() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingHorizontal: 16, maxWidth: 1040, width: '100%', alignSelf: 'center' },
-  cols: { gap: 28, alignItems: 'flex-start' },
   stack: { gap: 20 },
-  col: { gap: 20, minWidth: 0, width: '100%' },
-  // Only side by side do the columns share the width; stacked, each is as tall as its content.
-  colWide: { flex: 1 },
+  pair: { gap: 20, alignItems: 'stretch' },
+  cell: { flex: 1, minWidth: 0 },
+  fillCell: { flex: 1 },
   // The week in its own card, like a widget.
   head: { gap: 8, marginBottom: 20, borderRadius: 24, paddingTop: 14, paddingBottom: 10, paddingHorizontal: 14 },
-  // A week is read at a glance; across a wide screen it would be too far apart.
-  headWide: { maxWidth: 560, width: '100%' },
-  headWideRtl: { alignSelf: 'flex-end' },
+  headWide: { alignItems: 'center', gap: 20, paddingVertical: 14, paddingHorizontal: 20 },
+  titleRowWide: { flex: 1, minWidth: 0 },
+  weekWide: { width: 520 },
   titleRow: { alignItems: 'center', gap: 8 },
   titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
   // The title never gives way; the small weekday beside it does.
@@ -201,6 +215,8 @@ const styles = StyleSheet.create({
   go: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.26)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
   goText: { fontSize: 15, fontWeight: '600' },
   list: { borderRadius: 24, overflow: 'hidden' },
+  listWide: { flexWrap: 'wrap' },
+  rowHalf: { width: '50%' },
   rowBtn: { alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 16, fontWeight: '600' },

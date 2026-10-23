@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path } from 'react-native-svg';
 
 import { coptic, copticText, isFastDay, MONTHS, observances, season, toArDigits } from '../lib/coptic';
@@ -24,7 +24,7 @@ const LOOK: Record<Kind, { colors: [string, string]; ink: string; ink2: string; 
  * with a candle for a saint or an angel, olive with wheat for a fast, and
  * parchment with a Coptic cross on other days.
  */
-export function DayCard({ day }: { day: Date }) {
+export function DayCard({ day, style }: { day: Date; style?: StyleProp<ViewStyle> }) {
   const { t, lang } = useSettings();
   const ar = lang === 'ar';
   const c = coptic(day);
@@ -41,7 +41,7 @@ export function DayCard({ day }: { day: Date }) {
   const row = ar ? ('row-reverse' as const) : ('row' as const);
 
   return (
-    <LinearGradient colors={look.colors} start={{ x: 0, y: 0 }} end={{ x: 0.35, y: 1 }} style={styles.card}>
+    <LinearGradient colors={look.colors} start={{ x: 0, y: 0 }} end={{ x: 0.35, y: 1 }} style={[styles.card, style]}>
       <View pointerEvents="none" style={[styles.emblem, ar ? { left: 14 } : { right: 14 }]}>
         <Emblem kind={kind} color={look.emblem} />
       </View>
