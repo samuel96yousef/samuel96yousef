@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { STRINGS, type Strings } from './i18n';
+import { DEFAULT_PRINT, type PrintOptions } from './print/html';
 import type { Lang } from './lib/types';
 import { DARK, LIGHT, PAGES, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
 
@@ -23,6 +24,8 @@ export interface Settings {
   /** One-time hints already shown. Kept out of React state: marking one must not re-render every page. */
   hints: Record<string, boolean>;
   dock: DockPlace;
+  /** How the reader last printed or saved a PDF. */
+  printOpts: PrintOptions;
 }
 
 interface SettingsContext extends Settings {
@@ -43,7 +46,7 @@ interface SettingsContext extends Settings {
 const KEY = 'settings.v1';
 const deviceLang: Lang = getLocales().some((l) => l.languageCode === 'ar') ? 'ar' : 'sv';
 // The dock starts on the right, a little below the middle: where a right thumb rests.
-const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', hints: {}, dock: { side: 'right', y: 0.62 } };
+const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', hints: {}, dock: { side: 'right', y: 0.62 }, printOpts: DEFAULT_PRINT };
 
 const Ctx = createContext<SettingsContext | null>(null);
 

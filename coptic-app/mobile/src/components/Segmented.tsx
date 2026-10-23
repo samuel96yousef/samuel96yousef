@@ -12,7 +12,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
   onChange: (v: T) => void;
   label: string;
 }) {
-  const { colors } = useSettings();
+  const { colors, dark } = useSettings();
   const [layouts, setLayouts] = useState<Record<string, LayoutRectangle>>({});
   const x = useSharedValue(0);
   const w = useSharedValue(0);
@@ -28,7 +28,8 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
 
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.wrap, { backgroundColor: colors.bg2 }]}>
-      <Animated.View style={[styles.thumb, { backgroundColor: colors.surface }, thumb]} />
+      {/* At night the surface is as dark as the track, so the thumb is lifted with a lighter tone, as on iOS. */}
+      <Animated.View style={[styles.thumb, { backgroundColor: dark ? 'rgba(255,236,244,0.16)' : colors.surface }, thumb]} />
       {options.map((o) => (
         <Pressable
           key={o.value}

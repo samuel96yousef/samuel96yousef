@@ -32,6 +32,7 @@ import { Book } from './Book';
 import { Cartouche } from './Cartouche';
 import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
+import type { PrintScope } from './PrintSheet';
 import { ReaderActions } from './ReaderActions';
 import { useToast } from './Toast';
 import { BAR_HEIGHT, TopBar } from './TopBar';
@@ -276,11 +277,13 @@ interface ReaderProps {
    * away until the reader is into the text and the page starts at the top.
    */
   ownHeader?: boolean;
+  /** What the print button offers on this screen */
+  print?: PrintScope[];
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set } = s;
   const insets = useSafeAreaInsets();
@@ -588,14 +591,14 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       </Animated.View>
     </GestureDetector>
     )}
-    <Chrome store={way} back={back} book={spread} quiet={quietTop} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    <Chrome store={way} back={back} book={spread} quiet={quietTop} print={print} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
     {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, quiet, pill }: { store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null }) {
+function Chrome({ store, back, book, quiet, pill, print }: { store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[] }) {
   const reading = useWay(store, (s) => s.reading);
   return (
     <>
@@ -603,7 +606,7 @@ function Chrome({ store, back, book, quiet, pill }: { store: WayStore; back?: st
       {!book && <EdgeFades reading={reading} quiet={quiet} />}
       {(!quiet || reading) && (
         <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
-          <ReaderActions />
+          <ReaderActions print={print} />
         </TopBar>
       )}
     </>

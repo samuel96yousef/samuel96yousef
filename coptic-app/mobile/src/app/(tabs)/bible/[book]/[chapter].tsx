@@ -8,6 +8,7 @@ import { Reader } from '../../../../components/Reader';
 import { books, loadBook, useAsync } from '../../../../data';
 import { markRead } from '../../../../lastRead';
 import { toArDigits } from '../../../../lib/coptic';
+import { bibleScopes } from '../../../../print/scopes';
 import { chapterRows, verseOutline } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 
@@ -28,6 +29,7 @@ export default function Chapter() {
     return i >= 0 ? { index: i, key: i } : null;
   }, [rows, verse]);
 
+  const print = useMemo(() => bibleScopes(b, n, t, lang), [b, n, t, lang]);
   const go = (c: number) => router.replace(`/bible/${b.bid}/${c}`);
   const nav = (
     <View style={[styles.nav, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
@@ -48,6 +50,7 @@ export default function Chapter() {
           ? (loading && !data ? <ActivityIndicator color={colors.crimson} /> : null)
           : <View style={styles.header}><LargeTitle title={`${ar ? b.ar : b.sv} ${n}`} subtitle={t.chapter(n)} />{loading && !data && <ActivityIndicator color={colors.crimson} />}</View>}
         footer={nav}
+        print={print}
       />
     </View>
   );

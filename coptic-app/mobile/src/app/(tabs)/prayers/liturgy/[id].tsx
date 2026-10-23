@@ -6,6 +6,7 @@ import { Chips } from '../../../../components/Chips';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
 import { kholagyIndex, usePrayer } from '../../../../data';
+import { liturgyScopes } from '../../../../print/scopes';
 import { headingIndexes, headingOutline, liturgyRows } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 import { FONTS } from '../../../../theme';
@@ -21,6 +22,7 @@ export default function Liturgy() {
   const outline = useMemo(() => headingOutline(rows, { ar: liturgy.ar, sv: liturgy.sv }), [rows, liturgy]);
   const [jump, setJump] = useState<{ index: number; key: number } | null>(null);
   const ar = lang === 'ar';
+  const print = useMemo(() => liturgyScopes(liturgy.id, ar ? liturgy.ar : liturgy.sv, t), [liturgy, ar, t]);
 
   const legend = (['priest', 'deacon', 'people'] as const).map((r) => {
     const color = r === 'priest' ? page.rule : r === 'deacon' ? page.gold : colors.label;
@@ -51,7 +53,7 @@ export default function Liturgy() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} print={print} />
     </View>
   );
 }

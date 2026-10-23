@@ -11,7 +11,8 @@ import { ReaderActions } from '../../components/ReaderActions';
 import { useReadings } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
 import { STRINGS } from '../../i18n';
-import { addDays, coptic, copticText, fromIso, gregorianText, isoDate } from '../../lib/coptic';
+import { addDays, coptic, copticText, dayMonthText, fromIso, gregorianText, isoDate, toArDigits, weekdayText } from '../../lib/coptic';
+import { readingScopes } from '../../print/scopes';
 import { dayOutline, dayRows, sectionIndex } from '../../rows';
 import { useSettings } from '../../settings';
 import { FONTS } from '../../theme';
@@ -29,6 +30,7 @@ export default function Readings() {
 
   const rows = useMemo(() => (data ? dayRows(data, fromIso(data.iso), { ar: STRINGS.ar.holyWeek, sv: STRINGS.sv.holyWeek }) : []), [data]);
   const outline = useMemo(() => (data ? dayOutline(data, rows) : null), [data, rows]);
+  const print = useMemo(() => readingScopes(date, t, lang), [date, t, lang]);
 
   // A link with ?date= opens that day.
   useEffect(() => { if (params.date) pickDay(fromIso(params.date)); }, [params.date]);
@@ -63,22 +65,26 @@ export default function Readings() {
         <Step n={-1} onPress={() => pickDay(addDays(date, -1))} />
         <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
           style={({ pressed }) => [styles.when, pressed && styles.dim]}>
-          <Text numberOfLines={1} style={[ar ? styles.dayAr : styles.day, { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
+          {/* The Coptic day on top, with a way back to today beside it when another day is shown. */}
+          <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+            <Text numberOfLines={1} style={[ar ? styles.dayAr : styles.day, { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
+            {!isToday && (
+              <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6}
+                style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+                <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
+              </Pressable>
+            )}
+          </View>
           <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
             <Text numberOfLines={1} style={[styles.sub, { color: isToday ? colors.crimson : colors.label2 }]}>
-              {isToday ? `${t.today} · ` : ''}{gregorianText(date, lang, date.getFullYear() !== new Date().getFullYear())}
+              {isToday ? `${t.today} · ` : `${capital(weekdayText(date, lang))} `}{dayMonthText(date, lang)}
+              {date.getFullYear() !== new Date().getFullYear() ? ` ${ar ? toArDigits(date.getFullYear()) : date.getFullYear()}` : ''}
             </Text>
             <Icon name="chevD" size={12} color={colors.label2} strokeWidth={2.4} />
           </View>
         </Pressable>
         <Step n={1} onPress={() => pickDay(addDays(date, 1))} />
-        {!isToday && (
-          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())}
-            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
-            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
-          </Pressable>
-        )}
-        <ReaderActions inline />
+        <ReaderActions inline print={print} />
       </View>
       {chips}
       {loading && !data && <ActivityIndicator style={styles.loading} color={colors.crimson} />}
@@ -88,11 +94,13 @@ export default function Readings() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} ownHeader />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} ownHeader print={print} />
       <DayPicker visible={picking} day={date} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
     </View>
   );
 }
+
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A quiet chevron to the day before or after; it points the reading way in Arabic too. */
 function Step({ n, onPress }: { n: number; onPress: () => void }) {
@@ -111,12 +119,12 @@ const styles = StyleSheet.create({
   bar: { alignItems: 'center', gap: 6, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 8, marginBottom: 12 },
   step: { width: 30, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   when: { flex: 1, minWidth: 0, paddingHorizontal: 2 },
-  day: { fontFamily: FONTS.svSemi, fontSize: 19, lineHeight: 25 },
-  dayAr: { fontFamily: FONTS.arBold, fontSize: 21, lineHeight: 30, writingDirection: 'rtl' },
+  day: { flexShrink: 1, fontFamily: FONTS.svSemi, fontSize: 19, lineHeight: 25 },
+  dayAr: { flexShrink: 1, fontFamily: FONTS.arBold, fontSize: 21, lineHeight: 30, writingDirection: 'rtl' },
   subRow: { alignItems: 'center', gap: 4 },
   sub: { flexShrink: 1, fontSize: 12.5, fontWeight: '600' },
-  todayPill: { borderRadius: 999, paddingHorizontal: 11, height: 32, justifyContent: 'center' },
-  todayText: { fontSize: 13, fontWeight: '700' },
+  todayPill: { marginHorizontal: 4, borderRadius: 999, paddingHorizontal: 9, height: 22, justifyContent: 'center' },
+  todayText: { fontSize: 12, fontWeight: '700' },
   dim: { opacity: 0.6 },
   flip: { transform: [{ scaleX: -1 }] },
   bookHead: { alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 12 },

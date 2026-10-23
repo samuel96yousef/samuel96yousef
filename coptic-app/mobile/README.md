@@ -55,6 +55,15 @@ I Bibeln visar brickan versen ("Vers 21 av 48"), pilarna hoppar fem verser
 och listan är ett rutnät med verserna. Texten tonar ut under toppraden och
 flikraden, så att knapparna aldrig ligger direkt på en textrad.
 
+Skriv ut och spara som PDF: skrivarknappen i läsningen öppnar ett val av
+vad som ska med (dagen eller sju dagar, timbönen eller hela Agpeya,
+liturgin, kapitlet eller hela bibelboken), språk (svenska, arabiska eller
+båda sida vid sida, rad för rad), A4 eller A5, textstorlek och röda
+rubriker eller svartvitt. Valen sparas. På telefonen går PDF:en till
+delningsmenyn (Filer, Mail, AirDrop, en skrivarapp) och "Skriv ut" öppnar
+systemets utskrift. På webben öppnas webbläsarens utskrift, där "Spara som
+PDF" ger filen. Varje dag, timbön eller liturgi börjar på en ny sida.
+
 Kholagy: prästens delar har röd etikett, diakonens guldfärgad etikett och
 guldlinje, folkets svar fetstil med röd linje så att församlingen hittar
 sina delar. Instruktioner (rubriker) står i rött och kursivt, tysta böner
@@ -87,6 +96,8 @@ src/components/     läsaren, boken (Book), sidramen, valvet, flikraden,
                     språkknappen, Wayfinder (brickan, dockan och listan)
 src/book.ts         hur texten delas upp i bokens sidor
 src/day.ts          vilken dag läsningarna gäller (idag eller en vald dag)
+src/print/          utskrift: texten som HTML (html.ts), typsnitten, vad
+                    varje skärm kan skriva ut, utskrift och PDF per plattform
 src/lib/coptic.ts   koptisk kalender, påsk, högtider, fastor, timböner
 src/lib/lectionary.ts  reglerna för dagens läsningar
 src/data.ts         laddar texterna, bibelsök
@@ -148,8 +159,11 @@ Testat: enhetstester, typkontroll, lint, `expo-doctor` (två kontroller
 kräver nätverk till Expos servrar och gick inte att köra här) och hela
 webbversionen i Chromium i telefon- och surfplattestorlek, ljust och mörkt,
 svenska och arabiska, inklusive hopp till varje avsnitt, dockans pilar,
-hjulet och flytt av dockan. Inte testat: på riktiga iPhone- och
-Android-telefoner, där haptiken och glaset bara finns. Hur fällningen
+hjulet och flytt av dockan. Utskriften är testad genom att göra PDF av
+webbversionens utskrift i Chromium (samma motor som Android använder).
+Inte testat: på riktiga iPhone- och
+Android-telefoner, där haptiken och glaset bara finns, och utskrift och
+PDF där (iOS gör PDF med WebKit, så radbrytningar kan skilja sig lite). Hur fällningen
 (halvöppen, bokläge) på en Duo påverkar layouten är inte gjort: Expo har
 inget färdigt sätt att läsa av gångjärnets läge. Glaseffekten (Liquid Glass) syns bara på
 iOS 26.

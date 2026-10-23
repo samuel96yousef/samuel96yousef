@@ -6,6 +6,7 @@ import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
 import { agpeyaIndex, usePrayer } from '../../../../data';
 import { HOURS } from '../../../../lib/coptic';
+import { hourScopes } from '../../../../print/scopes';
 import { headingOutline, prayerRows } from '../../../../rows';
 import { useSettings } from '../../../../settings';
 
@@ -17,6 +18,7 @@ export default function Hour() {
   const rows = useMemo(() => (data ? prayerRows(data, { ar: 'الأجبية', sv: 'Agpeya' }) : []), [data]);
   const outline = useMemo(() => headingOutline(rows, { ar: hour.ar, sv: hour.sv }), [rows, hour]);
   const ar = lang === 'ar';
+  const print = useMemo(() => hourScopes(hour.id, ar ? hour.ar : hour.sv, t, lang), [hour, ar, t, lang]);
   // In the open book the page's own cartouche is the title.
   const header = spread ? (!data ? <ActivityIndicator color={colors.crimson} /> : null) : (
     <View style={styles.header}>
@@ -26,7 +28,7 @@ export default function Hour() {
   );
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} outline={outline} back={t.prayers} header={header} />
+      <Reader rows={rows} outline={outline} back={t.prayers} header={header} print={print} />
     </View>
   );
 }
