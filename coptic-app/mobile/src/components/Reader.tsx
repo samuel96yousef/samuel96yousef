@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 
@@ -358,11 +358,24 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
    * A newer target, or the reader's own finger, cancels both.
    */
   const target = useRef<{ index: number; viewOffset: number; tries: number } | null>(null);
+  // Pinned section tabs step aside while the reader scrolls on and come back on the way up, as Safari's bar does.
+  const tabsOut = useSharedValue(0);
+  const tabsHidden = useRef(false);
+  const lastY = useRef(0);
+  const jumpedAt = useRef(0);
+  const setTabsHidden = useCallback((hide: boolean) => {
+    if (hide === tabsHidden.current) return;
+    tabsHidden.current = hide;
+    tabsOut.set(withTiming(hide ? 1 : 0, { duration: 220 }));
+  }, [tabsOut]);
   const scrolledAt = useRef(0);
   const offsetY = useRef(0);
   const scrollToRow = useCallback((index: number, viewOffset: number) => {
     const goal = { index, viewOffset, tries: 0 };
     target.current = goal;
+    // A jump is not the reader scrolling on: the tabs stay, showing where it went.
+    jumpedAt.current = Date.now();
+    setTabsHidden(false);
     const go = () => {
       try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0, viewOffset }); } catch { /* handled by onScrollToIndexFailed */ }
     };
@@ -393,7 +406,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       });
     }, checks ? 120 : 90);
     verify();
-  }, [markSet]);
+  }, [markSet, setTabsHidden]);
   const onScrollFailed = useCallback((info: { index: number; highestMeasuredFrameIndex: number }) => {
     const goal = target.current;
     if (!goal || goal.index !== info.index || goal.tries++ > 40) return;
@@ -524,12 +537,18 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     // Reading once the large title is under the top bar; apart thresholds, so it does not flicker at the edge.
     const y = contentOffset.y;
     if (y > 96 !== way.get().reading && (y > 96 || y < 48)) way.set({ reading: y > 96 });
+    if (tabsOn) {
+      const dy = y - lastY.current;
+      lastY.current = y;
+      if (y < 160) setTabsHidden(false);
+      else if (Date.now() - jumpedAt.current > 1500 && Math.abs(dy) > 4) setTabsHidden(dy > 0);
+    }
     if (!outline) return;
     // Measure at most every 90 ms while scrolling, and once more when it stops.
     clearTimeout(trailing.current);
     const now = Date.now();
     if (now - lastLocate.current > 90) { lastLocate.current = now; locate(); } else trailing.current = setTimeout(locate, 120);
-  }, [outline, locate, progress, way]);
+  }, [outline, locate, progress, way, tabsOn, setTabsHidden]);
 
   const onMark = useCallback((i: number, node: Mark | null, prevNode?: Mark) => {
     if (node) marks.current.set(i, node);
@@ -615,19 +634,24 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     )}
     <Chrome store={way} back={sidebar ? undefined : back} book={spread} quiet={quietTop} print={print} lead={barLead} middle={spread ? barCenter : null}
       pill={outline && !sidebar && !tabsOn ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null}
-      pinned={tabsOn && outline ? <SectionTabs pinned outline={outline} store={way} onJump={jump} /> : null} />
+      pinned={tabsOn && outline ? <SectionTabs pinned outline={outline} store={way} onJump={jump} /> : null} pinnedOut={tabsOut} />
     {outline && outline.items.length > 0 && !sidebar && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned }: {
-  store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null; pinned?: ReactElement | null;
+function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned, pinnedOut }: {
+  store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null;
+  pinned?: ReactElement | null; pinnedOut?: SharedValue<number>;
 }) {
   const reading = useWay(store, (s) => s.reading);
   const insets = useSafeAreaInsets();
   const { colors } = useSettings();
+  // Hidden, the bar shrinks to the band behind the buttons and the tabs slide up under it.
+  const barH = insets.top + BAR_HEIGHT;
+  const pinBox = useAnimatedStyle(() => ({ height: barH + TABS_H * (1 - (pinnedOut?.get() ?? 0)) }));
+  const pinTabs = useAnimatedStyle(() => ({ opacity: 1 - (pinnedOut?.get() ?? 0), transform: [{ translateY: -TABS_H * (pinnedOut?.get() ?? 0) }] }));
   return (
     <>
       {/* Text slides under the bars only when it scrolls; the open book's pages stop short of them. */}
@@ -639,7 +663,9 @@ function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned }:
       )}
       {pinned && reading && (
         // One solid bar from the top of the screen down to the tabs, under the floating buttons, as an iOS navigation bar.
-        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.pinned, { paddingTop: insets.top + BAR_HEIGHT, backgroundColor: colors.bg }]}>{pinned}</Animated.View>
+        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.pinned, { paddingTop: barH, backgroundColor: colors.bg }, pinBox]}>
+          <Animated.View style={pinTabs}>{pinned}</Animated.View>
+        </Animated.View>
       )}
     </>
   );
@@ -720,7 +746,7 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
 }
 
 const styles = StyleSheet.create({
-  pinned: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15 },
+  pinned: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15, overflow: 'hidden' },
   fill: { flex: 1 },
   fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
   fadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
