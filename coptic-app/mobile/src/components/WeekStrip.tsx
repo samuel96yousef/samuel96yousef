@@ -30,16 +30,19 @@ export function WeekStrip({ day, onPick }: { day: Date; onPick: (d: Date) => voi
   const weeks = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i - RANGE), []);
   const indexOf = useCallback((d: Date) => Math.min(RANGE * 2, Math.max(0, RANGE + Math.round(dayDiff(startOf(d), anchor) / 7))), [startOf, anchor]);
 
-  // When the chosen day moves to another week (the calendar, "Idag"), the strip follows.
+  // When the chosen day moves to another week (the calendar, "Idag"), the strip
+  // follows. A new width remounts the list (its key) straight on the chosen week,
+  // so resizing the window never scrolls it.
   const dayIso = isoDate(day);
   useEffect(() => {
-    if (width) list.current?.scrollToIndex({ index: indexOf(fromIso(dayIso)), animated: true });
-  }, [dayIso, width, indexOf]);
+    list.current?.scrollToIndex({ index: indexOf(fromIso(dayIso)), animated: true });
+  }, [dayIso, indexOf]);
 
   return (
     <View style={styles.wrap} onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))}>
       {width > 0 && (
         <FlatList
+          key={width}
           ref={list}
           style={styles.list}
           horizontal
