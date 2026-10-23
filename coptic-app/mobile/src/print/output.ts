@@ -8,8 +8,8 @@ import { PAGE_POINTS, type Paper } from './html';
 /** On a phone the PDF is a file of its own; on the web it is saved from the print dialog. */
 export const SAVES_FILE = true;
 
-// iOS takes the margins here; Android takes them from the page's @page rule.
-const MARGINS = { A4: { top: 45, right: 42, bottom: 48, left: 42 }, A5: { top: 31, right: 28, bottom: 34, left: 28 } };
+// iOS takes the margins here; Android takes them from the page's @page rule (html.ts FRAME), in points.
+const MARGINS = { A4: { top: 20, right: 20, bottom: 31, left: 20 }, A5: { top: 14, right: 14, bottom: 25.5, left: 14 } };
 
 export async function printDocument(html: string, paper: Paper) {
   await Print.printAsync({ html, ...PAGE_POINTS[paper], margins: MARGINS[paper] });

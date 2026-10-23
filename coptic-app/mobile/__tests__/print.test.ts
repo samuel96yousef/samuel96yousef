@@ -34,7 +34,10 @@ describe('printHtml', () => {
 
   it('starts each part on a new page and honours paper and colour', () => {
     const html = printHtml([{ rows }, { rows }], { langs: 'ar', paper: 'A5', size: 'L', color: false }, 'x');
-    expect(html.match(/<section class="part">/g)).toHaveLength(2);
+    expect(html.match(/<table class="part">/g)).toHaveLength(2);
+    // One frame, drawn on every page, with a cross on each corner.
+    expect(html.match(/class="frame"/g)).toHaveLength(1);
+    expect(html.match(/<i class="(tl|tr|bl|br)">/g)).toHaveLength(4);
     expect(html).toContain('.part + .part { break-before: page; }');
     expect(html).toContain('size: A5');
     expect(html).toContain('--rule: #111');

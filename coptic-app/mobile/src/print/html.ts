@@ -39,6 +39,36 @@ const BASE: Record<Paper, Record<TextSize, number>> = {
   A5: { S: 8.5, M: 9.5, L: 11 },
 };
 
+/**
+ * Where the frame sits on the page and how far the text keeps from it, in mm.
+ * The page margin leaves room for the page number under the frame.
+ */
+const FRAME: Record<Paper, { margin: string; inset: number; pad: number; gap: number }> = {
+  A4: { margin: '7mm 7mm 11mm', inset: 3, pad: 9, gap: 8 },
+  A5: { margin: '5mm 5mm 9mm', inset: 2.5, pad: 6, gap: 6 },
+};
+
+/**
+ * The app's Coptic cross: flared arms with three buds each, and a ring at the
+ * centre. The arms are turned here rather than with SVG transforms, which
+ * Chromium drops from a frame repeated on every page of a PDF.
+ */
+const CROSS = (() => {
+  const turns: ((x: number, y: number) => [number, number])[] = [
+    (x, y) => [x, y], (x, y) => [24 - y, x], (x, y) => [24 - x, 24 - y], (x, y) => [y, 24 - x],
+  ];
+  const n = (v: number) => Math.round(v * 100) / 100;
+  const arms = turns.map((t) => {
+    const P = (x: number, y: number) => t(x, y).map(n).join(' ');
+    const dot = (x: number, y: number, r: number) => { const [cx, cy] = t(x, y).map(n); return `<circle cx="${cx}" cy="${cy}" r="${r}"/>`; };
+    return `<path d="M${P(10.4, 12)}L${P(10.4, 5.6)}Q${P(10.4, 4.7)} ${P(9.3, 4.3)}L${P(14.7, 4.3)}Q${P(13.6, 4.7)} ${P(13.6, 5.6)}L${P(13.6, 12)}Z"/>${dot(12, 2.2, 1.55)}${dot(9.6, 3.4, 1.2)}${dot(14.4, 3.4, 1.2)}`;
+  }).join('');
+  return `<svg viewBox="0 0 24 24" fill="currentColor">${arms}<path fill-rule="evenodd" d="M12 8.6a3.4 3.4 0 1 1 0 6.8a3.4 3.4 0 1 1 0-6.8zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"/></svg>`;
+})();
+
+/** The Katameros frame, as in the app: a double rule with a cross on each corner. Fixed, so it is drawn on every page. */
+const frame = () => `<div class="frame">${['tl', 'tr', 'bl', 'br'].map((c) => `<i class="${c}">${CROSS}</i>`).join('')}</div>`;
+
 const ROLE_SV: Record<Role, string> = { priest: 'Prästen', deacon: 'Diakonen', people: 'Folket' };
 const ROLE_AR: Record<Role, string> = { priest: 'الكاهن', deacon: 'الشماس', people: 'الشعب' };
 
@@ -50,8 +80,12 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const arRef = (s: string) => toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
 
 export function printHtml(parts: PrintPart[], o: PrintOptions, title: string, fontCss = ''): string {
-  const body = parts.map((p) => `<section class="part">${p.rows.map((r) => rowHtml(r, o.langs)).join('')}</section>`).join('');
-  return `<!doctype html><html lang="${o.langs === 'ar' ? 'ar' : 'sv'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${fontCss}${css(o)}</style></head><body class="langs-${o.langs}">${body}</body></html>`;
+  // Each part is a table whose empty head and foot repeat on every printed
+  // page, keeping the text clear of the frame at the top and bottom of each page.
+  const body = parts.map((p) =>
+    `<table class="part"><thead><tr><td><div class="gap"></div></td></tr></thead><tfoot><tr><td><div class="gap"></div></td></tr></tfoot><tbody><tr><td>${p.rows.map((r) => rowHtml(r, o.langs)).join('')}</td></tr></tbody></table>`,
+  ).join('');
+  return `<!doctype html><html lang="${o.langs === 'ar' ? 'ar' : 'sv'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${fontCss}${css(o)}</style></head><body class="langs-${o.langs}">${frame()}${body}</body></html>`;
 }
 
 /** The text of one language, or the other when a unit only has that one. */
@@ -120,14 +154,23 @@ function css(o: PrintOptions): string {
   const b = BASE[o.paper][o.size];
   const rule = o.color ? '#9E1B32' : '#111';
   const gold = o.color ? '#A8751A' : '#555';
-  const margin = o.paper === 'A4' ? '16mm 15mm 17mm' : '11mm 10mm 12mm';
+  const f = FRAME[o.paper];
   return `
-@page { size: ${o.paper}; margin: ${margin}; @bottom-center { content: counter(page); font: ${b * 0.8}pt Literata, Georgia, serif; color: #777; } }
-:root { --ink: #1B1517; --ink2: #5A4E51; --rule: ${rule}; --gold: ${gold}; }
+@page { size: ${o.paper}; margin: ${f.margin}; @bottom-center { content: counter(page); font: ${b * 0.8}pt Literata, Georgia, serif; color: #777; } }
+:root { --ink: #1B1517; --ink2: #3A3134; --rule: ${rule}; --rule2: ${o.color ? '#E09AA5' : '#999'}; --gold: ${gold}; }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-text-size-adjust: 100%; }
 body { margin: 0; color: var(--ink); font: ${b}pt/1.5 Literata, Georgia, 'Noto Sans Coptic', serif; }
-@media screen { body { max-width: 190mm; margin: 0 auto; padding: 12mm 8mm; } }
+body { padding: 0 ${f.inset + f.pad}mm; }
+.frame { position: fixed; inset: ${f.inset}mm; border: 1.2pt solid var(--rule); color: var(--rule); pointer-events: none; }
+.frame::before { content: ''; position: absolute; inset: 3pt; border: .6pt solid var(--rule2); }
+.frame i { position: absolute; font-style: normal; width: 14pt; height: 14pt; background: #fff; display: block; }
+.frame svg { display: block; width: 100%; height: 100%; }
+.frame .tl { top: -7.6pt; left: -7.6pt; } .frame .tr { top: -7.6pt; right: -7.6pt; }
+.frame .bl { bottom: -7.6pt; left: -7.6pt; } .frame .br { bottom: -7.6pt; right: -7.6pt; }
+.part { width: 100%; border-collapse: collapse; font: inherit; color: inherit; }
+.part > * > tr > td { padding: 0; }
+.gap { height: ${f.inset + f.gap}mm; }
 .ar { direction: rtl; text-align: right; font-family: Amiri, 'Noto Naskh Arabic', 'Noto Sans Coptic', serif; font-size: 1.24em; line-height: 1.75; }
 .sv { direction: ltr; text-align: left; }
 .part + .part { break-before: page; }
@@ -140,12 +183,13 @@ body { margin: 0; color: var(--ink); font: ${b}pt/1.5 Literata, Georgia, 'Noto S
 .cart-in .ar:first-child { font-weight: 700; font-size: 1.5em; }
 .cart-in > :nth-child(2) { color: var(--ink2); }
 .feast { margin: 0 0 10pt; color: var(--ink); }
-.fi > :nth-child(2) { color: var(--ink2); font-style: italic; }
+.fi > .sv:nth-child(2) { font-style: italic; }
+.fi > :nth-child(2) { color: var(--ink2); }
 .title { margin: 16pt 0 8pt; break-after: avoid; break-inside: avoid; }
 .title > .sv { font-weight: 600; font-size: 1.3em; }
 .title > .ar { font-weight: 700; font-size: 1.55em; line-height: 1.5; }
 .langs-both .title > .sv { font-size: .78em; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--rule); }
-.cap { text-align: center; color: var(--ink2); font-style: italic; font-size: .9em; margin-top: 2pt; }
+.cap { text-align: center; color: var(--ink2); font-size: .9em; margin-top: 2pt; }
 .sep { display: flex; align-items: center; gap: 8pt; margin: 14pt 0; color: var(--rule); }
 .sep::before, .sep::after { content: ''; flex: 1; border-top: .6pt solid var(--ink); }
 .role { margin: 9pt 0 2pt; font-size: .72em; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--rule); break-after: avoid; }
@@ -165,8 +209,11 @@ body { margin: 0; color: var(--ink); font: ${b}pt/1.5 Literata, Georgia, 'Noto S
 .t-ref { padding-bottom: 4pt; border-bottom: 1.2pt dotted var(--ink); width: 62%; margin-left: auto; margin-right: auto; }
 .t-ref .sv { font-weight: 600; font-size: .92em; }
 .t-ref .ar { font-weight: 700; }
-.t-f > div, .t-secret > div { color: var(--ink2); font-style: italic; }
-.t-rubric > div, .t-note > div { color: var(--rule); font-style: italic; font-size: .88em; }
+/* Slanted only in Swedish: Arabic has no italic, and a slanted Amiri is hard to read. */
+.t-f > div, .t-secret > div { color: var(--ink2); }
+.t-f .sv, .t-secret .sv, .langs-sv .cap, .langs-both .cap { font-style: italic; }
+.t-rubric > div, .t-note > div { color: var(--rule); font-size: .88em; }
+.t-rubric .sv, .t-note .sv { font-style: italic; }
 .t-rubric .ar, .t-note .ar { font-size: 1.05em; font-style: normal; }
 .r-people > div { font-weight: 600; }
 .r-people .ar { font-weight: 700; }

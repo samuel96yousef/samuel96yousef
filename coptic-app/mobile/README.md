@@ -62,7 +62,10 @@ båda sida vid sida, rad för rad), A4 eller A5, textstorlek och röda
 rubriker eller svartvitt. Valen sparas. På telefonen går PDF:en till
 delningsmenyn (Filer, Mail, AirDrop, en skrivarapp) och "Skriv ut" öppnar
 systemets utskrift. På webben öppnas webbläsarens utskrift, där "Spara som
-PDF" ger filen. Varje dag, timbön eller liturgi börjar på en ny sida.
+PDF" ger filen. Varje dag, timbön eller liturgi börjar på en ny sida, och
+varje sida har appens ram: dubbel röd linje med ett koptiskt kors i
+varje hörn (svart och grå i svartvitt). Text som är grå i appen skrivs
+ut nästan svart så att den går att läsa på papper.
 
 Kholagy: prästens delar har röd etikett, diakonens guldfärgad etikett och
 guldlinje, folkets svar fetstil med röd linje så att församlingen hittar
