@@ -103,6 +103,8 @@ src/components/     läsaren, boken (Book), sidramen, valvet, flikraden,
                     språkknappen, Wayfinder (brickan, dockan och listan)
 src/book.ts         hur texten delas upp i bokens sidor
 src/day.ts          vilken dag läsningarna gäller (idag eller en vald dag)
+src/components/Icon.tsx  ikonerna: Lucide (lucide-react-native), plus
+                    ljuset, bibeln och kalken ritade på samma rutnät
 src/print/          utskrift: texten som HTML (html.ts), typsnitten, vad
                     varje skärm kan skriva ut, utskrift och PDF per plattform
 src/lib/coptic.ts   koptisk kalender, påsk, högtider, fastor, timböner

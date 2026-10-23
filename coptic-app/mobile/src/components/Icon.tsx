@@ -1,42 +1,54 @@
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import {
+  ALargeSmall, BookOpen, BookOpenText, Calendar, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Info, List, Printer,
+  Search, Share, SlidersHorizontal, Smartphone, Sun, X, type LucideIcon,
+} from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 
-const PATHS = {
-  today: 'M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6',
-  readings: 'M3 5.6c2.6-1.1 5.6-1 9 .9 3.4-1.9 6.4-2 9-.9v13c-2.6-1.1-5.6-1-9 .9-3.4-1.9-6.4-2-9-.9zM12 6.5v13',
-  prayers: 'M12 2.8c1.3 1.5 1.7 2.8 0 4.3-1.7-1.5-1.3-2.8 0-4.3zM9.6 9.2h4.8v11H9.6zM7.5 20.4h9',
-  bible: 'M6.5 3.5h11a1 1 0 0 1 1 1v15.7h-11A1.8 1.8 0 0 1 5.7 18.4V5.3a1.8 1.8 0 0 1 .8-1.8zM5.7 18.4a1.8 1.8 0 0 1 1.8-1.8h11M12 7v6M9.8 9.3h4.4',
-  gear: 'M4 7h9M17 7h3M4 17h3M11 17h9',
-  book: 'M2.8 5.5h7.4a1.8 1.8 0 0 1 1.8 1.8v12a1.6 1.6 0 0 0-1.6-1.6H2.8zM21.2 5.5h-7.4A1.8 1.8 0 0 0 12 7.3v12a1.6 1.6 0 0 1 1.6-1.6h7.6z',
-  chevL: 'M15 5l-7 7 7 7',
-  chevR: 'M9 5l7 7-7 7',
-  chevU: 'M5 15l7-7 7 7',
-  chevD: 'M5 9l7 7 7-7',
-  x: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
-  search: 'M15.5 15.5L20 20',
-  liturgy: 'M8 20.5h8M9.5 20.5c0-3 1-4.5 2.5-5.5 1.5 1 2.5 2.5 2.5 5.5M6.5 8.5h11a5.5 5.5 0 0 1-11 0zM12 3v2.5M10.8 4.2h2.4',
-  info: 'M12 11v5.5M12 7.6v.4',
-  phone: 'M10.5 18.2h3',
-  list: 'M9.5 6.5h10M9.5 12h10M9.5 17.5h10',
-  calendar: 'M4.5 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2zM4.5 10h15M8.5 3.3v3.4M15.5 3.3v3.4',
-  // A large and a small A: centred across, and a little above centre, because
-  // the small A puts the weight at the bottom.
-  textSize: 'M1.9 18L7.5 4l5.6 14M4.03 12.7h6.94M13.7 18l3.4-8 3.4 8M14.85 15.3h4.5',
-  print: 'M7 8.5V3.5h10v5M7 17.5H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v6.5H7z',
-  share: 'M12 14.5v-11M8 7.5l4-4 4 4M7.5 10.5h-2v10h13v-10h-2',
+/**
+ * The app's icons: Lucide's line icons, all on one 24-unit grid with the same
+ * stroke, so they sit centred and match one another. Lucide has nothing for
+ * the Agpeya's candle, a Bible with a cross or the Kholagy's chalice; those
+ * are drawn here on the same grid, in the same style.
+ */
+const LUCIDE = {
+  today: Sun,
+  readings: BookOpenText,
+  book: BookOpen,
+  gear: SlidersHorizontal,
+  chevL: ChevronLeft,
+  chevR: ChevronRight,
+  chevU: ChevronUp,
+  chevD: ChevronDown,
+  x: X,
+  search: Search,
+  info: Info,
+  phone: Smartphone,
+  list: List,
+  calendar: Calendar,
+  print: Printer,
+  share: Share,
+  textSize: ALargeSmall,
+} satisfies Record<string, LucideIcon>;
+
+const OWN = {
+  // A candle: the flame, the stick and its holder.
+  prayers: 'M12 2.5c1.6 1.7 2 3.3 0 5-2-1.7-1.6-3.3 0-5zM9.5 10h5v10h-5zM6.5 21h11',
+  // A Bible, closed, with a cross on its cover.
+  bible: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20M12 6v7M9.5 8.5h5',
+  // A chalice with a cross above it.
+  liturgy: 'M8 22h8M12 15v7M6 6h12a6 6 0 0 1-12 0zM12 2v2M11 3h2',
 } as const;
 
-export type IconName = keyof typeof PATHS;
+export type IconName = keyof typeof LUCIDE | keyof typeof OWN;
 
-export function Icon({ name, size = 24, color, strokeWidth = 1.7 }: { name: IconName; size?: number; color: string; strokeWidth?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      {name === 'today' && <Circle cx={12} cy={12} r={4.2} />}
-      {name === 'gear' && (<G><Circle cx={15} cy={7} r={2.1} /><Circle cx={9} cy={17} r={2.1} /></G>)}
-      {name === 'search' && <Circle cx={10.5} cy={10.5} r={6} />}
-      {name === 'info' && <Circle cx={12} cy={12} r={9} />}
-      {name === 'phone' && <Rect x={7} y={2.8} width={10} height={18.4} rx={2.4} />}
-      {name === 'list' && (<G><Circle cx={5} cy={6.5} r={0.5} /><Circle cx={5} cy={12} r={0.5} /><Circle cx={5} cy={17.5} r={0.5} /></G>)}
-      <Path d={PATHS[name]} />
-    </Svg>
-  );
+export function Icon({ name, size = 24, color, strokeWidth = 1.75 }: { name: IconName; size?: number; color: string; strokeWidth?: number }) {
+  if (name in OWN) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        <Path d={OWN[name as keyof typeof OWN]} />
+      </Svg>
+    );
+  }
+  const L = LUCIDE[name as keyof typeof LUCIDE];
+  return <L size={size} color={color} strokeWidth={strokeWidth} />;
 }
