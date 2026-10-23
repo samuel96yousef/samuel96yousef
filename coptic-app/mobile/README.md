@@ -47,9 +47,9 @@ sitter överst, det du trycker på sitter på sidan där tummen når.
 - **Listan öppnas där du tryckte**, med avsnittet du läser markerat. Tryck
   på ett avsnitt för att hoppa dit, eller på brickan, dockan eller utanför
   för att stänga.
-- **Uppfälld (bok).** Inget du trycker på ligger på vecket: brickan och
-  flikraden flyttar till ena sidan, och dockan och listan bläddrar till
-  uppslaget där avsnittet börjar.
+- **Uppfälld (bok).** Brickan flyttar till ena sidan, och dockan och
+  listan bläddrar till uppslaget där avsnittet börjar. Flikraden står kvar
+  mitt under boken, på samma plats som på alla andra skärmar.
 
 I Bibeln visar brickan versen ("Vers 21 av 48"), pilarna hoppar fem verser
 och listan är ett rutnät med verserna. Texten tonar ut under toppraden och
