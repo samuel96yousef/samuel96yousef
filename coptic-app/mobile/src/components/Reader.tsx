@@ -16,7 +16,7 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -369,6 +369,15 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     tabsOut.set(withTiming(hide ? 1 : 0, { duration: 220 }));
   }, [tabsOut]);
   const scrolledAt = useRef(0);
+  // The reader's own scrolling ends any correction of a jump; on a phone the list
+  // reports a drag, on the web a wheel, a touch, a key or a click on the scrollbar.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const stop = () => { target.current = null; };
+    const events = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+    events.forEach((e) => window.addEventListener(e, stop, { passive: true, capture: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, stop, { capture: true }));
+  }, []);
   const offsetY = useRef(0);
   const scrollToRow = useCallback((index: number, viewOffset: number) => {
     const goal = { index, viewOffset, tries: 0 };
