@@ -17,10 +17,11 @@ const layout = LinearTransition.duration(220);
 
 /**
  * Floating glass buttons over the content, as in iOS 26. `center` fills the
- * space between the two sides (the reader's context pill); `compact` shrinks
+ * space between the two sides (the reader's context pill); `lead` follows the
+ * back button (the day in the open book); `compact` shrinks
  * the back button to its chevron to make room for it.
  */
-export function TopBar({ back, children, center, compact }: { back?: string; children?: ReactNode; center?: ReactNode; compact?: boolean }) {
+export function TopBar({ back, lead, children, center, compact }: { back?: string; lead?: ReactNode; children?: ReactNode; center?: ReactNode; compact?: boolean }) {
   const insets = useSafeAreaInsets();
   const { colors, lang } = useSettings();
   const row = lang === 'ar' ? 'row-reverse' : 'row';
@@ -41,6 +42,7 @@ export function TopBar({ back, children, center, compact }: { back?: string; chi
             </Animated.View>
           </Pressable>
         )}
+        {lead}
       </View>
       <View pointerEvents="box-none" style={styles.center}>{center}</View>
       <View pointerEvents="box-none" style={[styles.side, styles.end, { flexDirection: row }]}>{children}</View>

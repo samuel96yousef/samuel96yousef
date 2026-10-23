@@ -279,11 +279,14 @@ interface ReaderProps {
   ownHeader?: boolean;
   /** What the print button offers on this screen */
   print?: PrintScope[];
+  /** In the open book: what the top bar shows at its start, and in its middle until the reader is into the text */
+  barLead?: ReactElement | null;
+  barCenter?: ReactElement | null;
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set } = s;
   const insets = useSafeAreaInsets();
@@ -591,21 +594,23 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       </Animated.View>
     </GestureDetector>
     )}
-    <Chrome store={way} back={back} book={spread} quiet={quietTop} print={print} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    <Chrome store={way} back={back} book={spread} quiet={quietTop} print={print} lead={spread ? barLead : null} middle={spread ? barCenter : null} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
     {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, quiet, pill, print }: { store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[] }) {
+function Chrome({ store, back, book, quiet, pill, print, lead, middle }: {
+  store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null;
+}) {
   const reading = useWay(store, (s) => s.reading);
   return (
     <>
       {/* Text slides under the bars only when it scrolls; the open book's pages stop short of them. */}
       {!book && <EdgeFades reading={reading} quiet={quiet} />}
       {(!quiet || reading) && (
-        <TopBar back={back} compact={reading && !!pill} center={reading ? pill : null}>
+        <TopBar back={back} lead={lead} compact={reading && !!pill} center={reading ? pill : middle}>
           <ReaderActions print={print} />
         </TopBar>
       )}

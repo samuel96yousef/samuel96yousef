@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Chips } from '../../components/Chips';
-import { DateBar } from '../../components/DateBar';
 import { DayPicker } from '../../components/DayPicker';
+import { Glass } from '../../components/Glass';
 import { Icon } from '../../components/Icon';
 import { Reader } from '../../components/Reader';
 import { ReaderActions } from '../../components/ReaderActions';
@@ -52,38 +52,42 @@ export default function Readings() {
   );
   // The open book's first spread keeps its room for the pages: one slim row
   // with the day and the sections. The pages carry the title and the date.
+  // The day: a step back, the Coptic date over the civil one (a tap opens the
+  // calendar), a step on. On the phone it heads the page in a card; in the open
+  // book it sits in the top bar, so the pages keep their full height.
+  const dayNav = (
+    <>
+    <Step n={-1} onPress={() => pickDay(addDays(date, -1))} />
+    <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
+      style={({ pressed }) => [styles.when, pressed && styles.dim]}>
+      {/* The Coptic day on top, with a way back to today beside it when another day is shown. */}
+      <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <Text numberOfLines={1} style={[ar ? styles.dayAr : styles.day, spread && (ar ? styles.dayArSmall : styles.daySmall), { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
+        {!isToday && (
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6}
+            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <Text numberOfLines={1} style={[styles.sub, { color: isToday ? colors.crimson : colors.label2 }]}>
+          {isToday ? `${t.today} · ` : `${capital(weekdayText(date, lang))} `}{dayMonthText(date, lang)}
+          {date.getFullYear() !== new Date().getFullYear() ? ` ${ar ? toArDigits(date.getFullYear()) : date.getFullYear()}` : ''}
+        </Text>
+        <Icon name="chevD" size={12} color={colors.label2} strokeWidth={2.4} />
+      </View>
+    </Pressable>
+    <Step n={1} onPress={() => pickDay(addDays(date, 1))} />
+    </>
+  );
   const header = spread ? (
-    <View style={[styles.bookHead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-      <DateBar compact date={date} onChange={pickDay} />
-      {chips}
-      {loading && !data && <ActivityIndicator color={colors.crimson} />}
-    </View>
+    loading && !data ? <ActivityIndicator style={{ marginTop: 12 }} color={colors.crimson} /> : null
   ) : (
     <View style={styles.header}>
       {/* The day in one slim card, then straight to the text: the page itself carries the title. */}
       <View style={[styles.bar, { backgroundColor: colors.surface, flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        <Step n={-1} onPress={() => pickDay(addDays(date, -1))} />
-        <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)}
-          style={({ pressed }) => [styles.when, pressed && styles.dim]}>
-          {/* The Coptic day on top, with a way back to today beside it when another day is shown. */}
-          <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            <Text numberOfLines={1} style={[ar ? styles.dayAr : styles.day, { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
-            {!isToday && (
-              <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6}
-                style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
-                <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
-              </Pressable>
-            )}
-          </View>
-          <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-            <Text numberOfLines={1} style={[styles.sub, { color: isToday ? colors.crimson : colors.label2 }]}>
-              {isToday ? `${t.today} · ` : `${capital(weekdayText(date, lang))} `}{dayMonthText(date, lang)}
-              {date.getFullYear() !== new Date().getFullYear() ? ` ${ar ? toArDigits(date.getFullYear()) : date.getFullYear()}` : ''}
-            </Text>
-            <Icon name="chevD" size={12} color={colors.label2} strokeWidth={2.4} />
-          </View>
-        </Pressable>
-        <Step n={1} onPress={() => pickDay(addDays(date, 1))} />
+        {dayNav}
         <ReaderActions inline print={print} />
       </View>
       {chips}
@@ -91,10 +95,15 @@ export default function Readings() {
       {error && <Text style={[styles.note, { color: colors.crimson }]}>{error.message}</Text>}
     </View>
   );
+  const barLead = spread ? (
+    <Glass style={styles.leadGlass}>
+      <View style={[styles.lead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{dayNav}</View>
+    </Glass>
+  ) : null;
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} ownHeader print={print} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} ownHeader print={print} barLead={barLead} barCenter={spread ? chips : null} />
       <DayPicker visible={picking} day={date} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
     </View>
   );
@@ -127,8 +136,11 @@ const styles = StyleSheet.create({
   todayText: { fontSize: 12, fontWeight: '700' },
   dim: { opacity: 0.6 },
   flip: { transform: [{ scaleX: -1 }] },
-  bookHead: { alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 12 },
-  bookChips: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
+  leadGlass: { borderRadius: 22 },
+  lead: { alignItems: 'center', height: 44, paddingHorizontal: 4, gap: 2, minWidth: 220 },
+  daySmall: { fontSize: 15, lineHeight: 19 },
+  dayArSmall: { fontSize: 17, lineHeight: 24 },
+  bookChips: { flexGrow: 0, marginHorizontal: 0, marginBottom: 0 },
   note: { fontSize: 13, marginBottom: 8 },
   loading: { marginVertical: 30 },
   right: { textAlign: 'right' },
