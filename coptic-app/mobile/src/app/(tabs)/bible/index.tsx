@@ -13,7 +13,7 @@ import { useSettings } from '../../../settings';
 import { FONTS } from '../../../theme';
 
 export default function Bible() {
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, sidebar } = useSettings();
   const insets = useSafeAreaInsets();
   const [nt, setNt] = useState<'nt' | 'ot'>('nt');
   const ar = lang === 'ar';
@@ -21,7 +21,8 @@ export default function Bible() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>
+      {/* On a large screen the sidebar has the settings. */}
+      {!sidebar && <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>}
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
         <LargeTitle title={t.bible} />
         <Pressable accessibilityRole="search" onPress={() => router.push('/bible/search')} style={({ pressed }) => [styles.searchWrap, pressed && styles.pressed]}>

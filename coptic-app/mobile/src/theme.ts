@@ -103,3 +103,11 @@ export const SPRING_LIVELY = { damping: 14, stiffness: 240, mass: 0.9 };
 export const SPREAD_MIN_WIDTH = 720;
 /** Below this the open book's pages hold only a few lines (a phone on its side), so the text scrolls instead. */
 export const SPREAD_MIN_HEIGHT = 520;
+/**
+ * From this width (a desktop, a large iPad on its side) the tab bar becomes a
+ * sidebar, as in Apple's apps on Mac and iPad: below it the book's pages would
+ * get too narrow beside one.
+ */
+export const SIDEBAR_MIN_WIDTH = 1280;
+export const SIDEBAR_MIN_HEIGHT = 600;
+export const SIDEBAR_W = 280;

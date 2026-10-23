@@ -34,6 +34,7 @@ import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
 import type { PrintScope } from './PrintSheet';
 import { ReaderActions } from './ReaderActions';
+import { publishReader } from '../readerHub';
 import { useToast } from './Toast';
 import { BAR_HEIGHT, TopBar } from './TopBar';
 import { ContextPill, createWayStore, useWay, Wayfinder, type WayStore } from './Wayfinder';
@@ -288,7 +289,7 @@ type Mark = React.ComponentRef<typeof View>;
 
 export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter }: ReaderProps) {
   const s = useSettings();
-  const { page, primary, show, spread, scale, t, hintOnce, set } = s;
+  const { page, primary, show, spread, scale, t, hintOnce, set, sidebar } = s;
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const reduce = useReducedMotion();
@@ -550,12 +551,18 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     hintOnce('peek');
   }, [hintOnce, rows, show]);
 
+  // On a large screen the sidebar is the table of contents: the pill and the dock step aside for it.
+  useEffect(() => {
+    if (sidebar && outline && outline.items.length) return publishReader({ outline, store: way, jump });
+  }, [sidebar, outline, way, jump]);
+
   const fade = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: shift.get() }] }));
 
   const extraData = useMemo(() => [ctx, primary, both, peeks], [ctx, primary, both, peeks]);
   const footerView = useMemo(() => <View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>, [insets.bottom, footer]);
   const quietTop = !!ownHeader && !spread;
-  const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60) }), [insets.top, quietTop]);
+  // Wide but not a book (the reader turned it off): the text keeps to a column a line long.
+  const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60), width: '100%' as const, maxWidth: 760, alignSelf: 'center' as const }), [insets.top, quietTop]);
 
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} primary={primary} both={both}
@@ -594,8 +601,9 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       </Animated.View>
     </GestureDetector>
     )}
-    <Chrome store={way} back={back} book={spread} quiet={quietTop} print={print} lead={spread ? barLead : null} middle={spread ? barCenter : null} pill={outline ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
-    {outline && outline.items.length > 0 && <Wayfinder outline={outline} store={way} onJump={jump} />}
+    <Chrome store={way} back={sidebar ? undefined : back} book={spread} quiet={quietTop} print={print} lead={spread ? barLead : null} middle={spread ? barCenter : null}
+      pill={outline && !sidebar ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    {outline && outline.items.length > 0 && !sidebar && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }

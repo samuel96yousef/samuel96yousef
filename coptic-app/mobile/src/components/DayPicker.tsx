@@ -8,20 +8,49 @@ import { Icon } from './Icon';
 const monthOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 
 /**
- * Pick a day from a month. Each date carries its Coptic day beneath it,
- * today is ringed, the chosen day is filled, and feast days have a gold dot.
- * Weeks start on Monday in Swedish and on Saturday in Arabic.
+ * Pick a day from a month, in a card over the page. Each date carries its
+ * Coptic day beneath it, today is ringed, the chosen day is filled, and feast
+ * days have a gold dot. Weeks start on Monday in Swedish and on Saturday in Arabic.
  */
 export function DayPicker({ visible, day, onPick, onClose }: { visible: boolean; day: Date; onPick: (d: Date) => void; onClose: () => void }) {
   const { t, lang, colors } = useSettings();
   const { width } = useWindowDimensions();
+  const row = lang === 'ar' ? ('row-reverse' as const) : ('row' as const);
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.wrap}>
+        <Pressable style={[StyleSheet.absoluteFill, styles.scrim]} onPress={onClose} accessibilityLabel={t.close} />
+        <View style={[styles.card, { width: Math.min(380, width - 32), backgroundColor: colors.surface, boxShadow: `0 24px 60px -20px ${colors.shadow}` }]}>
+          {/* A new key each time it opens, so it opens on the chosen day's month. */}
+          {visible && <MonthCalendar day={day} onPick={onPick} />}
+          <View style={[styles.foot, { flexDirection: row }]}>
+            <Pressable accessibilityRole="button" onPress={() => onPick(new Date())} style={({ pressed }) => [styles.btn, { backgroundColor: colors.tint }, pressed && styles.pressed]}>
+              <Text style={[styles.btnText, { color: colors.crimson }]}>{t.goToday}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
+              <Text style={[styles.btnText, { color: colors.label }]}>{t.close}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/**
+ * A month of days with the month's name and steps to the next and previous
+ * month: in the calendar card, and `small` in the sidebar on a large screen.
+ * It turns to the chosen day's month whenever that changes.
+ */
+export function MonthCalendar({ day, onPick, small }: { day: Date; onPick: (d: Date) => void; small?: boolean }) {
+  const { t, lang, colors } = useSettings();
   const ar = lang === 'ar';
   const [shown, setShown] = useState(() => monthOf(day));
-  // Each time it opens, it opens on the chosen day's month.
-  const [wasVisible, setWasVisible] = useState(visible);
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) setShown(monthOf(day));
+  const dayMonth = monthOf(day).getTime();
+  const [lastMonth, setLastMonth] = useState(dayMonth);
+  if (dayMonth !== lastMonth) {
+    setLastMonth(dayMonth);
+    setShown(new Date(dayMonth));
   }
 
   const weekStart = ar ? 6 : 1;
@@ -47,70 +76,57 @@ export function DayPicker({ visible, day, onPick, onClose }: { visible: boolean;
   const num = (n: number) => (ar ? toArDigits(n) : String(n));
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.wrap}>
-        <Pressable style={[StyleSheet.absoluteFill, styles.scrim]} onPress={onClose} accessibilityLabel={t.close} />
-        <View style={[styles.card, { width: Math.min(380, width - 32), backgroundColor: colors.surface, boxShadow: `0 24px 60px -20px ${colors.shadow}` }]}>
-          <View style={[styles.head, { flexDirection: row }]}>
-            <MonthStep label={t.prevMonth} dir={-1} onPress={() => step(-1)} />
-            <View style={styles.title}>
-              <Text style={[styles.month, { color: colors.label }]}>{monthText(shown, lang)}</Text>
-              <Text style={[styles.span, { color: colors.crimson }]}>{span}</Text>
-            </View>
-            <MonthStep label={t.nextMonth} dir={1} onPress={() => step(1)} />
-          </View>
-          <View style={[styles.week, { flexDirection: row }]}>
-            {Array.from({ length: 7 }, (_, i) => (
-              <Text key={i} style={[styles.weekday, { color: colors.label2 }]}>{WEEKDAYS_SHORT[lang][(weekStart + i) % 7]}</Text>
-            ))}
-          </View>
-          {weeks.map((w, wi) => (
-            <View key={wi} style={[styles.week, { flexDirection: row }]}>
-              {w.map((d, i) => {
-                if (!d) return <View key={i} style={styles.cell} />;
-                const c = coptic(d);
-                const chosen = dayDiff(d, day) === 0;
-                const today = dayDiff(d, now) === 0;
-                const feast = observances(d).some((o) => o.major);
-                return (
-                  <Pressable
-                    key={i}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: chosen }}
-                    accessibilityLabel={`${gregorianText(d, lang)}, ${copticText(c, lang)}`}
-                    onPress={() => onPick(d)}
-                    style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
-                  >
-                    <View style={[styles.dot, chosen && { backgroundColor: colors.crimson }, today && !chosen && { borderColor: colors.crimson, borderWidth: 1.5 }]}>
-                      <Text style={[styles.dayNum, { color: chosen ? '#FFFFFF' : today ? colors.crimson : colors.label }]}>{num(d.getDate())}</Text>
-                      <Text style={[styles.copNum, { color: chosen ? 'rgba(255,255,255,0.85)' : colors.label2 }]}>{num(c.day)}</Text>
-                    </View>
-                    {feast && <View style={[styles.feast, { backgroundColor: colors.gold }]} />}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-          <View style={[styles.foot, { flexDirection: row }]}>
-            <Pressable accessibilityRole="button" onPress={() => onPick(new Date())} style={({ pressed }) => [styles.btn, { backgroundColor: colors.tint }, pressed && styles.pressed]}>
-              <Text style={[styles.btnText, { color: colors.crimson }]}>{t.goToday}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-              <Text style={[styles.btnText, { color: colors.label }]}>{t.close}</Text>
-            </Pressable>
-          </View>
+    <View>
+      <View style={[styles.head, small && styles.headSmall, { flexDirection: row }]}>
+        <MonthStep label={t.prevMonth} dir={-1} small={small} onPress={() => step(-1)} />
+        <View style={styles.title}>
+          <Text style={[styles.month, small && styles.monthSmall, { color: colors.label }]}>{monthText(shown, lang)}</Text>
+          <Text style={[styles.span, small && styles.spanSmall, { color: colors.crimson }]}>{span}</Text>
         </View>
+        <MonthStep label={t.nextMonth} dir={1} small={small} onPress={() => step(1)} />
       </View>
-    </Modal>
+      <View style={[styles.week, { flexDirection: row }]}>
+        {Array.from({ length: 7 }, (_, i) => (
+          <Text key={i} style={[styles.weekday, small && styles.weekdaySmall, { color: colors.label2 }]}>{WEEKDAYS_SHORT[lang][(weekStart + i) % 7]}</Text>
+        ))}
+      </View>
+      {weeks.map((w, wi) => (
+        <View key={wi} style={[styles.week, { flexDirection: row }]}>
+          {w.map((d, i) => {
+            if (!d) return <View key={i} style={[styles.cell, small && styles.cellSmall]} />;
+            const c = coptic(d);
+            const chosen = dayDiff(d, day) === 0;
+            const today = dayDiff(d, now) === 0;
+            const feast = observances(d).some((o) => o.major);
+            return (
+              <Pressable
+                key={i}
+                accessibilityRole="button"
+                accessibilityState={{ selected: chosen }}
+                accessibilityLabel={`${gregorianText(d, lang)}, ${copticText(c, lang)}`}
+                onPress={() => onPick(d)}
+                style={({ pressed }) => [styles.cell, small && styles.cellSmall, pressed && styles.pressed]}
+              >
+                <View style={[styles.dot, small && styles.dotSmall, chosen && { backgroundColor: colors.crimson }, today && !chosen && { borderColor: colors.crimson, borderWidth: 1.5 }]}>
+                  <Text style={[styles.dayNum, small && styles.dayNumSmall, { color: chosen ? '#FFFFFF' : today ? colors.crimson : colors.label }]}>{num(d.getDate())}</Text>
+                  {!small && <Text style={[styles.copNum, { color: chosen ? 'rgba(255,255,255,0.85)' : colors.label2 }]}>{num(c.day)}</Text>}
+                </View>
+                {feast && <View style={[styles.feast, { backgroundColor: colors.gold }]} />}
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
   );
 }
 
-function MonthStep({ label, dir, onPress }: { label: string; dir: 1 | -1; onPress: () => void }) {
+function MonthStep({ label, dir, onPress, small }: { label: string; dir: 1 | -1; onPress: () => void; small?: boolean }) {
   const { lang, colors } = useSettings();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8}
-      style={({ pressed }) => [styles.monthStep, { backgroundColor: colors.bg2 }, pressed && styles.pressed]}>
-      <View style={lang === 'ar' && styles.flip}><Icon name={dir < 0 ? 'chevL' : 'chevR'} size={18} color={colors.label} strokeWidth={2.2} /></View>
+      style={({ pressed }) => [styles.monthStep, small && styles.monthStepSmall, { backgroundColor: colors.bg2 }, pressed && styles.pressed]}>
+      <View style={lang === 'ar' && styles.flip}><Icon name={dir < 0 ? 'chevL' : 'chevR'} size={small ? 15 : 18} color={colors.label} strokeWidth={2.2} /></View>
     </Pressable>
   );
 }
@@ -131,6 +147,14 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
   copNum: { fontSize: 10.5, marginTop: -1, fontVariant: ['tabular-nums'] },
   feast: { position: 'absolute', bottom: 1, width: 5, height: 5, borderRadius: 3 },
+  headSmall: { marginBottom: 6, gap: 4 },
+  monthSmall: { fontSize: 14 },
+  spanSmall: { fontSize: 11.5 },
+  monthStepSmall: { width: 28, height: 28, borderRadius: 14 },
+  weekdaySmall: { fontSize: 10.5, paddingVertical: 2 },
+  cellSmall: { height: 32 },
+  dotSmall: { width: 28, height: 28, borderRadius: 14 },
+  dayNumSmall: { fontSize: 13 },
   foot: { justifyContent: 'space-between', marginTop: 8 },
   btn: { borderRadius: 999, paddingHorizontal: 18, height: 40, justifyContent: 'center' },
   btnText: { fontSize: 15, fontWeight: '600' },

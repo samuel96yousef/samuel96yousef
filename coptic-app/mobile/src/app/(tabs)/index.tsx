@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CopticCross } from '../../components/CopticCross';
@@ -27,9 +27,9 @@ function useMinute() {
 }
 
 export default function Today() {
-  const { t, lang, colors, page, primary } = useSettings();
+  const { t, lang, colors, page, primary, contentWidth, sidebar } = useSettings();
   const insets = useSafeAreaInsets();
-  const wide = useWindowDimensions().width >= 720;
+  const wide = contentWidth >= 720;
   const now = useMinute();
   // The day shown is today unless the reader picks another; the prayer hour is always now.
   const { day, isToday } = useReadingDay();
@@ -76,11 +76,11 @@ export default function Today() {
           style={({ pressed }) => pressed && styles.dim}>
           <View style={[styles.calendar, { backgroundColor: colors.tint }]}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
         </Pressable>
-        {/* Settings live in the card too, so the page needs no bar of its own above it. */}
-        <Pressable accessibilityRole="button" accessibilityLabel={t.settings} onPress={() => router.push('/settings')} hitSlop={6}
+        {/* Settings live in the card too, so the page needs no bar of its own above it (the sidebar has them on a large screen). */}
+        {!sidebar && <Pressable accessibilityRole="button" accessibilityLabel={t.settings} onPress={() => router.push('/settings')} hitSlop={6}
           style={({ pressed }) => pressed && styles.dim}>
           <View style={[styles.calendar, { backgroundColor: colors.bg2 }]}><Icon name="gear" size={19} color={colors.label} strokeWidth={2} /></View>
-        </Pressable>
+        </Pressable>}
       </View>
       {/* Across a wide screen the week keeps a hand's width, beside the title rather than under it. */}
       <View style={wide && styles.weekWide}><WeekStrip day={day} onPick={pickDay} /></View>

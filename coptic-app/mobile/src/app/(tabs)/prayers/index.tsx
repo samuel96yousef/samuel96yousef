@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Arch } from '../../../components/Arch';
@@ -14,9 +14,9 @@ import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
 
 export default function Prayers() {
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, sidebar } = useSettings();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { contentWidth: width } = useSettings();
   const ar = lang === 'ar';
   const now = hourNow();
   const columns = width >= 720 ? 4 : 2;
@@ -27,7 +27,8 @@ export default function Prayers() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>
+      {/* On a large screen the sidebar has the settings. */}
+      {!sidebar && <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>}
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
         <LargeTitle title={t.prayers} subtitle={t.prayersSub} />
         <Arch ar="الأجبية والخولاجي" sv="Agpeya · Kholagy" cop="Ⲡⲓϣⲗⲏⲗ" />

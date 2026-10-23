@@ -6,7 +6,7 @@ import { Appearance as SystemAppearance, Platform, useColorScheme, useWindowDime
 import { STRINGS, type Strings } from './i18n';
 import { DEFAULT_PRINT, type PrintOptions } from './print/html';
 import type { Lang } from './lib/types';
-import { DARK, LIGHT, PAGES, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
+import { DARK, LIGHT, PAGES, SIDEBAR_MIN_HEIGHT, SIDEBAR_MIN_WIDTH, SIDEBAR_W, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
 
 export type Show = Lang | 'both';
 export type SpreadPref = 'auto' | 'on' | 'off';
@@ -39,6 +39,10 @@ interface SettingsContext extends Settings {
   dark: boolean;
   /** Wide enough (or forced) to show the open-book spread. */
   spread: boolean;
+  /** A large screen: the sidebar takes the tab bar's place. */
+  sidebar: boolean;
+  /** The width the screens have beside the sidebar (all of it without one). */
+  contentWidth: number;
   set: (patch: Partial<Settings>) => void;
   /** Switch the app language; the reading language follows. */
   setLang: (lang: Lang) => void;
@@ -110,7 +114,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const dark = s.appearance === 'auto' ? scheme === 'dark' : s.appearance === 'dark';
     const page = PAGES[s.read === 'auto' ? (dark ? 'night' : 'paper') : s.read];
     const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && width >= SPREAD_MIN_WIDTH && height >= SPREAD_MIN_HEIGHT);
-    return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, set, setLang, hintOnce };
+    const sidebar = width >= SIDEBAR_MIN_WIDTH && height >= SIDEBAR_MIN_HEIGHT;
+    const contentWidth = sidebar ? width - SIDEBAR_W : width;
+    return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, sidebar, contentWidth, set, setLang, hintOnce };
   }, [s, ready, scheme, width, height, set, setLang, hintOnce]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

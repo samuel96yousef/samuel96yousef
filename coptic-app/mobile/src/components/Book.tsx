@@ -81,9 +81,9 @@ export interface BookProps {
 interface Turn { a: number; b: number }
 
 export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, goTo, opening, onSpread }: BookProps) {
-  const { t, lang, colors, scale } = useSettings();
+  const { t, lang, colors, scale, contentWidth: width } = useSettings();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const reduce = useReducedMotion();
   const dir = lang === 'ar' ? -1 : 1;
   const near: BookLang = dir === 1 ? 'sv' : 'ar';

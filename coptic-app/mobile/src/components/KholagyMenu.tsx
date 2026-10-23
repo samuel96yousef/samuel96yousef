@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import type { PrayerIndex } from '../lib/types';
@@ -25,7 +25,7 @@ const open = (id: string) => router.push(`/prayers/liturgy/${id}`);
  */
 export function KholagyMenu({ items }: { items: PrayerIndex[] }) {
   const { t, lang } = useSettings();
-  const wide = useWindowDimensions().width >= 720;
+  const wide = useSettings().contentWidth >= 720;
   const ar = lang === 'ar';
   const by = (id: string) => items.find((p) => p.id === id);
   const row = ar ? ('row-reverse' as const) : ('row' as const);

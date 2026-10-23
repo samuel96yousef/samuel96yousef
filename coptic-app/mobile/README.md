@@ -26,6 +26,16 @@ bok. Ett stycke som inte får plats fortsätter på nästa uppslag, med minst
 två rader på var sida om brytningen, och en rubrik hamnar aldrig sist på en
 sida. En liggande telefon är för låg för sidor och rullar som vanligt.
 
+Stor skärm (dator, stor iPad liggande, från 1280 punkter): som Apples appar
+på Mac och iPad blir flikraden ett sidofält (till höger på arabiska). Det
+har de fyra delarna och, under den öppna, det som hör till den: under
+Läsningar en månadskalender och innehållet (dagens avsnitt) med platsen du
+läser markerad, under Böner timbönerna och liturgierna med den öppna textens
+rubriker, under Bibeln den öppna bokens kapitel. Ett tryck i innehållet
+bläddrar boken dit. Brickan och dockan behövs då inte och visas inte.
+Inställningarna ligger längst ner. Boken står mitt i resten, med sidor som
+är högst en bekväm rad breda.
+
 Var i texten och hur du rör dig, inspirerat av iPhone Duo: det som visar
 sitter överst, det du trycker på sitter på sidan där tummen når.
 
@@ -103,6 +113,7 @@ src/components/     läsaren, boken (Book), sidramen, valvet, flikraden,
                     språkknappen, Wayfinder (brickan, dockan och listan)
 src/book.ts         hur texten delas upp i bokens sidor
 src/day.ts          vilken dag läsningarna gäller (idag eller en vald dag)
+src/readerHub.ts    den öppna textens innehåll, för sidofältet
 src/components/Icon.tsx  ikonerna: Lucide (ritningarna kopieras till lucide.ts
                     med `npm run icons`), plus ljuset, bibeln och kalken
 src/print/          utskrift: texten som HTML (html.ts), typsnitten, vad
