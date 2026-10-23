@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useSettings } from '../settings';
 import { Icon } from './Icon';
@@ -28,7 +28,7 @@ export function ReaderActions({ inline, print }: { inline?: boolean; print?: Pri
         {sheet && round(t.printAction, () => setPrinting(true), <Icon name="print" size={19} color={colors.label} strokeWidth={2} />)}
         {sheet}
         {round(t.spread, () => set({ spreadPref: spread ? 'off' : 'on' }), <Icon name="book" size={19} color={spread ? colors.crimson : colors.label} strokeWidth={2} />, spread)}
-        {round(t.settings, () => router.push('/settings'), <Text style={[styles.aa, { color: colors.label }]}>Aa</Text>)}
+        {round(t.settings, () => router.push('/settings'), <Icon name="textSize" size={20} color={colors.label} strokeWidth={2} />)}
       </>
     );
   }
@@ -37,13 +37,12 @@ export function ReaderActions({ inline, print }: { inline?: boolean; print?: Pri
       {sheet && <BarButton icon="print" label={t.printAction} onPress={() => setPrinting(true)} />}
       {sheet}
       <BarButton icon="book" label={t.spread} active={spread} onPress={() => set({ spreadPref: spread ? 'off' : 'on' })} />
-      <BarButton text="Aa" label={t.settings} onPress={() => router.push('/settings')} />
+      <BarButton icon="textSize" label={t.settings} onPress={() => router.push('/settings')} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   round: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  aa: { fontSize: 16, fontWeight: '600' },
   dim: { opacity: 0.6 },
 });

@@ -18,6 +18,8 @@ const PATHS = {
   phone: 'M10.5 18.2h3',
   list: 'M9.5 6.5h10M9.5 12h10M9.5 17.5h10',
   calendar: 'M4.5 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2zM4.5 10h15M8.5 3.3v3.4M15.5 3.3v3.4',
+  // A large and a small A, on the same baseline as the other icons: text settings.
+  textSize: 'M2.5 19.5L8.5 4.5l6 15M4.9 14h7.2M14.8 19.5l3.6-8.6 3.6 8.6M16.1 16.6h4.6',
   print: 'M7 8.5V3.5h10v5M7 17.5H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v6.5H7z',
   share: 'M12 14.5v-11M8 7.5l4-4 4 4M7.5 10.5h-2v10h13v-10h-2',
 } as const;
