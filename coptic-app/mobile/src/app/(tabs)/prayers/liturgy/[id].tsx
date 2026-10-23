@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Chips } from '../../../../components/Chips';
+import { Glass } from '../../../../components/Glass';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { Reader } from '../../../../components/Reader';
 import { kholagyIndex, usePrayer } from '../../../../data';
@@ -37,12 +38,11 @@ export default function Liturgy() {
   const chips = data
     ? <Chips items={headings.map((h) => ({ key: String(h.i), label: ar ? h.ar : h.sv || h.ar }))} onPress={(k) => setJump({ index: Number(k), key: Date.now() })} style={spread && styles.bookChips} />
     : <ActivityIndicator color={colors.crimson} />;
-  // In the open book the page's cartouche is the title: the roles and the sections share one slim row.
+  // In the open book everything sits in the top bar, so the pages keep their
+  // height: the roles beside the back button, the sections in the middle until
+  // the reading pill (which names who is speaking) takes over.
   const header = spread ? (
-    <View style={[styles.bookHead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-      <View style={[styles.legend, styles.legendBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
-      {chips}
-    </View>
+    data ? null : <ActivityIndicator style={styles.loading} color={colors.crimson} />
   ) : (
     <View style={styles.header}>
       <LargeTitle title={ar ? liturgy.ar : liturgy.sv} subtitle={t.kholagy} />
@@ -53,7 +53,13 @@ export default function Liturgy() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} print={print} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} print={print}
+        barLead={spread ? (
+          <Glass style={styles.leadGlass}>
+            <View style={[styles.legend, styles.legendBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
+          </Glass>
+        ) : null}
+        barCenter={spread && data ? chips : null} />
     </View>
   );
 }
@@ -62,9 +68,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { paddingHorizontal: 16 },
   legend: { gap: 16, marginBottom: 12, flexWrap: 'wrap' },
-  legendBook: { marginBottom: 0, flexWrap: 'nowrap' },
-  bookHead: { alignItems: 'center', gap: 18, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 12 },
-  bookChips: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
+  legendBook: { marginBottom: 0, flexWrap: 'nowrap', height: 44, alignItems: 'center', paddingHorizontal: 16, gap: 14 },
+  leadGlass: { borderRadius: 22 },
+  loading: { marginTop: 12 },
+  bookChips: { flexGrow: 0, marginHorizontal: 0, marginBottom: 0 },
   legendItem: { alignItems: 'center', gap: 6 },
   bar: { width: 4, height: 16, borderRadius: 2 },
   legendText: { fontSize: 14, fontWeight: '600' },
