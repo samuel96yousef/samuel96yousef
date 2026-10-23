@@ -589,9 +589,11 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
   const footerView = useMemo(() => <View style={{ paddingBottom: insets.bottom + 120 }}>{footer}</View>, [insets.bottom, footer]);
   const quietTop = !!ownHeader && !spread;
   // Wide but not a book (the reader turned it off): the text keeps to a column a line long.
-  const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60), width: '100%' as const, maxWidth: 760, alignSelf: 'center' as const }), [insets.top, quietTop]);
+  const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60) + (tabsOn && !header ? TABS_H : 0), width: '100%' as const, maxWidth: 760, alignSelf: 'center' as const }), [insets.top, quietTop, tabsOn, header]);
 
-  const headerView = useMemo(() => (tabsOn && outline
+  // Tabs under a header scroll with it until they pin; with no header they are pinned from the start.
+  const tabsAlways = tabsOn && !header;
+  const headerView = useMemo(() => (tabsOn && outline && header
     ? <View>{header}<SectionTabs outline={outline} store={way} onJump={jump} /></View>
     : header ?? undefined), [tabsOn, outline, header, way, jump]);
 
@@ -634,16 +636,16 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     )}
     <Chrome store={way} back={sidebar ? undefined : back} book={spread} quiet={quietTop} print={print} lead={barLead} middle={spread ? barCenter : null}
       pill={outline && !sidebar && !tabsOn ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null}
-      pinned={tabsOn && outline ? <SectionTabs pinned outline={outline} store={way} onJump={jump} /> : null} pinnedOut={tabsOut} />
+      pinned={tabsOn && outline ? <SectionTabs pinned outline={outline} store={way} onJump={jump} /> : null} pinnedOut={tabsOut} pinnedAlways={tabsAlways} />
     {outline && outline.items.length > 0 && !sidebar && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned, pinnedOut }: {
+function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned, pinnedOut, pinnedAlways }: {
   store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null;
-  pinned?: ReactElement | null; pinnedOut?: SharedValue<number>;
+  pinned?: ReactElement | null; pinnedOut?: SharedValue<number>; pinnedAlways?: boolean;
 }) {
   const reading = useWay(store, (s) => s.reading);
   const insets = useSafeAreaInsets();
@@ -661,7 +663,7 @@ function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned, p
           <ReaderActions print={print} />
         </TopBar>
       )}
-      {pinned && reading && (
+      {pinned && (reading || pinnedAlways) && (
         // One solid bar from the top of the screen down to the tabs, under the floating buttons, as an iOS navigation bar.
         <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.pinned, { paddingTop: barH, backgroundColor: colors.bg }, pinBox]}>
           <Animated.View style={pinTabs}>{pinned}</Animated.View>

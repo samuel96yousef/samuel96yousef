@@ -9,12 +9,21 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ToastProvider } from '../components/Toast';
 import { SettingsProvider, useSettings } from '../settings';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// On the web, a button clicked with the mouse gets no focus ring (the browser's
+// orange or blue one); a keyboard user still sees where focus is, in the app's crimson.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = '[tabindex]:focus:not(:focus-visible){outline:none}[tabindex]:focus-visible{outline:2px solid #C0384E;outline-offset:2px}';
+  document.head.appendChild(style);
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

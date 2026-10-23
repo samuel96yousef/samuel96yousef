@@ -93,8 +93,10 @@ export function LangPill() {
 const styles = StyleSheet.create({
   pill: { borderRadius: 999, padding: 4 },
   row: { flexDirection: 'row' },
-  lens: { position: 'absolute', top: 4, left: 0, height: 44, borderRadius: 999 },
+  // The buttons are measured inside the pill's padding, so the lens starts at the same inset.
+  lens: { position: 'absolute', top: 4, left: 4, height: 44, borderRadius: 999 },
   btn: { width: 52, height: 44, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  ar: { fontFamily: FONTS.arBold, fontSize: 25, lineHeight: 34, marginTop: -6 },
+  // The glyph's ink sits low and to the right of its box; moved so it is centred in the lens.
+  ar: { fontFamily: FONTS.arBold, fontSize: 25, lineHeight: 34, marginTop: -6, transform: [{ translateX: -3 }, { translateY: -3 }] },
   sv: { fontSize: 16, fontWeight: '700' },
 });
