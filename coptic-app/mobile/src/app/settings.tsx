@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '../components/Icon';
 import { Segmented } from '../components/Segmented';
-import { useSettings, type Show, type SpreadPref } from '../settings';
+import { useSettings, type Appearance, type Show, type SpreadPref } from '../settings';
 import { FONTS, PAGES, type ReadTheme } from '../theme';
 
 const SIZES = [0.85, 0.95, 1, 1.12, 1.25, 1.4, 1.6];
@@ -27,6 +27,11 @@ export default function Settings() {
       <Text style={[styles.label, { color: colors.label2 }, align]}>{t.appLang}</Text>
       <Segmented label={t.appLang} value={s.lang} onChange={s.setLang}
         options={[{ value: 'sv', label: 'Svenska' }, { value: 'ar', label: 'العربية', style: styles.arLabel }]} />
+
+      <Text style={[styles.label, { color: colors.label2 }, align]}>{t.appearance}</Text>
+      <Segmented<Appearance> label={t.appearance} value={s.appearance} onChange={(v) => s.set({ appearance: v })}
+        options={(['auto', 'light', 'dark'] as const).map((v) => ({ value: v, label: t.appearances[v] }))} />
+      <Text style={[styles.help, { color: colors.label2 }, align]}>{t.appearanceHelp}</Text>
 
       <Text style={[styles.label, { color: colors.label2 }, align]}>{t.showTexts}</Text>
       <Segmented<Show> label={t.showTexts} value={s.show}

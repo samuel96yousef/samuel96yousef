@@ -55,6 +55,9 @@ I Bibeln visar brickan versen ("Vers 21 av 48"), pilarna hoppar fem verser
 och listan är ett rutnät med verserna. Texten tonar ut under toppraden och
 flikraden, så att knapparna aldrig ligger direkt på en textrad.
 
+Utseende: i Inställningar väljer du ljust, mörkt eller automatiskt (som
+telefonen). Läsningens färg följer med när den står på Auto.
+
 Skriv ut och spara som PDF: skrivarknappen i läsningen öppnar ett val av
 vad som ska med (dagen eller sju dagar, timbönen eller hela Agpeya,
 liturgin, kapitlet eller hela bibelboken), språk (svenska, arabiska eller

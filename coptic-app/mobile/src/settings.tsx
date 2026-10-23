@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useColorScheme, useWindowDimensions } from 'react-native';
+import { Appearance as SystemAppearance, Platform, useColorScheme, useWindowDimensions } from 'react-native';
 
 import { STRINGS, type Strings } from './i18n';
 import { DEFAULT_PRINT, type PrintOptions } from './print/html';
@@ -10,6 +10,8 @@ import { DARK, LIGHT, PAGES, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalet
 
 export type Show = Lang | 'both';
 export type SpreadPref = 'auto' | 'on' | 'off';
+/** Light or dark app, or as the phone is set. */
+export type Appearance = 'auto' | 'light' | 'dark';
 /** Where the reader's side dock rests: the screen edge, and how far down between the bars (0–1). */
 export interface DockPlace { side: 'left' | 'right'; y: number }
 
@@ -21,6 +23,7 @@ export interface Settings {
   scale: number;
   read: ReadTheme;
   spreadPref: SpreadPref;
+  appearance: Appearance;
   /** One-time hints already shown. Kept out of React state: marking one must not re-render every page. */
   hints: Record<string, boolean>;
   dock: DockPlace;
@@ -46,7 +49,7 @@ interface SettingsContext extends Settings {
 const KEY = 'settings.v1';
 const deviceLang: Lang = getLocales().some((l) => l.languageCode === 'ar') ? 'ar' : 'sv';
 // The dock starts on the right, a little below the middle: where a right thumb rests.
-const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', hints: {}, dock: { side: 'right', y: 0.62 }, printOpts: DEFAULT_PRINT };
+const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', appearance: 'auto', hints: {}, dock: { side: 'right', y: 0.62 }, printOpts: DEFAULT_PRINT };
 
 const Ctx = createContext<SettingsContext | null>(null);
 
@@ -75,6 +78,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
+  // The keyboard, alerts and other system parts follow the app's choice on a phone.
+  useEffect(() => {
+    if (Platform.OS !== 'web') SystemAppearance.setColorScheme(s.appearance === 'auto' ? 'unspecified' : s.appearance);
+  }, [s.appearance]);
+
   const set = useCallback((patch: Partial<Settings>) => {
     setS((prev) => {
       const next = { ...prev, ...patch };
@@ -99,7 +107,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [save]);
 
   const value = useMemo<SettingsContext>(() => {
-    const dark = scheme === 'dark';
+    const dark = s.appearance === 'auto' ? scheme === 'dark' : s.appearance === 'dark';
     const page = PAGES[s.read === 'auto' ? (dark ? 'night' : 'paper') : s.read];
     const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && width >= SPREAD_MIN_WIDTH && height >= SPREAD_MIN_HEIGHT);
     return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, set, setLang, hintOnce };
