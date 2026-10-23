@@ -29,6 +29,8 @@ export interface PagePalette {
   peek: string;
   /** The deacon's colour in the liturgies */
   gold: string;
+  /** Liturgical formulas ("Välsignad är han som kommer …"): a deep wine red, set apart from the crimson rubrics */
+  formula: string;
 }
 
 export const LIGHT: Palette = {
@@ -68,9 +70,9 @@ export const DARK: Palette = {
 export type ReadTheme = 'auto' | 'paper' | 'sepia' | 'night';
 
 export const PAGES: Record<Exclude<ReadTheme, 'auto'>, PagePalette> = {
-  paper: { page: '#FFFFFF', ink: '#1B1718', ink2: '#625759', rule: '#C0384E', rule2: '#E09AA5', peek: 'rgba(192,56,78,0.06)', gold: '#94701F' },
-  sepia: { page: '#F7EFE1', ink: '#3A2C22', ink2: '#7A6553', rule: '#B4424F', rule2: '#D9A59A', peek: 'rgba(180,66,79,0.07)', gold: '#8A651A' },
-  night: { page: '#161314', ink: '#EBE3E0', ink2: '#A3989A', rule: '#D56478', rule2: '#7A3B47', peek: 'rgba(213,100,120,0.1)', gold: '#D9B25E' },
+  paper: { page: '#FFFFFF', ink: '#1B1718', ink2: '#625759', rule: '#C0384E', rule2: '#E09AA5', peek: 'rgba(192,56,78,0.06)', gold: '#94701F', formula: '#7E1D30' },
+  sepia: { page: '#F7EFE1', ink: '#3A2C22', ink2: '#7A6553', rule: '#B4424F', rule2: '#D9A59A', peek: 'rgba(180,66,79,0.07)', gold: '#8A651A', formula: '#7A2232' },
+  night: { page: '#161314', ink: '#EBE3E0', ink2: '#A3989A', rule: '#D56478', rule2: '#7A3B47', peek: 'rgba(213,100,120,0.1)', gold: '#D9B25E', formula: '#E3A3AE' },
 };
 
 export const FONTS = {

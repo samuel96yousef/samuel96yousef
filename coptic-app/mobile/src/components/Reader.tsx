@@ -80,8 +80,8 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
           ? { ...dir, ...center, fontSize: base * 0.68, fontWeight: '700', letterSpacing: 2.2, textTransform: 'uppercase', color: page.rule, lineHeight: base * 1.4 }
           : { ...dir, ...center, fontFamily: FONTS.svSemi, fontSize: base * 1.05, letterSpacing: 1.2, color: page.ink, lineHeight: base * 1.6 };
     case 'f':
-      return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.1), lineHeight: base * 1.9, color: page.ink2 }
-        : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.9), lineHeight: base * 1.5, color: page.ink2 };
+      return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.1), lineHeight: base * 1.9, color: page.formula }
+        : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.9), lineHeight: base * 1.5, color: page.formula };
     case 'rubric':
     case 'note':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1, lineHeight: base * 1.8, color: page.rule }
