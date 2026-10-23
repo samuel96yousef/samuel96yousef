@@ -6,6 +6,7 @@ import { printFonts } from '../print/fonts';
 import { printHtml, type PrintOptions, type PrintPart } from '../print/html';
 import { printDocument, savePdf, SAVES_FILE } from '../print/output';
 import { useSettings } from '../settings';
+import { Glyph } from './Glyph';
 import { Icon } from './Icon';
 import { Segmented } from './Segmented';
 
@@ -113,7 +114,7 @@ export function PrintSheet({ visible, scopes, onClose }: { visible: boolean; sco
               <View style={styles.half}>
                 {label(t.printSize)}
                 <Segmented label={t.printSize} value={printOpts.size} onChange={(size) => opt({ size })}
-                  options={[{ value: 'S', label: 'A', style: styles.aS }, { value: 'M', label: 'A', style: styles.aM }, { value: 'L', label: 'A', style: styles.aL }]} />
+                  options={([['S', 13, t.printSizes[0]], ['M', 17, t.printSizes[1]], ['L', 22, t.printSizes[2]]] as const).map(([value, size, name]) => ({ value, label: name, icon: (c: string) => <Glyph text="A" size={size} color={c} /> }))} />
               </View>
             </View>
 
@@ -174,9 +175,6 @@ const styles = StyleSheet.create({
   optionSub: { fontSize: 13, marginTop: 1 },
   pairRow: { gap: 12 },
   half: { flex: 1 },
-  aS: { fontSize: 12 },
-  aM: { fontSize: 15 },
-  aL: { fontSize: 19 },
   error: { fontSize: 14, fontWeight: '600', marginTop: 12 },
   actions: { gap: 10, marginTop: 16 },
   action: { flex: 1, height: 50, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },

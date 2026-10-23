@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutRectangle, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -8,7 +8,8 @@ import { SPRING_LIVELY } from '../theme';
 /** iOS-style segmented control with a sliding thumb. */
 export function Segmented<T extends string>({ value, options, onChange, label }: {
   value: T;
-  options: { value: T; label: string; style?: TextStyle }[];
+  /** `icon` draws the option instead of its label (which then names it for screen readers); it gets the option's colour. */
+  options: { value: T; label: string; style?: TextStyle; icon?: (color: string) => ReactNode }[];
   onChange: (v: T) => void;
   label: string;
 }) {
@@ -35,11 +36,14 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
           key={o.value}
           accessibilityRole="radio"
           accessibilityState={{ checked: o.value === value }}
+          accessibilityLabel={o.icon ? o.label : undefined}
           onPress={() => onChange(o.value)}
           onLayout={(e) => { const l = e.nativeEvent.layout; setLayouts((p) => ({ ...p, [o.value]: l })); }}
           style={styles.option}
         >
-          <Text style={[styles.text, o.style, { color: o.value === value ? colors.label : colors.label2 }]}>{o.label}</Text>
+          {o.icon
+            ? o.icon(o.value === value ? colors.label : colors.label2)
+            : <Text style={[styles.text, o.style, { color: o.value === value ? colors.label : colors.label2 }]}>{o.label}</Text>}
         </Pressable>
       ))}
     </View>

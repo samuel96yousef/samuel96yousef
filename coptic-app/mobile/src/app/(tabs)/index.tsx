@@ -62,7 +62,7 @@ export default function Today() {
   const header = (
     <View style={[styles.head, { backgroundColor: colors.surface }, wide && [styles.headWide, { flexDirection: row }]]}>
       <View style={[styles.titleRow, { flexDirection: row }, wide && styles.titleRowWide]}>
-        <View style={[styles.titleText, { flexDirection: row }]}>
+        <View style={[styles.titleText, { flexDirection: row }, wide && [styles.titleStack, { alignItems: ar ? 'flex-end' : 'flex-start' }]]}>
           <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, !relative && styles.titleDate, { color: colors.label }]}>{title}</Text>
           <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
         </View>
@@ -185,8 +185,11 @@ const styles = StyleSheet.create({
   // The week in its own card, like a widget.
   head: { gap: 8, marginBottom: 20, borderRadius: 24, paddingTop: 14, paddingBottom: 10, paddingHorizontal: 14 },
   headWide: { alignItems: 'center', gap: 20, paddingVertical: 14, paddingHorizontal: 20 },
-  titleRowWide: { flex: 1, minWidth: 0 },
-  weekWide: { width: 520 },
+  // The title and its buttons take what they need; the week gets the rest, up to a hand's width.
+  titleRowWide: { flexShrink: 0 },
+  // Beside the week the date goes under the title, so neither is cut short.
+  titleStack: { flexDirection: 'column', gap: 0, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  weekWide: { flex: 1, maxWidth: 520, minWidth: 0, marginStart: 'auto' },
   titleRow: { alignItems: 'center', gap: 8 },
   titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
   // The title never gives way; the small weekday beside it does.

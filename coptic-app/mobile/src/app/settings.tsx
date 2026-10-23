@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
 
+import { GLYPH_PATHS, Glyph } from '../components/Glyph';
 import { Icon } from '../components/Icon';
 import { Segmented } from '../components/Segmented';
 import { useSettings, type Appearance, type Show, type SpreadPref } from '../settings';
-import { FONTS, PAGES, type ReadTheme } from '../theme';
+import { FONTS, PAGES, type PagePalette, type ReadTheme } from '../theme';
 
 const SIZES = [0.85, 0.95, 1, 1.12, 1.25, 1.4, 1.6];
 
@@ -42,13 +44,13 @@ export default function Settings() {
       <Text style={[styles.label, { color: colors.label2 }, align]}>{t.textSize}</Text>
       <View style={[styles.sizeRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={t.smaller} disabled={sizeIndex === 0} onPress={() => s.set({ scale: SIZES[sizeIndex - 1] })} style={[styles.sizeBtn, { backgroundColor: colors.surface, opacity: sizeIndex === 0 ? 0.4 : 1 }]}>
-          <Text style={[styles.aSmall, { color: colors.label }]}>A</Text>
+          <Glyph text="A" size={15} color={colors.label} />
         </Pressable>
         <View style={[styles.dots, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
           {SIZES.map((v, i) => <View key={v} style={[styles.dot, { backgroundColor: i <= sizeIndex ? colors.crimson : colors.bg2 }]} />)}
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={t.larger} disabled={sizeIndex === SIZES.length - 1} onPress={() => s.set({ scale: SIZES[sizeIndex + 1] })} style={[styles.sizeBtn, { backgroundColor: colors.surface, opacity: sizeIndex === SIZES.length - 1 ? 0.4 : 1 }]}>
-          <Text style={[styles.aBig, { color: colors.label }]}>A</Text>
+          <Glyph text="A" size={24} color={colors.label} />
         </Pressable>
       </View>
       <View style={[styles.preview, { backgroundColor: page.page, borderColor: page.rule2 }]}>
@@ -59,12 +61,12 @@ export default function Settings() {
       <Text style={[styles.label, { color: colors.label2 }, align]}>{t.readTheme}</Text>
       <View style={[styles.swatches, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
         {(['auto', 'paper', 'sepia', 'night'] as ReadTheme[]).map((v) => {
-          const p = v === 'auto' ? null : PAGES[v];
           const on = s.read === v;
           return (
             <Pressable key={v} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={t.themes[v]} onPress={() => s.set({ read: v })} style={styles.swatch}>
-              <View style={[styles.swatchCircle, { backgroundColor: p?.page ?? '#FFFFFF', borderColor: on ? colors.crimson : colors.sep, borderWidth: on ? 3 : 1 }]}>
-                {p ? <Text style={[styles.swatchAa, { color: p.ink }]}>Aa</Text> : <View style={styles.half} />}
+              {/* As in Apple Books: a small page with Aa in its colours, and a ring around the chosen one. */}
+              <View style={[styles.swatchRing, { borderColor: on ? colors.crimson : 'transparent' }]}>
+                <ThemeSwatch theme={v} edge={colors.sep} />
               </View>
               <Text style={[styles.swatchText, { color: on ? colors.crimson : colors.label2 }]}>{t.themes[v]}</Text>
             </Pressable>
@@ -93,16 +95,37 @@ const styles = StyleSheet.create({
   arLabel: { fontFamily: FONTS.arBold, fontSize: 16 },
   sizeRow: { alignItems: 'center', gap: 12 },
   sizeBtn: { width: 48, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  aSmall: { fontSize: 14, fontWeight: '600' },
-  aBig: { fontSize: 22, fontWeight: '600' },
   dots: { flex: 1, flexDirection: 'row', gap: 6, justifyContent: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4 },
   preview: { borderRadius: 18, borderWidth: 1, padding: 14, marginTop: 6 },
   swatches: { justifyContent: 'space-between' },
   swatch: { alignItems: 'center', gap: 6, flex: 1 },
-  swatchCircle: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  swatchAa: { fontFamily: FONTS.svSemi, fontSize: 18 },
-  half: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%', backgroundColor: '#161314' },
+  swatchRing: { borderWidth: 2.5, borderRadius: 21, padding: 3 },
   swatchText: { fontSize: 12, fontWeight: '600' },
   right: { textAlign: 'right' },
 });
+
+const SW = 54;
+
+/** A theme as a little page: its paper, a hairline edge and Aa in its ink. Auto is half paper, half night. */
+function ThemeSwatch({ theme, edge }: { theme: ReadTheme; edge: string }) {
+  const glyph = `translate(${SW / 2 - 14} ${SW / 2 - 14}) scale(${28 / 24})`;
+  const page = (p: PagePalette, clip?: string) => (
+    <G clipPath={clip}>
+      <Rect x={0} y={0} width={SW} height={SW} rx={14} fill={p.page} />
+      <Path d={GLYPH_PATHS.Aa} fill={p.ink} transform={glyph} />
+    </G>
+  );
+  return (
+    <Svg width={SW} height={SW} viewBox={`0 0 ${SW} ${SW}`}>
+      <Defs>
+        <ClipPath id="swatch-left"><Rect x={0} y={0} width={SW / 2} height={SW} /></ClipPath>
+        <ClipPath id="swatch-right"><Rect x={SW / 2} y={0} width={SW / 2} height={SW} /></ClipPath>
+      </Defs>
+      {theme === 'auto'
+        ? <>{page(PAGES.paper, 'url(#swatch-left)')}{page(PAGES.night, 'url(#swatch-right)')}</>
+        : page(PAGES[theme])}
+      <Rect x={0.5} y={0.5} width={SW - 1} height={SW - 1} rx={13.5} fill="none" stroke={edge} strokeWidth={1} />
+    </Svg>
+  );
+}
