@@ -41,6 +41,7 @@ describe('printHtml', () => {
     expect(html).toContain('.part + .part { break-before: page; }');
     expect(html).toContain('size: A5');
     expect(html).toContain('--rule: #111');
+    expect(html).toContain('--formula: #1B1517');
     expect(html).toContain('lang="ar"');
   });
 });

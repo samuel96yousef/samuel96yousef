@@ -157,7 +157,7 @@ function css(o: PrintOptions): string {
   const f = FRAME[o.paper];
   return `
 @page { size: ${o.paper}; margin: ${f.margin}; @bottom-center { content: counter(page); font: ${b * 0.8}pt Literata, Georgia, serif; color: #777; } }
-:root { --ink: #1B1517; --ink2: #3A3134; --rule: ${rule}; --rule2: ${o.color ? '#E09AA5' : '#999'}; --gold: ${gold}; }
+:root { --ink: #1B1517; --ink2: #3A3134; --rule: ${rule}; --rule2: ${o.color ? '#E09AA5' : '#999'}; --gold: ${gold}; --formula: ${o.color ? '#7E1D30' : '#1B1517'}; }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-text-size-adjust: 100%; }
 body { margin: 0; color: var(--ink); font: ${b}pt/1.5 Literata, Georgia, 'Noto Sans Coptic', serif; }
@@ -210,7 +210,10 @@ body { padding: 0 ${f.inset + f.pad}mm; }
 .t-ref .sv { font-weight: 600; font-size: .92em; }
 .t-ref .ar { font-weight: 700; }
 /* Slanted only in Swedish: Arabic has no italic, and a slanted Amiri is hard to read. */
-.t-f > div, .t-secret > div { color: var(--ink2); }
+/* Formulas ("Välsignad är han som kommer …") in a deep wine red, as in a printed Katameros:
+   set apart from the text, and darker and larger than the crimson rubrics. */
+.t-f > div { color: var(--formula); }
+.t-secret > div { color: var(--ink2); }
 .t-f .sv, .t-secret .sv, .langs-sv .cap, .langs-both .cap { font-style: italic; }
 .t-rubric > div, .t-note > div { color: var(--rule); font-size: .88em; }
 .t-rubric .sv, .t-note .sv { font-style: italic; }
