@@ -92,8 +92,9 @@ const styles = StyleSheet.create({
   bar: { borderRadius: 999, padding: 5 },
   barCompact: { padding: 4 },
   row: { flexDirection: 'row' },
-  lens: { position: 'absolute', top: 5, left: 0, height: 54, borderRadius: 999 },
-  lensCompact: { top: 4, height: 44 },
+  // Tab positions are measured inside the bar's padding, so the lens starts at the same inset.
+  lens: { position: 'absolute', top: 5, left: 5, height: 54, borderRadius: 999 },
+  lensCompact: { top: 4, left: 4, height: 44 },
   tab: { width: 78, height: 54, borderRadius: 999, alignItems: 'center', justifyContent: 'center', gap: 2 },
   tabCompact: { width: 54, height: 44 },
   label: { fontSize: 10.5, fontWeight: '600' },
