@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Chips } from '../../components/Chips';
+import { DayStep } from '../../components/DateBar';
 import { DayPicker } from '../../components/DayPicker';
 import { Glass } from '../../components/Glass';
 import { Icon } from '../../components/Icon';
 import { Reader } from '../../components/Reader';
-import { ReaderActions } from '../../components/ReaderActions';
 import { useReadings } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
 import { STRINGS } from '../../i18n';
@@ -81,29 +81,48 @@ export default function Readings() {
     <Step n={1} onPress={() => pickDay(addDays(date, 1))} />
     </>
   );
+  // The civil date under the Coptic one; a tap opens the calendar.
+  const civil = `${isToday ? `${t.today} · ` : ''}${capital(weekdayText(date, lang))} ${dayMonthText(date, lang)}${date.getFullYear() !== new Date().getFullYear() ? ` ${ar ? toArDigits(date.getFullYear()) : date.getFullYear()}` : ''}`;
+  // On the phone, as in Apple's apps: the day as a large title, the buttons
+  // floating in the top bar, and the sections as tabs under the title (the
+  // reader pins them under the top bar while reading).
   const header = spread ? (
     loading && !data ? <ActivityIndicator style={{ marginTop: 12 }} color={colors.crimson} /> : null
   ) : (
     <View style={styles.header}>
-      {/* The day in one slim card, then straight to the text: the page itself carries the title. */}
-      <View style={[styles.bar, { backgroundColor: colors.surface, flexDirection: ar ? 'row-reverse' : 'row' }]}>
-        {dayNav}
-        <ReaderActions inline print={print} />
+      <Text accessibilityRole="header" numberOfLines={1} style={[styles.big, { color: colors.label }, ar && styles.right]}>{copticText(c, lang)}</Text>
+      <View style={[styles.subRow, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${gregorianText(date, lang)}. ${t.pickDay}`} onPress={() => setPicking(true)} hitSlop={6}
+          style={({ pressed }) => [styles.civil, { flexDirection: ar ? 'row-reverse' : 'row' }, pressed && styles.dim]}>
+          <Text numberOfLines={1} style={[styles.civilText, { color: isToday ? colors.crimson : colors.label2 }]}>{civil}</Text>
+          <Icon name="chevD" size={14} color={isToday ? colors.crimson : colors.label2} strokeWidth={2.4} />
+        </Pressable>
+        {!isToday && (
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())} hitSlop={6}
+            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
+          </Pressable>
+        )}
       </View>
-      {chips}
       {loading && !data && <ActivityIndicator style={styles.loading} color={colors.crimson} />}
       {error && <Text style={[styles.note, { color: colors.crimson }]}>{error.message}</Text>}
     </View>
   );
+  // The top bar starts with the day: in the open book the whole date, on the phone the steps beside the title's date.
   const barLead = spread ? (
     <Glass style={styles.leadGlass}>
       <View style={[styles.lead, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{dayNav}</View>
     </Glass>
-  ) : null;
+  ) : (
+    <View style={[styles.steps, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      <DayStep n={-1} onPress={() => pickDay(addDays(date, -1))} />
+      <DayStep n={1} onPress={() => pickDay(addDays(date, 1))} />
+    </View>
+  );
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} ownHeader print={print} barLead={barLead} barCenter={spread ? chips : null} />
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} print={print} barLead={barLead} barCenter={spread ? chips : null} sectionTabs />
       <DayPicker visible={picking} day={date} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
     </View>
   );
@@ -124,13 +143,17 @@ function Step({ n, onPress }: { n: number; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 4 },
+  header: { paddingHorizontal: 20, paddingBottom: 2 },
+  big: { fontSize: 34, fontWeight: '700', lineHeight: 40 },
+  civil: { alignItems: 'center', gap: 4, flexShrink: 1 },
+  civilText: { fontSize: 15, fontWeight: '600', flexShrink: 1 },
+  steps: { gap: 8 },
   bar: { alignItems: 'center', gap: 6, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 8, marginBottom: 12 },
   step: { width: 30, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   when: { flex: 1, minWidth: 0, paddingHorizontal: 2 },
   day: { flexShrink: 1, fontFamily: FONTS.svSemi, fontSize: 19, lineHeight: 25 },
   dayAr: { flexShrink: 1, fontFamily: FONTS.arBold, fontSize: 21, lineHeight: 30, writingDirection: 'rtl' },
-  subRow: { alignItems: 'center', gap: 4 },
+  subRow: { alignItems: 'center', gap: 8, marginTop: 2 },
   sub: { flexShrink: 1, fontSize: 12.5, fontWeight: '600' },
   todayPill: { marginHorizontal: 4, borderRadius: 999, paddingHorizontal: 9, height: 22, justifyContent: 'center' },
   todayText: { fontSize: 12, fontWeight: '700' },

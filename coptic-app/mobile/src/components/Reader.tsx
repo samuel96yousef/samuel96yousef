@@ -34,6 +34,7 @@ import { CopticCross } from './CopticCross';
 import { PageBody, PageBottom, PageTop } from './Page';
 import type { PrintScope } from './PrintSheet';
 import { ReaderActions } from './ReaderActions';
+import { SectionTabs } from './SectionTabs';
 import { publishReader } from '../readerHub';
 import { useToast } from './Toast';
 import { BAR_HEIGHT, TopBar } from './TopBar';
@@ -49,6 +50,9 @@ export type Row =
   | { k: 'role'; r: Role }
   | { k: 'u'; u: Unit; showC?: boolean; role?: Role; highlight?: boolean }
   | { k: 'sep' };
+
+/** Height of the section tabs (SectionTabs). */
+const TABS_H = 46;
 
 const PEEKABLE = new Set<Unit['t']>(['v', 'psalm', 'f', 'p', 'secret']);
 const EMPTY: ReadonlySet<number> = new Set();
@@ -283,13 +287,16 @@ interface ReaderProps {
   /** In the open book: what the top bar shows at its start, and in its middle until the reader is into the text */
   barLead?: ReactElement | null;
   barCenter?: ReactElement | null;
+  /** The outline as a row of tabs under the header, pinned under the top bar while reading (scrolling text only). */
+  sectionTabs?: boolean;
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter, sectionTabs }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set, sidebar } = s;
+  const tabsOn = !!sectionTabs && !!outline && outline.items.length > 1 && !spread && !sidebar;
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const reduce = useReducedMotion();
@@ -338,9 +345,10 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
 
   const offset = insets.top + 60;
   // Jumps land just below the top fade.
-  const jumpOffset = insets.top + BAR_HEIGHT + 20;
+  // Pinned section tabs take another row under the top bar.
+  const jumpOffset = insets.top + BAR_HEIGHT + 20 + (tabsOn ? TABS_H : 0);
   // A section counts as entered once its top slips into the top fade.
-  const readLine = insets.top + BAR_HEIGHT + 26;
+  const readLine = insets.top + BAR_HEIGHT + 26 + (tabsOn ? TABS_H : 0);
 
   /**
    * Scroll a row to the top. A row far below what the list has laid out
@@ -564,6 +572,10 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
   // Wide but not a book (the reader turned it off): the text keeps to a column a line long.
   const contentStyle = useMemo(() => ({ paddingTop: insets.top + (quietTop ? 12 : 60), width: '100%' as const, maxWidth: 760, alignSelf: 'center' as const }), [insets.top, quietTop]);
 
+  const headerView = useMemo(() => (tabsOn && outline
+    ? <View>{header}<SectionTabs outline={outline} store={way} onJump={jump} /></View>
+    : header ?? undefined), [tabsOn, outline, header, way, jump]);
+
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} primary={primary} both={both}
       peeked={peeks.has(index)} onPeek={togglePeek} mark={markSet.has(index)} onMark={onMark} />
@@ -585,7 +597,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
           keyExtractor={(_, i) => `${textNo.n}:${i}`}
           renderItem={renderItem}
           extraData={extraData}
-          ListHeaderComponent={header ?? undefined}
+          ListHeaderComponent={headerView}
           ListFooterComponent={footerView}
           contentContainerStyle={contentStyle}
           onViewableItemsChanged={onViewable}
@@ -601,18 +613,21 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       </Animated.View>
     </GestureDetector>
     )}
-    <Chrome store={way} back={sidebar ? undefined : back} book={spread} quiet={quietTop} print={print} lead={spread ? barLead : null} middle={spread ? barCenter : null}
-      pill={outline && !sidebar ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null} />
+    <Chrome store={way} back={sidebar ? undefined : back} book={spread} quiet={quietTop} print={print} lead={barLead} middle={spread ? barCenter : null}
+      pill={outline && !sidebar && !tabsOn ? <ContextPill outline={outline} rows={rows} store={way} progress={progress} /> : null}
+      pinned={tabsOn && outline ? <SectionTabs pinned outline={outline} store={way} onJump={jump} /> : null} />
     {outline && outline.items.length > 0 && !sidebar && <Wayfinder outline={outline} store={way} onJump={jump} />}
     </View>
   );
 }
 
 /** The top bar and the edge fades. They follow the scroll on their own, so the list does not re-render with them. */
-function Chrome({ store, back, book, quiet, pill, print, lead, middle }: {
-  store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null;
+function Chrome({ store, back, book, quiet, pill, print, lead, middle, pinned }: {
+  store: WayStore; back?: string; book: boolean; quiet: boolean; pill: ReactElement | null; print?: PrintScope[]; lead?: ReactElement | null; middle?: ReactElement | null; pinned?: ReactElement | null;
 }) {
   const reading = useWay(store, (s) => s.reading);
+  const insets = useSafeAreaInsets();
+  const { colors } = useSettings();
   return (
     <>
       {/* Text slides under the bars only when it scrolls; the open book's pages stop short of them. */}
@@ -621,6 +636,10 @@ function Chrome({ store, back, book, quiet, pill, print, lead, middle }: {
         <TopBar back={back} lead={lead} compact={reading && !!pill} center={reading ? pill : middle}>
           <ReaderActions print={print} />
         </TopBar>
+      )}
+      {pinned && reading && (
+        // One solid bar from the top of the screen down to the tabs, under the floating buttons, as an iOS navigation bar.
+        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.pinned, { paddingTop: insets.top + BAR_HEIGHT, backgroundColor: colors.bg }]}>{pinned}</Animated.View>
       )}
     </>
   );
@@ -701,6 +720,7 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
 }
 
 const styles = StyleSheet.create({
+  pinned: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15 },
   fill: { flex: 1 },
   fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
   fadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
