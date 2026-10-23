@@ -38,6 +38,8 @@ const GUTTER = 22;
 const RULE_GAP = 4.5;
 const TEXT_OUTER = 30;
 const TEXT_INNER = 42;
+/** The widest line of text on a page, at text size 1. */
+const MEASURE = 560;
 /** Rows measured per batch. */
 const CHUNK = 120;
 /** Space kept under the text at the foot of each page. */
@@ -79,14 +81,17 @@ export interface BookProps {
 interface Turn { a: number; b: number }
 
 export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, goTo, opening, onSpread }: BookProps) {
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, scale } = useSettings();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
   const dir = lang === 'ar' ? -1 : 1;
   const near: BookLang = dir === 1 ? 'sv' : 'ar';
   const far: BookLang = dir === 1 ? 'ar' : 'sv';
-  const W = Math.floor((width - 24) / 2);
+  // A page is as wide as the screen allows, up to a comfortable line (about 65
+  // characters at the reader's text size); on a large screen the book sits in the middle.
+  const W = Math.min(Math.floor((width - 24) / 2), Math.round(MEASURE * scale) + TEXT_OUTER + TEXT_INNER);
+  const bookLeft = Math.floor((width - 2 * W) / 2);
   const textW = W - TEXT_OUTER - TEXT_INNER;
   const bookTop = insets.top + BAR_HEIGHT + 4;
   const sheetH = Math.max(220, Math.floor(height - bookTop - insets.bottom - 86));
@@ -325,20 +330,20 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
   return (
     <View style={styles.fill}>
       <GestureDetector gesture={pan} touchAction="pan-y">
-        <Animated.View style={[styles.book, { top: bookTop, width: 2 * W, height: sheetH }, NO_SELECT, bookStyle]} accessibilityLabel={status}>
+        <Animated.View style={[styles.book, { top: bookTop, left: bookLeft, width: 2 * W, height: sheetH }, NO_SELECT, bookStyle]} accessibilityLabel={status}>
           <View style={[StyleSheet.absoluteFill, dir < 0 && styles.flip]}>{bed}{layers}</View>
           {cur > 0 && <Zone label={t.prevPage} side={dir === 1 ? 'left' : 'right'} W={W} onPress={() => go(live.current.cur - 1)} />}
           {cur >= 0 && cur < last && <Zone label={t.nextPage} side={dir === 1 ? 'right' : 'left'} W={W} onPress={() => go(live.current.cur + 1)} />}
         </Animated.View>
       </GestureDetector>
       {header ? (
-        <Animated.View pointerEvents={onCover ? 'box-none' : 'none'} style={[styles.header, { top: bookTop - 4, maxHeight: sheetH }, headerStyle]}>
+        <Animated.View pointerEvents={onCover ? 'box-none' : 'none'} style={[styles.header, { top: bookTop - 4, left: bookLeft, right: bookLeft, maxHeight: sheetH }, headerStyle]}>
           <ScrollView bounces={false} showsVerticalScrollIndicator={false} onContentSizeChange={(_w, h) => setHeaderH(Math.ceil(h))}>
             {header}
           </ScrollView>
         </Animated.View>
       ) : null}
-      <View pointerEvents="box-none" style={[styles.foot, { bottom: insets.bottom + 14, width: W - 16 }, dir === 1 ? { right: 20 } : { left: 20 }]}>
+      <View pointerEvents="box-none" style={[styles.foot, { bottom: insets.bottom + 14, width: W - 16 }, dir === 1 ? { right: bookLeft + 8 } : { left: bookLeft + 8 }]}>
         {isLast && footer ? footer : cur >= 0 ? (
           <View style={[styles.status, dir < 0 && styles.statusRtl]}>
             <Text style={[styles.statusText, { color: colors.label2 }]}>{status}</Text>
@@ -507,7 +512,7 @@ function Zone({ label, side, W, onPress }: { label: string; side: 'left' | 'righ
 const styles = StyleSheet.create({
   // The measuring layer is taller than the screen; it must not make the page scroll.
   fill: { flex: 1, overflow: 'hidden' },
-  book: { position: 'absolute', left: 12 },
+  book: { position: 'absolute' },
   sheet: { position: 'absolute' },
   originRight: { transformOrigin: 'right center' },
   clip: { position: 'absolute', overflow: 'hidden' },
