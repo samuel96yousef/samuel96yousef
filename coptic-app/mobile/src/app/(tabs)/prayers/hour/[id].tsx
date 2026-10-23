@@ -28,7 +28,7 @@ export default function Hour() {
   );
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} outline={outline} back={t.prayers} header={header} print={print} />
+      <Reader rows={rows} outline={outline} back={t.agpeya} header={header} print={print} />
     </View>
   );
 }

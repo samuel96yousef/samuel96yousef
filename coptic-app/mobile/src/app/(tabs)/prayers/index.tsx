@@ -1,26 +1,34 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Arch } from '../../../components/Arch';
-import { KholagyMenu } from '../../../components/KholagyMenu';
-import { LargeTitle, SectionLabel } from '../../../components/LargeTitle';
+import { Icon } from '../../../components/Icon';
+import { LargeTitle } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
-import { agpeyaIndex, kholagyIndex, loadPrayers } from '../../../data';
-import { HOURS, hourNow } from '../../../lib/coptic';
+import { agpeyaIndex, loadPrayers } from '../../../data';
+import { hourNow } from '../../../lib/coptic';
 import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
 
+const KHOLAGY_SKY: [string, string] = ['#A12F4B', '#4A1024'];
+
+/**
+ * The two prayer books, each a door of its own: the Agpeya under the sky of
+ * the hour it is now, with a way straight into that hour, and the Kholagy in
+ * crimson with its chalice. Each opens its own page.
+ */
 export default function Prayers() {
-  const { t, lang, colors, sidebar } = useSettings();
+  const { t, lang, colors, sidebar, contentWidth } = useSettings();
   const insets = useSafeAreaInsets();
-  const { contentWidth: width } = useSettings();
   const ar = lang === 'ar';
+  const wide = contentWidth >= 720;
   const now = hourNow();
-  const columns = width >= 720 ? 4 : 2;
-  // Read the texts while the list is looked at, so an hour opens at once.
+  const hour = agpeyaIndex.find((h) => h.id === now);
+  const sky = HOUR_SKY[now];
+  const fg = sky?.dark ? '#FFFFFF' : '#2B1722';
+  // Read the texts while the page is looked at, so an hour opens at once.
   useEffect(() => {
     loadPrayers('agpeya').then(() => loadPrayers('kholagy')).catch(() => {});
   }, []);
@@ -31,57 +39,73 @@ export default function Prayers() {
       {!sidebar && <TopBar><BarButton icon="gear" label={t.settings} onPress={() => router.push('/settings')} /></TopBar>}
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
         <LargeTitle title={t.prayers} subtitle={t.prayersSub} />
-        <Arch ar="الأجبية والخولاجي" sv="Agpeya · Kholagy" cop="Ⲡⲓϣⲗⲏⲗ" />
-
-        <SectionLabel>{`${t.agpeya} · ${t.agpeyaSub}`}</SectionLabel>
-        <View style={[styles.grid, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
-          {agpeyaIndex.map((h) => {
-            const sky = HOUR_SKY[h.id];
-            const fg = sky?.dark ? '#FFFFFF' : '#2B1722';
-            return (
-              <Pressable key={h.id} accessibilityRole="button" accessibilityLabel={ar ? h.ar : h.sv}
-                onPress={() => router.push(`/prayers/hour/${h.id}`)}
-                style={({ pressed }) => [{ width: `${100 / columns}%` }, styles.cell, pressed && styles.pressed]}>
-                <LinearGradient colors={sky?.colors ?? [colors.surface, colors.surface]} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }}
-                  style={[styles.tile, h.id === now && { borderWidth: 2.5, borderColor: colors.crimson }]}>
-                  <View style={[styles.orb, sky?.moon ? styles.moon : styles.sun, ar ? { left: 14 } : { right: 14 }]} />
-                  {h.id === now && <View style={[styles.nowBadge, ar ? { right: 12 } : { left: 12 }]}><Text style={[styles.nowText, { color: fg }]}>{t.now}</Text></View>}
-                  <Text style={[styles.tileSmall, { color: fg }, ar && styles.right]}>{ar ? HOURS[h.id].ar : HOURS[h.id].sv}</Text>
-                  <Text style={[styles.tileName, { color: fg }, ar && styles.right]}>{ar ? h.ar : h.sv}</Text>
-                  <Text style={[styles.tileName2, { color: fg }, ar ? null : styles.right]}>{ar ? h.sv : h.ar}</Text>
-                </LinearGradient>
+        <View style={[styles.doors, wide && { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+          <Door colors={sky?.colors ?? [colors.surface, colors.surface]} fg={fg} title={t.agpeya} second={ar ? 'Agpeya' : 'الأجبية'}
+            sub={t.agpeyaSub} count={t.hoursCount(agpeyaIndex.length)} onPress={() => router.push('/prayers/agpeya')}
+            art={<View style={[styles.orb, sky?.moon ? styles.moon : styles.sun]} />}>
+            {hour && (
+              <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hour.id}`)}
+                style={({ pressed }) => [styles.now, { flexDirection: ar ? 'row-reverse' : 'row' }, ar ? styles.nowRtl : null, pressed && styles.dim]}>
+                <Text numberOfLines={1} style={[styles.nowText, { color: fg }]}>{t.now} · {ar ? hour.ar : hour.sv}</Text>
+                <View style={ar && styles.flip}><Icon name="chevR" size={16} color={fg} strokeWidth={2.4} /></View>
               </Pressable>
-            );
-          })}
+            )}
+          </Door>
+          <Door colors={KHOLAGY_SKY} fg="#FFFFFF" title={t.kholagy} second={ar ? 'Kholagy' : 'الخولاجي'}
+            sub={t.kholagySub} count={t.liturgiesCount(3)} onPress={() => router.push('/prayers/kholagy')}
+            art={<Icon name="liturgy" size={56} color="rgba(255,255,255,0.75)" strokeWidth={1.4} />} />
         </View>
-
-        <SectionLabel>{`${t.kholagy} · ${t.kholagySub}`}</SectionLabel>
-        <KholagyMenu items={kholagyIndex} />
       </ScrollView>
     </View>
+  );
+}
+
+function Door({ colors, fg, title, second, sub, count, art, onPress, children }: {
+  colors: [string, string, ...string[]]; fg: string; title: string; second: string; sub: string; count: string; art: ReactNode; onPress: () => void; children?: ReactNode;
+}) {
+  const { lang } = useSettings();
+  const ar = lang === 'ar';
+  const right = ar && styles.right;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${sub}`} onPress={onPress} style={({ pressed }) => [styles.doorWrap, pressed && styles.pressed]}>
+      <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={styles.door}>
+        <View style={[styles.art, ar ? { left: 22 } : { right: 22 }]}>{art}</View>
+        <Text style={[styles.count, { color: fg }, right]}>{count}</Text>
+        <Text style={[styles.title, { color: fg }, right]}>{title}</Text>
+        <Text style={[styles.second, { color: fg }, ar ? styles.secondSv : styles.secondAr]}>{second}</Text>
+        {/* Clear of the round arrow in the corner. */}
+        <Text style={[styles.sub, { color: fg }, right, ar ? { marginLeft: 48 } : { marginRight: 48 }]}>{sub}</Text>
+        {children}
+        <View style={[styles.go, ar ? { left: 18 } : { right: 18 }]}>
+          <View style={ar && styles.flip}><Icon name="chevR" size={20} color={fg} strokeWidth={2.2} /></View>
+        </View>
+      </LinearGradient>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { paddingHorizontal: 16, maxWidth: 1040, width: '100%', alignSelf: 'center' },
-  grid: { flexWrap: 'wrap', marginHorizontal: -6 },
-  cell: { padding: 6 },
-  tile: { borderRadius: 24, padding: 16, minHeight: 136, justifyContent: 'flex-end', overflow: 'hidden' },
-  orb: { position: 'absolute', top: 14 },
-  sun: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFF4CC', boxShadow: '0 0 22px 6px rgba(255,240,200,0.5)' },
-  moon: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F1ECDC', boxShadow: '0 0 22px 4px rgba(240,236,220,0.25)' },
-  nowBadge: { position: 'absolute', top: 14, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: 'rgba(255,255,255,0.3)' },
-  nowText: { fontSize: 11, fontWeight: '700' },
-  tileSmall: { fontSize: 12, fontWeight: '600', opacity: 0.85 },
-  tileName: { fontSize: 16, fontWeight: '700', marginTop: 2 },
-  tileName2: { fontFamily: FONTS.arBold, fontSize: 17, lineHeight: 28, textAlign: 'left' },
-  list: { borderRadius: 24, overflow: 'hidden' },
-  row: { alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
-  rowText: { flex: 1, minWidth: 0 },
-  rowTitle: { fontSize: 16, fontWeight: '600' },
-  rowAr: { fontFamily: FONTS.ar, fontSize: 16, lineHeight: 26, textAlign: 'left' },
+  doors: { gap: 16, marginTop: 4 },
+  doorWrap: { flex: 1 },
+  door: { borderRadius: 28, padding: 22, minHeight: 230, justifyContent: 'flex-end', overflow: 'hidden' },
+  art: { position: 'absolute', top: 22 },
+  orb: { },
+  sun: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#FFF4CC', boxShadow: '0 0 30px 8px rgba(255,240,200,0.5)' },
+  moon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F1ECDC', boxShadow: '0 0 30px 4px rgba(240,236,220,0.25)' },
+  count: { fontSize: 13, fontWeight: '700', opacity: 0.8, letterSpacing: 0.4 },
+  title: { fontFamily: FONTS.svSemi, fontSize: 32, lineHeight: 40, marginTop: 2 },
+  second: { fontSize: 20, lineHeight: 32, opacity: 0.9 },
+  secondAr: { fontFamily: FONTS.arBold, textAlign: 'left' },
+  secondSv: { fontFamily: FONTS.svSemi, fontSize: 18, textAlign: 'right' },
+  sub: { fontSize: 14, fontWeight: '500', opacity: 0.85, marginTop: 4 },
+  now: { alignSelf: 'flex-start', alignItems: 'center', gap: 6, marginTop: 14, paddingHorizontal: 14, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.28)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.55)', maxWidth: '75%' },
+  nowRtl: { alignSelf: 'flex-end' },
+  nowText: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  go: { position: 'absolute', bottom: 22, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.22)' },
   right: { textAlign: 'right', writingDirection: 'rtl' },
   flip: { transform: [{ scaleX: -1 }] },
-  pressed: { transform: [{ scale: 0.97 }] },
+  dim: { opacity: 0.7 },
+  pressed: { transform: [{ scale: 0.98 }] },
 });

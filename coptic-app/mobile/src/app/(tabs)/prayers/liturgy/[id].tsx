@@ -53,7 +53,7 @@ export default function Liturgy() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.prayers} print={print}
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.kholagy} print={print}
         barLead={spread ? (
           <Glass style={styles.leadGlass}>
             <View style={[styles.legend, styles.legendBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>
