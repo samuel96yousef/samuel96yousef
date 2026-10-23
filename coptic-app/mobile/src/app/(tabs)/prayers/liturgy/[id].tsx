@@ -9,6 +9,7 @@ import { Reader } from '../../../../components/Reader';
 import { kholagyIndex, usePrayer } from '../../../../data';
 import { liturgyScopes } from '../../../../print/scopes';
 import { headingIndexes, headingOutline, liturgyRows } from '../../../../rows';
+import { useBackLabel } from '../../../../backLabel';
 import { useSettings } from '../../../../settings';
 import { FONTS } from '../../../../theme';
 
@@ -16,6 +17,7 @@ import { FONTS } from '../../../../theme';
 export default function Liturgy() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, lang, colors, page, spread } = useSettings();
+  const backLabel = useBackLabel(t);
   const liturgy = kholagyIndex.find((p) => p.id === id) ?? kholagyIndex[0];
   const { data } = usePrayer('kholagy', liturgy.id);
   const rows = useMemo(() => (data ? liturgyRows(data) : []), [data]);
@@ -53,7 +55,7 @@ export default function Liturgy() {
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={t.kholagy} print={print}
+      <Reader rows={rows} header={header} scrollTo={jump} outline={outline} back={backLabel} print={print}
         barLead={spread ? (
           <Glass style={styles.leadGlass}>
             <View style={[styles.legend, styles.legendBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>{legend}</View>

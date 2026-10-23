@@ -108,7 +108,7 @@ export default function Today() {
   ) : null;
 
   const hourCard = hour && sky ? (
-    <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hid}`)} style={({ pressed }) => [wide && styles.cell, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hid}`, { withAnchor: true })} style={({ pressed }) => [wide && styles.cell, pressed && styles.pressed]}>
       <LinearGradient colors={sky.colors} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={[styles.hourCard, wide && styles.fillCell]}>
         <View style={[styles.sun, sky.moon ? styles.moon : { backgroundColor: '#FFF4CC' }, ar ? { left: 26 } : { right: 26 }]} />
         <Text style={[styles.hourEyebrow, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{t.now} · {ar ? HOURS[hid].ar : HOURS[hid].sv}</Text>

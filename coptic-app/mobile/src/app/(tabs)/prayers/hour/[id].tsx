@@ -8,11 +8,13 @@ import { agpeyaIndex, usePrayer } from '../../../../data';
 import { HOURS } from '../../../../lib/coptic';
 import { hourScopes } from '../../../../print/scopes';
 import { headingOutline, prayerRows } from '../../../../rows';
+import { useBackLabel } from '../../../../backLabel';
 import { useSettings } from '../../../../settings';
 
 export default function Hour() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, lang, colors, spread } = useSettings();
+  const backLabel = useBackLabel(t);
   const hour = agpeyaIndex.find((h) => h.id === id) ?? agpeyaIndex[0];
   const { data } = usePrayer('agpeya', hour.id);
   const rows = useMemo(() => (data ? prayerRows(data, { ar: 'الأجبية', sv: 'Agpeya' }) : []), [data]);
@@ -28,7 +30,7 @@ export default function Hour() {
   );
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} outline={outline} back={t.agpeya} header={header} print={print} />
+      <Reader rows={rows} outline={outline} back={backLabel} header={header} print={print} />
     </View>
   );
 }
