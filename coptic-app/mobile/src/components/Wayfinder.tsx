@@ -17,7 +17,7 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
@@ -85,6 +85,10 @@ const RADIUS = ROW_H / ROW_ANGLE;
 const WHEEL_H = ROW_H * 7;
 /** Holding the number this long, without moving, brings out the wheel. */
 const HOLD_MS = 220;
+/** How strongly the wheel settles at each section while turned, 0 (none) to below 1. */
+const DETENT = 0.6;
+/** How long the wheel rests on a row before the text follows it there. */
+const WHEEL_REST_MS = 160;
 /** How far the wheel gives past the first or last section before it stops, in rows. */
 const OVERSCROLL = 0.25;
 
@@ -122,12 +126,13 @@ function useDockFrame(): DockFrame {
   const minTop = insets.top + BAR_HEIGHT + 12;
   const floor = height - insets.bottom - 90;
   const maxTop = Math.max(minTop, floor - DOCK_H);
-  return {
+  // The same object while nothing changes, so the dock does not re-render with the wheel.
+  return useMemo(() => ({
     side: dock.side,
     x: dock.side === 'left' ? DOCK_INSET : width - DOCK_INSET - DOCK_W,
     top: minTop + clamp(dock.y, 0, 1) * (maxTop - minTop),
     minTop, maxTop, width, height, floor,
-  };
+  }), [dock.side, dock.y, width, height, minTop, maxTop, floor]);
 }
 
 // ---------- Context pill ----------
@@ -202,7 +207,8 @@ export function ContextPill({ outline, rows, store, progress }: {
 // ---------- The dock ----------
 
 /** Previous, the section number, next: on the side, within reach of the thumb. */
-function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
+// Memoised: the wheel's row changes re-render the Wayfinder, and must not rebuild the dock's gesture mid-turn.
+const Dock = memo(function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
   outline: Outline; store: WayStore; frame: DockFrame; lang: Lang;
   /** Position of the wheel, in rows; shared with the wheel so it turns with the finger */
   wheel: SharedValue<number>;
@@ -247,13 +253,21 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
     onJump(items[k].index, true);
   };
 
-  /** The wheel lands on a row: tick, and bring that section to the top. */
-  const tick = (k: number) => {
+  /**
+   * The wheel lands on a row: tick, and bring that section to the top. The
+   * text follows once the wheel has rested on a row for a moment (and at
+   * once when it is let go), so moving the text never holds the wheel up.
+   */
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const tick = (k: number, now = false) => {
     const g = gesture.current;
     if (g) g.at = k;
     haptic();
     onWheel(k);
-    onJump(items[k].index, false);
+    clearTimeout(jumpTimer.current);
+    const jump = () => onJump(items[k].index, false);
+    if (now) jump();
+    else jumpTimer.current = setTimeout(jump, WHEEL_REST_MS);
   };
   const openWheel = () => {
     const g = gesture.current;
@@ -304,9 +318,9 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
       const over = raw < 0 ? raw : raw > last ? raw - last : 0;
       const pos = over ? (over < 0 ? 0 : last) + Math.sign(over) * OVERSCROLL * (1 - Math.exp(-Math.abs(over) * 2)) : raw;
       const k = clamp(Math.round(pos), 0, last);
-      // Each section snaps into the band and the wheel only gives a little under
-      // the finger, so the selected name always rests centred.
-      wheel.set(over ? pos : withTiming(k + (pos - k) * 0.18, { duration: 120, easing: Easing.out(Easing.cubic) }));
+      // The wheel follows the finger without a break, slowed near each section so
+      // it settles there like a detent, and never jumps from one row to the next.
+      wheel.set(over ? pos : pos - (DETENT * Math.sin(2 * Math.PI * pos)) / (2 * Math.PI));
       const atEnd = Math.abs(over) > 0.15;
       if (atEnd && !g.end) bump();
       g.end = atEnd;
@@ -325,7 +339,8 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
         // A flick carries on a little; then the wheel settles on a row and folds away.
         const target = clamp(Math.round(wheel.get() - (g.vy / ROW_H) * 0.18), 0, items.length - 1);
         wheel.set(reduce ? target : withSpring(target, SPRING_SMOOTH));
-        if (target !== g.at) tick(target);
+        if (target !== g.at) tick(target, true);
+        else { clearTimeout(jumpTimer.current); onJump(items[target].index, false); }
         gesture.current = null;
         hideTimer.current = setTimeout(() => onWheel(null), 650);
       } else {
@@ -396,12 +411,12 @@ function Dock({ outline, store, frame, lang: L, wheel, onJump, onWheel }: {
       </Glass>
     </Animated.View>
   );
-}
+});
 
 // ---------- The wheel ----------
 
 /** One row on the drum: it rises, tilts away and fades as it turns from the middle. */
-function WheelRow({ i, wheel, text, on, color, onColor }: { i: number; wheel: SharedValue<number>; text: string; on: boolean; color: string; onColor: string }) {
+const WheelRow = memo(function WheelRow({ i, wheel, text, on, color, onColor }: { i: number; wheel: SharedValue<number>; text: string; on: boolean; color: string; onColor: string }) {
   const turn = useAnimatedStyle(() => {
     const a = (i - wheel.get()) * ROW_ANGLE;
     const seen = Math.abs(a) < Math.PI / 2;
@@ -415,7 +430,7 @@ function WheelRow({ i, wheel, text, on, color, onColor }: { i: number; wheel: Sh
       <Text numberOfLines={1} style={[on ? styles.wheelOn : styles.wheelText, { color: on ? onColor : color }]}>{text}</Text>
     </Animated.View>
   );
-}
+});
 
 /** The scroll wheel beside the dock while the number is held: like the iOS picker, with the current section in the band. */
 function Wheel({ outline, center, wheel, frame, lang: L }: { outline: Outline; center: number; wheel: SharedValue<number>; frame: DockFrame; lang: Lang }) {
