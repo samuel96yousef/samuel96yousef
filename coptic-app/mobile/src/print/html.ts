@@ -34,7 +34,7 @@ export const PAGE_POINTS: Record<Paper, { width: number; height: number }> = {
 };
 
 /** Swedish body size in points; Arabic is set larger, as in the app. */
-const BASE: Record<Paper, Record<TextSize, number>> = {
+export const BASE: Record<Paper, Record<TextSize, number>> = {
   A4: { S: 9.5, M: 11, L: 13 },
   A5: { S: 8.5, M: 9.5, L: 11 },
 };
@@ -53,31 +53,35 @@ const FRAME: Record<Paper, { margin: string; inset: number; pad: number; gap: nu
  * centre. The arms are turned here rather than with SVG transforms, which
  * Chromium drops from a frame repeated on every page of a PDF.
  */
-const CROSS = (() => {
+export const CROSS_PATHS = (() => {
   const turns: ((x: number, y: number) => [number, number])[] = [
     (x, y) => [x, y], (x, y) => [24 - y, x], (x, y) => [24 - x, 24 - y], (x, y) => [y, 24 - x],
   ];
   const n = (v: number) => Math.round(v * 100) / 100;
+  // A bud as a closed path, so arms and buds fill as one shape.
+  const bud = (x: number, y: number, r: number) => `M${n(x - r)} ${n(y)}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
   const arms = turns.map((t) => {
     const P = (x: number, y: number) => t(x, y).map(n).join(' ');
-    const dot = (x: number, y: number, r: number) => { const [cx, cy] = t(x, y).map(n); return `<circle cx="${cx}" cy="${cy}" r="${r}"/>`; };
-    return `<path d="M${P(10.4, 12)}L${P(10.4, 5.6)}Q${P(10.4, 4.7)} ${P(9.3, 4.3)}L${P(14.7, 4.3)}Q${P(13.6, 4.7)} ${P(13.6, 5.6)}L${P(13.6, 12)}Z"/>${dot(12, 2.2, 1.55)}${dot(9.6, 3.4, 1.2)}${dot(14.4, 3.4, 1.2)}`;
+    const B = (x: number, y: number, r: number) => { const [cx, cy] = t(x, y); return bud(cx, cy, r); };
+    return `M${P(10.4, 12)}L${P(10.4, 5.6)}Q${P(10.4, 4.7)} ${P(9.3, 4.3)}L${P(14.7, 4.3)}Q${P(13.6, 4.7)} ${P(13.6, 5.6)}L${P(13.6, 12)}Z${B(12, 2.2, 1.55)}${B(9.6, 3.4, 1.2)}${B(14.4, 3.4, 1.2)}`;
   }).join('');
-  return `<svg viewBox="0 0 24 24" fill="currentColor">${arms}<path fill-rule="evenodd" d="M12 8.6a3.4 3.4 0 1 1 0 6.8a3.4 3.4 0 1 1 0-6.8zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"/></svg>`;
+  return { arms, ring: 'M12 8.6a3.4 3.4 0 1 1 0 6.8a3.4 3.4 0 1 1 0-6.8zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z' };
 })();
+
+const CROSS = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="${CROSS_PATHS.arms}"/><path fill-rule="evenodd" d="${CROSS_PATHS.ring}"/></svg>`;
 
 /** The Katameros frame, as in the app: a double rule with a cross on each corner. Fixed, so it is drawn on every page. */
 const frame = () => `<div class="frame">${['tl', 'tr', 'bl', 'br'].map((c) => `<i class="${c}">${CROSS}</i>`).join('')}</div>`;
 
-const ROLE_SV: Record<Role, string> = { priest: 'Prästen', deacon: 'Diakonen', people: 'Folket' };
-const ROLE_AR: Record<Role, string> = { priest: 'الكاهن', deacon: 'الشماس', people: 'الشعب' };
+export const ROLE_SV: Record<Role, string> = { priest: 'Prästen', deacon: 'Diakonen', people: 'Folket' };
+export const ROLE_AR: Record<Role, string> = { priest: 'الكاهن', deacon: 'الشماس', people: 'الشعب' };
 
 /** Headings and references: centred, the languages stacked rather than side by side. */
-const ALWAYS_BOTH = new Set<Unit['t']>(['ref', 'h', 'H']);
+export const ALWAYS_BOTH = new Set<Unit['t']>(['ref', 'h', 'H']);
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const arRef = (s: string) => toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
+export const arRef = (s: string) => toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
 
 export function printHtml(parts: PrintPart[], o: PrintOptions, title: string, fontCss = ''): string {
   // Each part is a table whose empty head and foot repeat on every printed
@@ -89,7 +93,7 @@ export function printHtml(parts: PrintPart[], o: PrintOptions, title: string, fo
 }
 
 /** The text of one language, or the other when a unit only has that one. */
-function pick(u: { ar?: string; sv?: string }, l: 'ar' | 'sv') {
+export function pick(u: { ar?: string; sv?: string }, l: 'ar' | 'sv') {
   return (l === 'ar' ? u.ar : u.sv) || '';
 }
 

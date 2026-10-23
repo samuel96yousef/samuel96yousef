@@ -74,8 +74,10 @@ liturgin, kapitlet eller hela bibelboken), språk (svenska, arabiska eller
 båda sida vid sida, rad för rad), A4 eller A5, textstorlek och röda
 rubriker eller svartvitt. Valen sparas. På telefonen går PDF:en till
 delningsmenyn (Filer, Mail, AirDrop, en skrivarapp) och "Skriv ut" öppnar
-systemets utskrift. På webben öppnas webbläsarens utskrift, där "Spara som
-PDF" ger filen. Varje dag, timbön eller liturgi börjar på en ny sida, och
+systemets utskrift. På webben ritar appen PDF:en själv
+(src/print/canvasPdf.ts) och laddar ner den, även inne i Claudes
+förhandsvisning där utskriftsrutan inte öppnas; "Skriv ut" öppnar
+webbläsarens utskrift. Varje dag, timbön eller liturgi börjar på en ny sida, och
 varje sida har appens ram: dubbel röd linje med ett koptiskt kors i
 varje hörn (svart och grå i svartvitt). Text som är grå i appen skrivs
 ut nästan svart så att den går att läsa på papper, och liturgiska formler

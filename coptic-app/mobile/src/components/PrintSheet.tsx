@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { printFonts } from '../print/fonts';
 import { printHtml, type PrintOptions, type PrintPart } from '../print/html';
-import { printDocument, savePdf, SAVES_FILE } from '../print/output';
+import { canPrint, printDocument, savePdf, SAVES_FILE } from '../print/output';
 import { useSettings } from '../settings';
 import { Glyph } from './Glyph';
 import { Icon } from './Icon';
@@ -48,7 +48,7 @@ export function PrintSheet({ visible, scopes, onClose }: { visible: boolean; sco
     try {
       const [parts, fonts] = await Promise.all([scope.load(), printFonts()]);
       const html = printHtml(parts, printOpts, scope.title, fonts);
-      if (kind === 'pdf') await savePdf(html, printOpts.paper, scope.title);
+      if (kind === 'pdf') await savePdf({ html, parts, options: printOpts, title: scope.title });
       else await printDocument(html, printOpts.paper);
       onClose();
     } catch (e) {
@@ -126,7 +126,7 @@ export function PrintSheet({ visible, scopes, onClose }: { visible: boolean; sco
           </ScrollView>
 
           <View style={[styles.actions, { flexDirection: row }]}>
-            {SAVES_FILE && (
+            {SAVES_FILE && canPrint() && (
               <ActionButton icon="print" text={t.print} busy={busy === 'print'} disabled={!!busy} onPress={() => run('print')} />
             )}
             <ActionButton primary icon={SAVES_FILE ? 'share' : 'print'} text={SAVES_FILE ? t.savePdf : t.printAction} busy={busy === 'pdf'} disabled={!!busy} onPress={() => run('pdf')} />

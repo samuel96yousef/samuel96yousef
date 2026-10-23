@@ -1,11 +1,19 @@
 /**
- * Printing on the web: the document goes into a hidden frame and the
- * browser's print dialog opens on it. "Save as PDF" there makes the file;
- * the document's title is its suggested name.
+ * Printing and PDF files on the web. Printing puts the document in a hidden
+ * frame and opens the browser's print dialog on it. A PDF is drawn here
+ * (canvasPdf.ts) and handed over as a download: through Claude's download
+ * capability when the app runs inside Claude (where the print dialog never
+ * opens), otherwise as an ordinary browser download.
  */
+import { renderPdf } from './canvasPdf';
 import type { Paper } from './html';
+import type { PrintDoc } from './output';
 
-export const SAVES_FILE = false;
+export type { PrintDoc } from './output';
+
+export const SAVES_FILE = true;
+/** Inside Claude the print dialog never opens, so only the PDF is offered there. */
+export const canPrint = () => !(window as unknown as { claude?: unknown }).claude;
 
 export async function printDocument(html: string, _paper: Paper) {
   const frame = document.createElement('iframe');
@@ -27,4 +35,29 @@ export async function printDocument(html: string, _paper: Paper) {
   setTimeout(done, 120_000);
 }
 
-export const savePdf = (html: string, paper: Paper, _name: string) => printDocument(html, paper);
+const fileName = (title: string) => `${title.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'Koptisk bönbok'}.pdf`;
+
+export async function savePdf({ parts, options, title }: PrintDoc) {
+  const blob = await renderPdf(parts, options);
+  const filename = fileName(title);
+  type Downloads = { save: (r: { filename: string; data: Blob }) => Promise<unknown> };
+  const claude = (window as unknown as { claude?: { use?: (name: string) => Promise<unknown> } }).claude;
+  const downloads = (claude?.use ? await claude.use('downloads').catch(() => null) : null) as Downloads | null;
+  if (downloads) {
+    try { await downloads.save({ filename, data: blob }); }
+    catch (e) {
+      // The viewer said no: not a failure.
+      if ((e as { code?: string })?.code === 'declined') throw new Error('cancelled');
+      throw e;
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
