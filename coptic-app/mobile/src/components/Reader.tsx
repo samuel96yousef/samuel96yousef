@@ -54,6 +54,16 @@ export type Row =
 /** Height of the section tabs (SectionTabs). */
 const TABS_H = 46;
 
+/**
+ * How much of the text the list keeps rendered. On the web the whole text is
+ * rendered, a batch a frame after the first screen, and nothing is taken away:
+ * a list that grows while it is read ends early, and on an iPhone a flick
+ * then bounces off that false end and hops on as the next rows arrive.
+ */
+const LIST_WINDOW = Platform.OS === 'web'
+  ? { windowSize: 10001, maxToRenderPerBatch: 40, updateCellsBatchingPeriod: 16 }
+  : { windowSize: 11 };
+
 const PEEKABLE = new Set<Unit['t']>(['v', 'psalm', 'f', 'p', 'secret']);
 const EMPTY: ReadonlySet<number> = new Set();
 const ALWAYS_BOTH = new Set<Unit['t']>(['ref', 'h', 'H', 'note', 'rubric']);
@@ -636,7 +646,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
           onScrollBeginDrag={() => { target.current = null; }}
           scrollEventThrottle={32}
           initialNumToRender={14}
-          windowSize={11}
+          {...LIST_WINDOW}
           onScrollToIndexFailed={onScrollFailed}
           accessibilityLabel={t.readings}
         />
