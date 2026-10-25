@@ -1,7 +1,7 @@
 /** Turns readings, prayers and Bible chapters into reader rows. */
 import type { Row } from './components/Reader';
 import { copticText, dayTitle, gregorianText, observances, toArDigits } from './lib/coptic';
-import type { BibleBook, DayReadings, Prayer, Role, Unit, Verse } from './lib/types';
+import type { BibleBook, DayReadings, Hymn, Prayer, Role, Unit, Verse } from './lib/types';
 
 function unitRows(units: Unit[]): Row[] {
   const rows: Row[] = [];
@@ -36,6 +36,11 @@ export const sectionIndex = (rows: Row[], id: string) => rows.findIndex((r) => r
 
 export function prayerRows(p: Prayer, run: { ar: string; sv: string }): Row[] {
   return [{ k: 'top' }, { k: 'run', ...run }, { k: 'cart', ar: p.ar, sv: p.sv }, ...unitRows(p.units), { k: 'bottom' }];
+}
+
+/** A hymn text: its occasion above, its title in the cartouche (Arabic: the texts have no Swedish), its lines. */
+export function hymnRows(h: Hymn, group: { ar: string; sv: string }): Row[] {
+  return [{ k: 'top' }, { k: 'run', ...group }, { k: 'cart', ar: h.ar, sv: '' }, ...unitRows(h.units), { k: 'bottom' }];
 }
 
 /** Liturgy rows: a role marker opens a block; the role colours the text until the next marker. */

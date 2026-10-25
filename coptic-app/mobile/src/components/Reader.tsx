@@ -101,6 +101,10 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
     case 'note':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1, lineHeight: base * 1.8, color: page.rule }
         : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * 0.82, lineHeight: base * 1.4, color: page.rule };
+    case 'cop':
+      // A hymn line: the Coptic that is sung, and under it (or on the facing page) its meaning in Arabic.
+      return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1.08, lineHeight: base * 1.85, color: page.ink2 }
+        : { ...dir, fontFamily: FONTS.cop, fontSize: base * 1.08, lineHeight: base * 1.7, color: page.ink };
     case 'secret':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.12), lineHeight: base * 1.9, color: page.ink2 }
         : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.92), lineHeight: base * 1.55, color: page.ink2 };
@@ -124,7 +128,7 @@ function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
 }
 
 function UnitText({ u, lang, ctx, secondary, showC, role }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role }) {
-  let s = lang === 'ar' ? u.ar : u.sv;
+  let s = lang === 'ar' ? u.ar : u.t === 'cop' ? u.cop : u.sv;
   if (!s) return null;
   if (u.t === 'ref' && lang === 'ar') s = toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
   const num = u.t === 'v' ? (showC ? `${u.c}:${u.n}` : String(u.n)) : null;
@@ -165,9 +169,22 @@ function roleBar(role: Role | undefined, lang: Lang, page: PagePalette) {
 
 // ---------- One row ----------
 
+/** A row's text in each language, where it has one; the Coptic of a hymn line stands where Swedish would. */
+function rowText(row: Row): { ar?: string; sv?: string } | null {
+  switch (row.k) {
+    case 'run': case 'cart': case 'title': return row;
+    case 'u': return { ar: row.u.ar, sv: row.u.t === 'cop' ? row.u.cop : row.u.sv };
+    default: return null;
+  }
+}
+
 function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]; ctx: Ctx; peeked?: boolean; both?: boolean }) {
   const { page, base } = ctx;
-  const [P, O] = langs;
+  let P: Lang = langs[0];
+  let O: Lang | undefined = langs[1];
+  // Text that exists in one language only (the Synaxarium, most hymns) is shown in that one.
+  const text = rowText(row);
+  if (text && O && !(P === 'ar' ? text.ar : text.sv) && (O === 'ar' ? text.ar : text.sv)) { P = O; O = undefined; }
   switch (row.k) {
     case 'run':
       return (
@@ -248,13 +265,22 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
     case 'u': {
       const u = row.u;
       if (u.t === 'role') return null;
+      if (u.t === 'gap') return <View style={{ height: base * 0.9 }} />;
+      if (u.t === 'cop') {
+        // Scrolling, the Arabic stands under each Coptic line; in the open book, Coptic on the left page and Arabic on the right.
+        return (
+          <View style={styles.unit}>
+            {(O ? ['sv', 'ar'] as const : [P]).map((l) => <UnitText key={l} u={u} lang={l} ctx={ctx} secondary={false} />)}
+          </View>
+        );
+      }
       const showAlt = !!O && (both || peeked || ALWAYS_BOTH.has(u.t));
       const bar = roleBar(row.role, P, page);
       const center = u.t === 'ref' || u.t === 'h' || u.t === 'H';
       return (
         <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>
           <UnitText u={u} lang={P} ctx={ctx} secondary={false} showC={row.showC} role={row.role} />
-          {showAlt && (
+          {showAlt && O && (
             <Animated.View entering={ALWAYS_BOTH.has(u.t) ? undefined : FadeIn.duration(220)} exiting={FadeOut.duration(120)}>
               <UnitText u={u} lang={O} ctx={ctx} secondary showC={row.showC} role={row.role} />
             </Animated.View>
@@ -299,11 +325,13 @@ interface ReaderProps {
   barCenter?: ReactElement | null;
   /** The outline as a row of tabs under the header, pinned under the top bar while reading (scrolling text only). */
   sectionTabs?: boolean;
+  /** The text has a second language to show under a verse (not the hymns, which show both already) */
+  peek?: boolean;
 }
 
 type Mark = React.ComponentRef<typeof View>;
 
-export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter, sectionTabs }: ReaderProps) {
+export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter, sectionTabs, peek = true }: ReaderProps) {
   const s = useSettings();
   const { page, primary, show, spread, scale, t, hintOnce, set, sidebar } = s;
   const tabsOn = !!sectionTabs && !!outline && outline.items.length > 1 && !spread && !sidebar;
@@ -349,7 +377,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
 
   // First visit: explain tap-to-translate.
   useEffect(() => {
-    if (!spread && !both && hintOnce('peek')) toast(t.hintPeek(primary));
+    if (peek && !spread && !both && hintOnce('peek')) toast(t.hintPeek(primary));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -746,7 +774,7 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
   if (row.k === 'top') return <PageTop />;
   if (row.k === 'bottom') return <PageBottom />;
   const langs: Lang[] = [primary, other(primary)];
-  const tappable = row.k === 'u' && PEEKABLE.has(row.u.t) && !both && !!(primary === 'ar' ? row.u.sv : row.u.ar);
+  const tappable = row.k === 'u' && PEEKABLE.has(row.u.t) && !both && !!row.u.sv && !!row.u.ar;
   const content = <RowContent row={row} langs={langs} ctx={ctx} peeked={peeked} both={both} />;
   const highlight = row.k === 'u' && row.highlight ? { backgroundColor: page.peek, borderRadius: 10 } : null;
   return (

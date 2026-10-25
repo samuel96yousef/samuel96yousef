@@ -30,13 +30,14 @@ const READ_LINE = 120;
  * while scrolling.
  */
 export default function AlhanReader() {
-  const { book: id, p } = useLocalSearchParams<{ book: string; p?: string }>();
+  const { book: id, p, toc } = useLocalSearchParams<{ book: string; p?: string; toc?: string }>();
   const book = alhanBooks.find((b) => b.id === id);
   if (!book) return null;
-  return <Pages key={book.id} book={book} start={Math.min(Math.max(0, Number(p) || 0), book.pages.length - 1)} />;
+  // `toc`: opened for its contents, which then lie over the page.
+  return <Pages key={book.id} book={book} start={Math.min(Math.max(0, Number(p) || 0), book.pages.length - 1)} contents={toc === '1'} />;
 }
 
-function Pages({ book, start }: { book: AlhanBook; start: number }) {
+function Pages({ book, start, contents }: { book: AlhanBook; start: number; contents: boolean }) {
   const { t, lang, colors, page: palette, sidebar, contentWidth } = useSettings();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -44,7 +45,7 @@ function Pages({ book, start }: { book: AlhanBook; start: number }) {
   const ar = lang === 'ar';
   const list = useRef<FlatList<number>>(null);
   const [current, setCurrent] = useState(start);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(contents);
   const items = useMemo(() => itemsOf(book), [book]);
   const at = itemAt(items, current);
 

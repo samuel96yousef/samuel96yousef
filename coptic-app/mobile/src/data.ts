@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { alhanBooks } from '../assets/alhan';
+import { hymnAssets, hymnGroups, synaxAssets } from '../assets/hymns';
 import { agpeyaIndex, bibleAssets, books, katameros, kholagyIndex, prayerAssets } from '../assets/data';
 import { isoDate } from './lib/coptic';
 import { dayOverview, readingsFor } from './lib/lectionary';
-import type { BookData, DayOverview, DayReadings, Prayer } from './lib/types';
+import type { BookData, DayOverview, DayReadings, Hymn, Prayer, SynaxEntry } from './lib/types';
 
-export { agpeyaIndex, alhanBooks, books, katameros, kholagyIndex };
+export { agpeyaIndex, alhanBooks, books, hymnGroups, katameros, kholagyIndex };
 
 // ---------- Bible books and prayers (assets, read on demand) ----------
 
@@ -39,7 +40,14 @@ export type PrayerBook = keyof typeof prayerAssets;
 const prayerCache = new Map<PrayerBook, Promise<Prayer[]>>();
 export const loadPrayers = (kind: PrayerBook) => cached(prayerCache, kind, () => readAsset<Prayer[]>(prayerAssets[kind]));
 
-export const getReadings = (d: Date) => readingsFor(d, katameros, books, { book: loadBook });
+const hymnCache = new Map<string, Promise<Hymn[]>>();
+export const loadHymns = (group: string) => cached(hymnCache, group, () => readAsset<Hymn[]>(hymnAssets[group]));
+
+/** One Coptic month of the Synaxarium: day of the month → its commemorations. */
+const synaxCache = new Map<number, Promise<Record<string, SynaxEntry[]>>>();
+export const loadSynax = (month: number) => cached(synaxCache, month, () => readAsset<Record<string, SynaxEntry[]>>(synaxAssets[month]));
+
+export const getReadings = (d: Date) => readingsFor(d, katameros, books, { book: loadBook, synax: loadSynax });
 
 /** The day's sections as titles and references: at once, with no Bible books loaded. Kept per day. */
 let overview: DayOverview | null = null;
@@ -67,6 +75,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
 /** One hour of the Agpeya or one liturgy, loaded when opened. */
 export const usePrayer = (kind: PrayerBook, id: string) =>
   useAsync(() => loadPrayers(kind).then((all) => all.find((p) => p.id === id) ?? all[0]), [kind, id]);
+
+/** One group of hymn texts, loaded when opened. */
+export const useHymns = (group: string) => useAsync(() => loadHymns(group), [group]);
 
 export const useReadings = (d: Date): { data?: DayReadings; error?: Error; loading: boolean } =>
   useAsync(() => getReadings(d), [d.getFullYear(), d.getMonth(), d.getDate()]);

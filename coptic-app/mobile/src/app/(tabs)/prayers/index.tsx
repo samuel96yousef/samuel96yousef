@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../../components/Icon';
 import { LargeTitle } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
-import { agpeyaIndex, alhanBooks, loadPrayers } from '../../../data';
+import { agpeyaIndex, alhanBooks, hymnGroups, loadPrayers } from '../../../data';
 import { hourNow } from '../../../lib/coptic';
 import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
@@ -58,7 +58,7 @@ export default function Prayers() {
             sub={t.kholagySub} count={t.liturgiesCount(3)} onPress={() => router.push('/prayers/kholagy')}
             art={<Icon name="liturgy" size={56} color="rgba(255,255,255,0.75)" strokeWidth={1.4} />} />
           <Door colors={ALHAN_SKY} fg="#FFFFFF" title={t.alhan} second={ar ? 'Alhan' : 'الألحان'}
-            sub={t.alhanSub} count={t.alhanCount(alhanBooks.reduce((n, b) => n + b.parts.reduce((m, p) => m + p.items.length, 0), 0))}
+            sub={t.alhanSub} count={t.alhanCount(hymnGroups.reduce((n, g) => n + g.count, 0) + alhanBooks.reduce((n, b) => n + b.parts.reduce((m, p) => m + p.items.length, 0), 0))}
             onPress={() => router.push('/prayers/alhan')}
             art={<Icon name="hymns" size={52} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />} />
         </View>

@@ -49,7 +49,7 @@ export function AlhanContents({ book, current, onOpen }: { book: AlhanBook; curr
 const COVER_W = 92;
 
 /** The book's card: its cover, its names, who published it, and the way in, at the page last read. */
-export function AlhanBookCard({ book, onOpen }: { book: AlhanBook; onOpen: (page: number) => void }) {
+export function AlhanBookCard({ book, onOpen, onContents }: { book: AlhanBook; onOpen: (page: number) => void; onContents: (page: number) => void }) {
   const { t, colors, lang } = useSettings();
   const ar = lang === 'ar';
   const place = usePlace(book.id);
@@ -69,13 +69,19 @@ export function AlhanBookCard({ book, onOpen }: { book: AlhanBook; onOpen: (page
           <Text style={[styles.sourceName, { color: colors.label2 }]}>{book.source}</Text>
         </View>
       </View>
-      <Pressable accessibilityRole="button" onPress={() => onOpen(place ?? 0)}
-        style={({ pressed }) => [styles.open, { backgroundColor: colors.crimson, flexDirection: row }, pressed && styles.dim]}>
-        <Icon name="book" size={18} color="#FFFFFF" strokeWidth={2} />
-        <Text numberOfLines={1} style={styles.openText}>
-          {place != null ? `${t.continueReading} · ${at >= 0 ? (ar ? items[at].ar : items[at].sv) : t.pageShort(book.pages[place].no)}` : t.openBook}
-        </Text>
-      </Pressable>
+      <View style={[styles.actions, { flexDirection: row }]}>
+        <Pressable accessibilityRole="button" onPress={() => onOpen(place ?? 0)}
+          style={({ pressed }) => [styles.open, { backgroundColor: colors.crimson, flexDirection: row }, pressed && styles.dim]}>
+          <Icon name="book" size={18} color="#FFFFFF" strokeWidth={2} />
+          <Text numberOfLines={1} style={styles.openText}>
+            {place != null ? `${t.continueReading} · ${at >= 0 ? (ar ? items[at].ar : items[at].sv) : t.pageShort(book.pages[place].no)}` : t.openBook}
+          </Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.contents} onPress={() => onContents(place ?? 0)}
+          style={({ pressed }) => [styles.toc, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+          <Icon name="list" size={20} color={colors.crimson} strokeWidth={2} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -98,7 +104,9 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13.5, fontWeight: '600', marginTop: 6 },
   source: { fontSize: 12, lineHeight: 17, marginTop: 8 },
   sourceName: { fontFamily: FONTS.ar, fontSize: 13, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
-  open: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  actions: { gap: 10 },
+  open: { flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+  toc: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   openText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', flexShrink: 1 },
   dim: { opacity: 0.7 },
   left: { textAlign: 'left' },

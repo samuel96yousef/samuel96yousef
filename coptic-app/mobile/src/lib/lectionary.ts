@@ -16,7 +16,7 @@
  */
 import { coptic, dayDiff, easter, isoDate, nativityRule, theophanyParamoun } from './coptic';
 import { bookOfRef, parseRef, psalmLabel, psalmRefFromTable, refLabel, versesOf } from './refs';
-import type { BibleBook, BookData, DayOverview, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, Unit } from './types';
+import type { BibleBook, BookData, DayOverview, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, SynaxEntry, Unit } from './types';
 
 /** Fixed feasts that keep their readings whatever the season (Coptic month-day). */
 const FEAST_DAYS = new Set(['1-1', '1-17', '1-18', '1-19', '4-29', '4-30', '5-6', '5-10', '5-11', '5-12', '5-13',
@@ -89,6 +89,8 @@ export function selectReadings(d: Date, kat: KatamerosData): Selection {
 export interface BookSource {
   /** Resolve a whole book of the Bible (cached by the caller). */
   book(bid: number): Promise<BookData>;
+  /** One Coptic month of the Synaxarium, day → commemorations. Without it the day has no Synaxarium. */
+  synax?(month: number): Promise<Record<string, SynaxEntry[]>>;
 }
 
 const TITLES: Record<SectionKey, [ar: string, sv: string, capAr: string, capSv: string]> = {
@@ -98,6 +100,7 @@ const TITLES: Record<SectionKey, [ar: string, sv: string, capAr: string, capSv: 
   pauline: ['البولس', 'Paulus epistel', 'من رسائل بولس الرسول', 'Ur aposteln Paulus brev'],
   catholic: ['الكاثوليكون', 'Katholikon', 'من الرسائل الجامعة', 'Ur de allmänna breven'],
   praxis: ['الإبركسيس', 'Praxis', 'من سفر أعمال الرسل', 'Ur Apostlagärningarna'],
+  synaxarium: ['السنكسار', 'Synaxarium', 'تذكارات هذا اليوم', 'Dagens helgon och minnen, på arabiska'],
   liturgy: ['إنجيل القداس', 'Evangeliet', 'مزمور وإنجيل القداس', 'Liturgins psalm och evangelium'],
 };
 
@@ -195,5 +198,28 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
     return { key: p.key, ar, sv, captionAr, captionSv, refs, units };
   });
 
+  const synaxarium = await synaxSection(d, sel.season, source);
+  if (synaxarium) {
+    // In the liturgy the Synaxarium is read after the Praxis, before the gospel.
+    const at = sections.findIndex((s) => s.key === 'liturgy');
+    sections.splice(at < 0 ? sections.length : at, 0, synaxarium);
+  }
+
   return { iso: isoDate(d), coptic: coptic(d), season: sel.season, source: sel.source, sections };
+}
+
+/**
+ * The day's Synaxarium: each commemoration's title and account, in Arabic
+ * (there is no Swedish Synaxarium). It is not read in the Holy Fifty Days or
+ * in Holy Week, whose readings come from their own books.
+ */
+async function synaxSection(d: Date, season: Season, source: BookSource): Promise<Section | null> {
+  if (!source.synax || season === 'fifty' || season === 'holy_week') return null;
+  const c = coptic(d);
+  const entries = (await source.synax(c.month))[String(c.day)] ?? [];
+  if (!entries.length) return null;
+  const [ar, sv, captionAr, captionSv] = TITLES.synaxarium;
+  const units: Unit[] = entries.flatMap((e): Unit[] => [{ t: 'h', ar: e.title }, ...e.paras.map((p): Unit => ({ t: 'p', ar: p }))]);
+  const titles = entries.map((e) => e.title);
+  return { key: 'synaxarium', ar, sv, captionAr, captionSv, refs: { ar: titles, sv: titles }, units };
 }

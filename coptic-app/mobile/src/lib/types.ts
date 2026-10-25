@@ -54,12 +54,14 @@ export type Role = 'priest' | 'deacon' | 'people';
  * A unit of liturgical text.
  * p: paragraph · h/H: heading · f: liturgical formula · ref: Bible reference ·
  * psalm · v: verse (c = chapter, n = number) · role: speaker change ·
- * rubric: instruction · secret: prayed silently by the priest · note: about the source text
+ * rubric: instruction · secret: prayed silently by the priest · note: about the source text ·
+ * cop: a line of a hymn in Coptic, with its Arabic · gap: the end of a stanza
  */
 export interface Unit {
-  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note';
+  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note' | 'cop' | 'gap';
   ar?: string;
   sv?: string;
+  cop?: string;
   c?: number;
   n?: number;
   r?: Role;
@@ -72,7 +74,7 @@ export interface Prayer {
   units: Unit[];
 }
 
-export type SectionKey = 'vespers' | 'matins' | 'prophecy' | 'pauline' | 'catholic' | 'praxis' | 'liturgy';
+export type SectionKey = 'vespers' | 'matins' | 'prophecy' | 'pauline' | 'catholic' | 'praxis' | 'synaxarium' | 'liturgy';
 
 export interface Section {
   key: SectionKey;
@@ -107,6 +109,27 @@ export interface CopticDate {
 
 /** A prayer's name, without its text: what lists show before the text is loaded. */
 export type PrayerIndex = Pick<Prayer, 'id' | 'ar' | 'sv'>;
+
+/** A group of hymn texts, for one occasion or service; its hymns are read when it is opened. */
+export interface HymnGroup {
+  id: string;
+  ar: string;
+  sv: string;
+  count: number;
+}
+
+/** A hymn text: verses in Coptic with their Arabic, or Arabic alone. Most have no Swedish. */
+export interface Hymn {
+  id: string;
+  ar: string;
+  units: Unit[];
+}
+
+/** One commemoration of the Synaxarium: its title and its account, in Arabic. */
+export interface SynaxEntry {
+  title: string;
+  paras: string[];
+}
 
 /** A hymn book of the Alhan section: its pages as images (the hazzat are drawings), and its contents. */
 export interface AlhanBook {

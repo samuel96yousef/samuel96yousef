@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { agpeyaIndex, alhanBooks, books, kholagyIndex } from '../data';
+import { agpeyaIndex, alhanBooks, books, hymnGroups, kholagyIndex } from '../data';
 import { pickDay, useReadingDay } from '../day';
 import { toArDigits } from '../lib/coptic';
 import { useReaderLink, type ReaderLink } from '../readerHub';
@@ -116,9 +116,14 @@ function Context({ section, path, link }: { section: Section; path: string; link
             </View>
           );
         })}
+        {/* The occasions are many: listed here once the hymns are open, else one row leads to them. */}
+        {path.startsWith('/prayers/alhan')
+          ? hymnGroups.map((g) => <Row key={g.id} label={ar ? g.ar : g.sv} on={g.id === groupId} onPress={() => router.navigate(`/prayers/alhan/g/${g.id}`)} />)
+          : <Row label={t.hymnsByOccasion} on={false} onPress={() => router.navigate('/prayers/alhan')} />}
       </View>
     );
     const bookId = path.match(/^\/prayers\/alhan\/([^/]+)/)?.[1];
+    const groupId = path.match(/^\/prayers\/alhan\/g\/([^/]+)/)?.[1];
     return (
       <View style={styles.context}>
         {group(t.agpeya, agpeyaIndex, 'agpeya')}
@@ -133,6 +138,10 @@ function Context({ section, path, link }: { section: Section; path: string; link
             </View>
           );
         })}
+        {/* The occasions are many: listed here once the hymns are open, else one row leads to them. */}
+        {path.startsWith('/prayers/alhan')
+          ? hymnGroups.map((g) => <Row key={g.id} label={ar ? g.ar : g.sv} on={g.id === groupId} onPress={() => router.navigate(`/prayers/alhan/g/${g.id}`)} />)
+          : <Row label={t.hymnsByOccasion} on={false} onPress={() => router.navigate('/prayers/alhan')} />}
       </View>
     );
   }
