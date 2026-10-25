@@ -131,7 +131,7 @@ const sv = {
   alhanCount: (n: number) => `${n} hymner och texter`,
   page: (n: number) => `Sida ${n}`,
   pageShort: (n: number) => `s. ${n}`,
-  alhanSource: (s: string) => `Ur boken utgiven av ${s}.`,
+  alhanSource: 'Utgiven av',
   openBook: 'Öppna boken',
   alhanHint: 'Sidorna visas som i boken, för att hazzat, tecknen över orden som bär melodin, ska stå exakt rätt. Titlarna på svenska är översatta.',
 };
@@ -268,7 +268,7 @@ const ar: Strings = {
   alhanCount: (n: number) => `${toArDigits(n)} لحناً ونصاً`,
   page: (n: number) => `صفحة ${toArDigits(n)}`,
   pageShort: (n: number) => `ص ${toArDigits(n)}`,
-  alhanSource: (s: string) => `من إصدار ${s}.`,
+  alhanSource: 'إصدار',
   openBook: 'افتح الكتاب',
   alhanHint: 'تظهر الصفحات كما في الكتاب، حتى تبقى الهزات فوق الكلمات في مكانها تماماً.',
 };

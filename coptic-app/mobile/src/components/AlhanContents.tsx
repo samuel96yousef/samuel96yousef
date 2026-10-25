@@ -46,6 +46,8 @@ export function AlhanContents({ book, current, onOpen }: { book: AlhanBook; curr
   );
 }
 
+const COVER_W = 92;
+
 /** The book's card: its cover, its names, who published it, and the way in, at the page last read. */
 export function AlhanBookCard({ book, onOpen }: { book: AlhanBook; onOpen: (page: number) => void }) {
   const { t, colors, lang } = useSettings();
@@ -57,12 +59,14 @@ export function AlhanBookCard({ book, onOpen }: { book: AlhanBook; onOpen: (page
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }]}>
       <View style={[styles.cardTop, { flexDirection: row }]}>
-        <Image source={book.cover.src} style={[styles.cover, { aspectRatio: book.cover.w / book.cover.h }]} resizeMode="cover" accessibilityIgnoresInvertColors />
+        <Image source={book.cover.src} style={[styles.cover, { height: Math.round((COVER_W * book.cover.h) / book.cover.w) }]} resizeMode="cover" accessibilityIgnoresInvertColors />
         <View style={styles.text}>
           <Text style={[styles.title, { color: colors.label }, ar && styles.right]}>{ar ? book.ar : book.sv}</Text>
           <Text style={[ar ? styles.secondSv : styles.secondAr, { color: colors.label2 }, ar ? styles.right : styles.left]}>{ar ? book.sv : book.ar}</Text>
           <Text style={[styles.sub, { color: colors.crimson }, ar && styles.right]}>{ar ? book.subAr : book.subSv}</Text>
-          <Text style={[styles.source, { color: colors.label3 }, ar && styles.right]}>{t.alhanSource(book.source)}</Text>
+          {/* The publisher's name is Arabic: on a line of its own, so it is not mixed into a Swedish sentence. */}
+          <Text style={[styles.source, { color: colors.label3 }, ar && styles.right]}>{t.alhanSource}</Text>
+          <Text style={[styles.sourceName, { color: colors.label2 }]}>{book.source}</Text>
         </View>
       </View>
       <Pressable accessibilityRole="button" onPress={() => onOpen(place ?? 0)}
@@ -89,10 +93,11 @@ const styles = StyleSheet.create({
   no: { fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'], minWidth: 28, textAlign: 'center' },
   card: { borderRadius: 24, padding: 16, gap: 16 },
   cardTop: { gap: 16, alignItems: 'flex-start' },
-  cover: { width: 92, borderRadius: 8, boxShadow: '0 6px 18px -6px rgba(40,10,20,0.45)' },
+  cover: { width: COVER_W, borderRadius: 8, boxShadow: '0 6px 18px -6px rgba(40,10,20,0.45)' },
   title: { fontFamily: FONTS.svSemi, fontSize: 21, lineHeight: 27 },
   sub: { fontSize: 13.5, fontWeight: '600', marginTop: 6 },
-  source: { fontSize: 12, lineHeight: 17, marginTop: 6 },
+  source: { fontSize: 12, lineHeight: 17, marginTop: 8 },
+  sourceName: { fontFamily: FONTS.ar, fontSize: 13, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
   open: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
   openText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', flexShrink: 1 },
   dim: { opacity: 0.7 },

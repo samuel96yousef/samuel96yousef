@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.08), 0 8px 24px -12px rgba(40,10,20,0.25)' },
   no: { height: LABEL, lineHeight: LABEL, textAlign: 'center', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  pill: { borderRadius: 22, height: 44, alignSelf: 'stretch' },
+  pill: { borderRadius: 22, height: 44, width: '100%', maxWidth: 520, alignSelf: 'center' },
   pillInner: { height: 44, alignItems: 'center', gap: 10, paddingHorizontal: 16 },
   pillText: { flex: 1, minWidth: 0 },
   pillTitle: { fontSize: 15, fontWeight: '700' },
