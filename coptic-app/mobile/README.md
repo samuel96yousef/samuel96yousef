@@ -9,7 +9,7 @@ Arabisk-svensk app för en koptisk församling i Sverige, byggd med Expo
 | --- | --- |
 | Idag | Veckan i ett eget kort, med det koptiska datumet under varje dag (idag markerad, vald dag som en röd ruta, högtider med en guldprick). Under den dagens kort, färgat efter vad dagen är: guld med ett strålande kors för stora högtider och de femtio dagarna, karmosin med ett ljus för helgon och änglar, oliv med vete för fastedagar och pergament med ett koptiskt kors övriga dagar. Sedan dagens ord (på papper i Katameros-ram), timbönen som gäller nu och dagens läsningar. Öppnar alltid på idag. Svep veckan för andra veckor och tryck på en dag för att läsa den; kalenderknappen öppnar en månadskalender för datum längre bort. |
 | Läsningar | Katameros för vilket datum som helst, med alla regler för fastor, påsktiden, söndagar och paramoun i Kiahk och Touba. Visar samma dag som Idag: väljer du en dag på den ena följer den andra med. En vald dag gäller till midnatt eller tills appen varit borta en halvtimme, sedan är det idag igen. |
-| Böner | Agpeya (åtta timböner) och Kholagy (åtta liturgier) där präst, diakon och folk har olika stil. Kholagy visas i den ordning den bes: rökelsens upptagande kväll och morgon (under samma himlar som timbönerna), sedan liturgin från lammets offer genom en av de tre anafororna (med helgonets initial på koptiska och när den bes) till brödbrytelsen och distributionen. |
+| Böner | Tre böcker: Agpeya, Kholagy och Alhan. Agpeya (åtta timböner) och Kholagy (åtta liturgier) där präst, diakon och folk har olika stil. Kholagy visas i den ordning den bes: rökelsens upptagande kväll och morgon (under samma himlar som timbönerna), sedan liturgin från lammets offer genom en av de tre anafororna (med helgonets initial på koptiska och när den bes) till brödbrytelsen och distributionen. Alhan är kyrkans hymner. Första boken är hymnerna för stora fastan och Nineves fasta, skrivna med hazzat, tecknen över orden som bär melodin. Hazzat är teckningar och inte text, så bokens egna sidor visas, med innehållet från bokens register (55 hymner och texter, på arabiska och svenska) och sidan du senast läste. |
 | Bibeln | Alla 74 böcker kapitel för kapitel, med sökning på svenska och arabiska. Varje bok har en innehållssida som i Katameros: namnet i en kartusch, kapitlen med medaljong, början av första versen och antal verser, och "Fortsätt läsa" till kapitlet du senast öppnade. |
 
 Språk i läsningen: en sida i taget på huvudspråket. Språkknappen (ع | Sv)
@@ -116,6 +116,7 @@ src/components/     läsaren, boken (Book), sidramen, valvet, flikraden,
 src/book.ts         hur texten delas upp i bokens sidor
 src/day.ts          vilken dag läsningarna gäller (idag eller en vald dag)
 src/readerHub.ts    den öppna textens innehåll, för sidofältet
+src/alhan.ts        hymnböckerna: vilken hymn en sida hör till, senast lästa sidan
 src/components/Icon.tsx  ikonerna: Lucide (ritningarna kopieras till lucide.ts
                     med `npm run icons`), plus ljuset, bibeln och kalken
 src/print/          utskrift: texten som HTML (html.ts), typsnitten, vad
@@ -132,6 +133,13 @@ kalendern, läsningsreglerna och namnen på bönerna. Första versen i varje
 liturgievangelium följer med Katameros, så att Idag är komplett från första
 bilden utan att någon bok läses in. Kör `npm run data` igen när exporten
 ändras.
+
+Hymnböckernas sidor skapas ur bokens PDF med
+`python3 scripts/alhan_pages.py <bok.pdf> lent` (kräver pdftoppm och Pillow).
+Varje sida beskärs innanför bokens ram och sparas som en bläckmask i WebP, så
+att appen kan färga den efter läsläget (papper, sepia, natt). Innehållet med
+de svenska titlarna skrivs för hand i `scripts/alhan/lent.json`, med bokens
+sidnummer. Sidorna ligger i `assets/alhan/`, som inte checkas in.
 
 På webben laddas typsnitten parallellt med koden (`<link rel="preload">` i
 `scripts/build_preview.py`).
@@ -161,7 +169,8 @@ Påskveckans läsningar (Pascha-boken) finns i APK:n men är inte inbyggda än.
 
 Den svenska bibeltexten ser ut att vara Svenska Folkbibeln, och de svenska
 översättningarna av Agpeya, Kholagy och de liturgiska fraserna har någon
-upphovsman. Därför ligger inga texter i repot. Tillstånd behövs innan
+upphovsman. Hymnboken för fastan är utgiven av kyrkan Sankta Maria och Anba
+Shenouda i Kairo. Därför ligger inga texter i repot. Tillstånd behövs innan
 appen publiceras.
 
 ## Webbförhandsvisning

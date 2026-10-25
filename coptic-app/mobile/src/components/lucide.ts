@@ -44,6 +44,11 @@ export const LUCIDE: Record<string, LucideNode> = {
   'chevron-left': [["path", { d: "m15 18-6-6 6-6" }]],
   'chevron-right': [["path", { d: "m9 18 6-6-6-6" }]],
   'chevron-up': [["path", { d: "m18 15-6-6-6 6" }]],
+  'eighth-notes': [
+    ["path", { d: "M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19" }],
+    ["circle", { cx: "18", cy: "16", r: "3" }],
+    ["circle", { cx: "6", cy: "19", r: "3" }]
+  ],
   'info': [
     ["circle", { cx: "12", cy: "12", r: "10" }],
     ["path", { d: "M12 16v-4" }],

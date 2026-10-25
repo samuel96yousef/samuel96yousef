@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { agpeyaIndex, books, kholagyIndex } from '../data';
+import { agpeyaIndex, alhanBooks, books, kholagyIndex } from '../data';
 import { pickDay, useReadingDay } from '../day';
 import { toArDigits } from '../lib/coptic';
 import { useReaderLink, type ReaderLink } from '../readerHub';
@@ -118,7 +118,23 @@ function Context({ section, path, link }: { section: Section; path: string; link
         })}
       </View>
     );
-    return <View style={styles.context}>{group(t.agpeya, agpeyaIndex, 'agpeya')}{group(t.kholagy, kholagyIndex, 'kholagy')}</View>;
+    const bookId = path.match(/^\/prayers\/alhan\/([^/]+)/)?.[1];
+    return (
+      <View style={styles.context}>
+        {group(t.agpeya, agpeyaIndex, 'agpeya')}
+        {group(t.kholagy, kholagyIndex, 'kholagy')}
+        <Heading>{t.alhan}</Heading>
+        {alhanBooks.map((b) => {
+          const on = b.id === bookId;
+          return (
+            <View key={b.id}>
+              <Row label={ar ? b.ar : b.sv} on={on} onPress={() => router.navigate(`/prayers/alhan/${b.id}`)} />
+              {on && link && <Contents link={link} nested />}
+            </View>
+          );
+        })}
+      </View>
+    );
   }
 
   // The Bible: the page lists the books; once one is open, its chapters are here.

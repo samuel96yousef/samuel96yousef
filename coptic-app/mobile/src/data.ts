@@ -3,12 +3,13 @@ import { File } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { alhanBooks } from '../assets/alhan';
 import { agpeyaIndex, bibleAssets, books, katameros, kholagyIndex, prayerAssets } from '../assets/data';
 import { isoDate } from './lib/coptic';
 import { dayOverview, readingsFor } from './lib/lectionary';
 import type { BookData, DayOverview, DayReadings, Prayer } from './lib/types';
 
-export { agpeyaIndex, books, katameros, kholagyIndex };
+export { agpeyaIndex, alhanBooks, books, katameros, kholagyIndex };
 
 // ---------- Bible books and prayers (assets, read on demand) ----------
 

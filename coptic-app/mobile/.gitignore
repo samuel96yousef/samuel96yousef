@@ -42,3 +42,4 @@ yarn-error.*
 
 # Texts generated from the CopticPrayers APK (scripts/export_data.py); not committed for rights reasons
 /assets/data/
+/assets/alhan/

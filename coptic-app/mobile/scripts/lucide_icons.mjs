@@ -4,16 +4,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 const ICONS = [
   'a-large-small', 'book-open', 'book-open-text', 'calendar', 'chevron-down', 'chevron-left', 'chevron-right', 'chevron-up',
-  'info', 'list', 'printer', 'search', 'share', 'sliders-horizontal', 'smartphone', 'sun', 'x',
+  'eighth-notes', 'info', 'list', 'printer', 'search', 'share', 'sliders-horizontal', 'smartphone', 'sun', 'x',
 ];
 
 const dir = new URL('../node_modules/lucide-react-native/', import.meta.url).pathname;
 const version = JSON.parse(readFileSync(`${dir}package.json`, 'utf8')).version;
 const entries = ICONS.map((name) => {
   const src = readFileSync(`${dir}dist/esm/icons/${name}.mjs`, 'utf8');
-  // The drawing is the array after "node:", up to the end of the data object.
-  const node = src.slice(src.indexOf('node: [') + 6, src.indexOf('\n};', src.indexOf('node: [')))
-    .replace(/,\s*key: "[^"]*"/g, '');
+  // The drawing is the array after "node:", up to its closing bracket (an "aliases" list may follow).
+  const from = src.indexOf('node: [') + 6;
+  let depth = 0;
+  let to = from;
+  for (; to < src.length; to++) {
+    if (src[to] === '[') depth++;
+    else if (src[to] === ']' && --depth === 0) break;
+  }
+  const node = src.slice(from, to + 1).replace(/,\s*key: "[^"]*"/g, '');
   return `  '${name}': ${node.trim()},`;
 });
 writeFileSync('src/components/lucide.ts', `/**

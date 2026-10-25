@@ -108,6 +108,22 @@ export interface CopticDate {
 /** A prayer's name, without its text: what lists show before the text is loaded. */
 export type PrayerIndex = Pick<Prayer, 'id' | 'ar' | 'sv'>;
 
+/** A hymn book of the Alhan section: its pages as images (the hazzat are drawings), and its contents. */
+export interface AlhanBook {
+  id: string;
+  ar: string;
+  sv: string;
+  subAr: string;
+  subSv: string;
+  /** Who published the book */
+  source: string;
+  cover: { src: number; w: number; h: number };
+  /** Ink masks, in reading order; `no` is the number printed on the page */
+  pages: { src: number; w: number; h: number; no: number }[];
+  /** The book's parts and what is in them; `page` is an index into `pages` */
+  parts: { ar: string; sv: string; page: number; items: { ar: string; sv: string; page: number }[] }[];
+}
+
 /** A section's titles and references, before any text is loaded. */
 export interface SectionOverview extends Omit<Section, 'units'> {
   ref: string;

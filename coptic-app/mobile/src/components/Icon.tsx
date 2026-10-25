@@ -28,6 +28,7 @@ const NAMES = {
   print: 'printer',
   share: 'share',
   textSize: 'a-large-small',
+  hymns: 'eighth-notes',
 } as const;
 
 const OWN = {

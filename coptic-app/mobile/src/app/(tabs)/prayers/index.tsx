@@ -7,17 +7,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../../components/Icon';
 import { LargeTitle } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
-import { agpeyaIndex, loadPrayers } from '../../../data';
+import { agpeyaIndex, alhanBooks, loadPrayers } from '../../../data';
 import { hourNow } from '../../../lib/coptic';
 import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
 
 const KHOLAGY_SKY: [string, string] = ['#A12F4B', '#4A1024'];
+// The violet of the fasts, whose hymns the first book holds.
+const ALHAN_SKY: [string, string] = ['#6A4A8C', '#2C1A45'];
 
 /**
- * The two prayer books, each a door of its own: the Agpeya under the sky of
- * the hour it is now, with a way straight into that hour, and the Kholagy in
- * crimson with its chalice. Each opens its own page.
+ * The prayer books, each a door of its own: the Agpeya under the sky of the
+ * hour it is now, with a way straight into that hour, the Kholagy in crimson
+ * with its chalice, and the Alhan, the hymn books, in the violet of the fasts.
+ * Each opens its own page.
  */
 export default function Prayers() {
   const { t, lang, colors, sidebar, contentWidth } = useSettings();
@@ -54,6 +57,10 @@ export default function Prayers() {
           <Door colors={KHOLAGY_SKY} fg="#FFFFFF" title={t.kholagy} second={ar ? 'Kholagy' : 'الخولاجي'}
             sub={t.kholagySub} count={t.liturgiesCount(3)} onPress={() => router.push('/prayers/kholagy')}
             art={<Icon name="liturgy" size={56} color="rgba(255,255,255,0.75)" strokeWidth={1.4} />} />
+          <Door colors={ALHAN_SKY} fg="#FFFFFF" title={t.alhan} second={ar ? 'Alhan' : 'الألحان'}
+            sub={t.alhanSub} count={t.alhanCount(alhanBooks.reduce((n, b) => n + b.parts.reduce((m, p) => m + p.items.length, 0), 0))}
+            onPress={() => router.push('/prayers/alhan')}
+            art={<Icon name="hymns" size={52} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />} />
         </View>
       </ScrollView>
     </View>

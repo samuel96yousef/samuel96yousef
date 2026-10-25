@@ -126,6 +126,14 @@ const sv = {
   printChapter: (c: string) => c,
   printBook: (b: string) => `Hela ${b}`,
   printDays: '7 dagar',
+  alhan: 'Alhan',
+  alhanSub: 'Kyrkans hymner, med hazzat för melodin',
+  alhanCount: (n: number) => `${n} hymner och texter`,
+  page: (n: number) => `Sida ${n}`,
+  pageShort: (n: number) => `s. ${n}`,
+  alhanSource: (s: string) => `Ur boken utgiven av ${s}.`,
+  openBook: 'Öppna boken',
+  alhanHint: 'Sidorna visas som i boken, för att hazzat, tecknen över orden som bär melodin, ska stå exakt rätt. Titlarna på svenska är översatta.',
 };
 
 type Strings = typeof sv;
@@ -255,6 +263,14 @@ const ar: Strings = {
   printChapter: (c: string) => c,
   printBook: (b: string) => `${b} كاملاً`,
   printDays: '٧ أيام',
+  alhan: 'الألحان',
+  alhanSub: 'ألحان الكنيسة، مكتوبة بالهزات',
+  alhanCount: (n: number) => `${toArDigits(n)} لحناً ونصاً`,
+  page: (n: number) => `صفحة ${toArDigits(n)}`,
+  pageShort: (n: number) => `ص ${toArDigits(n)}`,
+  alhanSource: (s: string) => `من إصدار ${s}.`,
+  openBook: 'افتح الكتاب',
+  alhanHint: 'تظهر الصفحات كما في الكتاب، حتى تبقى الهزات فوق الكلمات في مكانها تماماً.',
 };
 
 export const STRINGS: Record<Lang, Strings> = { sv, ar };
