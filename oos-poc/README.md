@@ -22,6 +22,27 @@ npm run bundle     # en fristående HTML-fil i dist/ att dela via e-post eller T
 
 Ändringar sparas i webbläsarens `localStorage`. Varje användare har alltså sin egen sandlåda. Under **Inställningar** kan du återställa demodatan, kopiera all data som JSON och importera den igen.
 
+## Jobba lokalt i VS Code
+
+Öppna mappen `oos-poc` som projekt. Dubbelklicka `index.html`, eller kör `npm start` om du hellre vill ha en lokal server.
+
+Koden ligger i `oos-poc/` i repot [samuel96yousef/samuel96yousef](https://github.com/samuel96yousef/samuel96yousef), på grenen `claude/lucid-brahmagupta-v6albz`.
+
+```bash
+git clone https://github.com/samuel96yousef/samuel96yousef.git
+cd samuel96yousef && git checkout claude/lucid-brahmagupta-v6albz
+```
+
+När flera jobbar i samma gren, till exempel du lokalt och en AI-assistent i molnet:
+
+```bash
+git pull --rebase   # innan du börjar, så du har det senaste
+npm test            # innan du pushar
+git push
+```
+
+Pusha innan du ber assistenten ändra något, så utgår den från din version. Har du opushat arbete: säg det, så håller den sig borta från koden under tiden. Annars blir det en konflikt vid nästa `git pull --rebase`.
+
 ## Vad POC:n visar
 
 | Vy | Innehåll |
