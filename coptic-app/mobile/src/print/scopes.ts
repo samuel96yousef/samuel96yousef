@@ -1,7 +1,8 @@
 /** What each kind of screen offers to print, loaded only when printing. */
 import type { Row } from '../components/Reader';
 import type { PrintScope } from '../components/PrintSheet';
-import { getReadings, loadBook, loadPrayers } from '../data';
+import { books, getReadings, holyWeek, loadBook, loadPrayers } from '../data';
+import { holyWeekDayOn, holyWeekRows, printableRows, type HolyWeekDay } from '../holyweek';
 import { STRINGS, type Strings } from '../i18n';
 import { addDays, coptic, copticText, fromIso, gregorianText, toArDigits } from '../lib/coptic';
 import type { BibleBook, Lang } from '../lib/types';
@@ -12,7 +13,19 @@ const AGPEYA = { ar: 'الأجبية', sv: 'Agpeya' };
 
 async function dayPart(d: Date) {
   const r = await getReadings(d);
-  return { rows: dayRows(r, fromIso(r.iso), HOLY_WEEK) };
+  // In Holy Week the day's readings are the Pascha's, as the Readings tab shows them.
+  const pascha = r.season === 'holy_week' ? holyWeekDayOn(d, holyWeek) : null;
+  return pascha ? paschaPart(pascha) : { rows: dayRows(r, fromIso(r.iso), HOLY_WEEK) };
+}
+
+const paschaPart = async (day: HolyWeekDay) => ({ rows: printableRows((await holyWeekRows(day, holyWeek, books, loadBook)).rows) });
+
+export function paschaScopes(day: HolyWeekDay, t: Strings, lang: Lang): PrintScope[] {
+  return [
+    { key: 'day', label: t.printDay, title: `${t.pascha} – ${lang === 'ar' ? day.ar : day.sv}`, load: async () => [await paschaPart(day)] },
+    // Each day from a new page, from Lazarus Saturday to Easter.
+    { key: 'week', label: t.printPascha, sub: t.printBig, title: t.pascha, load: () => Promise.all(holyWeek.days.map(paschaPart)) },
+  ];
 }
 
 export function readingScopes(day: Date, t: Strings, lang: Lang): PrintScope[] {

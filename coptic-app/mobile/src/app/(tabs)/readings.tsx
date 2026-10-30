@@ -7,8 +7,9 @@ import { DayPicker } from '../../components/DayPicker';
 import { Glass } from '../../components/Glass';
 import { Icon } from '../../components/Icon';
 import { Reader } from '../../components/Reader';
-import { useReadings } from '../../data';
+import { getOverview, holyWeek, useHolyWeekDay, useReadings } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
+import { holyWeekDayOn } from '../../holyweek';
 import { STRINGS } from '../../i18n';
 import { addDays, coptic, copticText, dayMonthText, fromIso, gregorianText, isoDate, toArDigits, weekdayText } from '../../lib/coptic';
 import { readingScopes } from '../../print/scopes';
@@ -23,13 +24,24 @@ export default function Readings() {
   const { day: date, isToday } = useReadingDay();
   const [picking, setPicking] = useState(false);
   const [jump, setJump] = useState<{ index: number; key: number } | null>(null);
-  const { data, loading, error } = useReadings(date);
+  const { data: kat, loading: katLoading, error } = useReadings(date);
+  // From Monday to Saturday of Holy Week the Katameros has no readings: the day's are the Pascha's,
+  // its services in order, as in Prayers, Holy Week.
+  const pascha = getOverview(date).season === 'holy_week' ? holyWeekDayOn(date, holyWeek) : null;
+  const { data: paschaDay, loading: paschaLoading } = useHolyWeekDay(pascha ?? holyWeek.days[0], pascha != null);
   const ar = lang === 'ar';
   const c = coptic(date);
+  const data = kat?.iso === isoDate(date) && (!pascha || !paschaLoading) ? kat : undefined;
+  const loading = katLoading || (pascha != null && paschaLoading);
 
-  const rows = useMemo(() => (data ? dayRows(data, fromIso(data.iso), { ar: STRINGS.ar.holyWeek, sv: STRINGS.sv.holyWeek }) : []), [data]);
-  const outline = useMemo(() => (data ? dayOutline(data, rows) : null), [data, rows]);
+  const rows = useMemo(() => {
+    if (!data) return [];
+    if (pascha) return paschaDay?.rows ?? [];
+    return dayRows(data, fromIso(data.iso), { ar: STRINGS.ar.holyWeek, sv: STRINGS.sv.holyWeek });
+  }, [data, pascha, paschaDay]);
+  const outline = useMemo(() => (!data ? null : pascha ? paschaDay?.outline ?? null : dayOutline(data, rows)), [data, pascha, paschaDay, rows]);
   const print = useMemo(() => readingScopes(date, t, lang), [date, t, lang]);
+  const chipItems = pascha ? (outline?.items ?? []).map((it, i) => ({ key: `s${i}`, label: ar ? it.ar : it.sv })) : (data?.sections ?? []).map((s) => ({ key: s.key, label: ar ? s.ar : s.sv }));
 
   // A link with ?date= opens that day.
   useEffect(() => { if (params.date) pickDay(fromIso(params.date)); }, [params.date]);
@@ -37,14 +49,14 @@ export default function Readings() {
   // Arriving from "Today" with a section: jump there once that day's text is in (not the day shown before).
   const visit = params.section ? `${params.section}|${params.at ?? ''}` : '';
   const [jumpedTo, setJumpedTo] = useState('');
-  if (visit && params.section && data?.iso === isoDate(date) && rows.length && jumpedTo !== visit) {
+  if (visit && params.section && data && rows.length && jumpedTo !== visit) {
     setJumpedTo(visit);
     setJump({ index: sectionIndex(rows, params.section), key: -1 });
   }
 
   const chips = (
     <Chips
-      items={(data?.sections ?? []).map((s) => ({ key: s.key, label: ar ? s.ar : s.sv }))}
+      items={chipItems}
       onPress={(key) => setJump({ index: sectionIndex(rows, key), key: Date.now() })}
       style={spread && styles.bookChips}
     />

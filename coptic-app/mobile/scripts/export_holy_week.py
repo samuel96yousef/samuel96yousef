@@ -87,6 +87,29 @@ def to_ref(osis, passage):
     return ' / '.join(parts)
 
 
+def lxx_to_hebrew(ch):
+    """The church's psalm number (the Septuagint's) → the app's Bible (the Hebrew's), or None where
+    one psalm of one is two of the other and the verse would have to decide (9, 113-115, 146-147)."""
+    if ch <= 8 or ch >= 148:
+        return ch
+    if ch in (9, 113, 114, 115, 146, 147):
+        return None
+    return ch + 1
+
+
+def psalm_ref(passage):
+    """'مز 87:3؛ 43:19،22' → 'ps 88 : 3 / ps 44 : 19 , 22' in the Bible's numbering, the verses as they are
+    (as the Katameros' psalms are given, src/lib/refs.ts psalmLabel); None when a psalm can't be renumbered."""
+    parts = []
+    for part in to_ref('PSA', passage).split(' / '):
+        m = re.match(r'ps (\d+)(.*)$', part)
+        ch = lxx_to_hebrew(int(m.group(1)))
+        if ch is None:
+            return None
+        parts.append(f'ps {ch}{m.group(2)}')
+    return ' / '.join(parts)
+
+
 def check(ref, books, bible):
     """Every chapter and verse the reference names is in the Bible."""
     for part in ref.split(' / '):
@@ -148,12 +171,18 @@ def main():
             if not services or services[-1]['ar'] != r['service_ar']:
                 services.append({'ar': r['service_ar'], 'sv': service_sv(r['service_ar']), 'from': r['source_entry_no'], 'readings': []})
             kind, kind_sv = KINDS[r['reading_type_ar']]
-            if r['osis_book'] == 'PSA':
-                # The psalms are numbered as the church numbers them (the Septuagint, mostly), the app's Bible
-                # as the Hebrew; renumbering them would be a guess, so the reference is shown without the text.
-                services[-1]['readings'].append({'kind': kind, 'kindAr': r['reading_type_ar'], 'kindSv': kind_sv, 'psalm': re.sub(r'^\S+\s+', '', r['passage_ar'])})
-                continue
             ref = to_ref(r['osis_book'], r['passage_ar'])
+            if r['osis_book'] == 'PSA':
+                # The psalms are numbered as the church numbers them (the Septuagint), the app's Bible as the
+                # Hebrew. Where one psalm is one psalm in both, it is renumbered; elsewhere the reference
+                # is shown without the text.
+                # One reference in the pack is in the Bible's numbering already ("78:65", Easter matins): a
+                # verse found only under the number as given keeps it.
+                lxx = psalm_ref(r['passage_ar'])
+                ref = lxx if lxx and not check(lxx, books, bible) else ref if not check(ref, books, bible) else None
+                if ref is None:
+                    services[-1]['readings'].append({'kind': kind, 'kindAr': r['reading_type_ar'], 'kindSv': kind_sv, 'psalm': re.sub(r'^\S+\s+', '', r['passage_ar'])})
+                    continue
             bad = check(ref, books, bible)
             if bad:
                 problems.append(f"{d['id']} {r['service_ar']} {r['passage_ar']}: {bad}")

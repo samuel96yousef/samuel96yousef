@@ -11,8 +11,9 @@ import { Icon } from '../../components/Icon';
 import { SectionLabel } from '../../components/LargeTitle';
 import { FramedCard } from '../../components/Page';
 import { WeekStrip } from '../../components/WeekStrip';
-import { agpeyaIndex, getOverview, katameros } from '../../data';
+import { agpeyaIndex, books, getOverview, holyWeek, katameros } from '../../data';
 import { pickDay, useReadingDay } from '../../day';
+import { holyWeekDayOn, serviceList } from '../../holyweek';
 import { dayDiff, dayMonthText, HOURS, hourNow, toArDigits, weekdayText } from '../../lib/coptic';
 import { useSettings } from '../../settings';
 import { FONTS, HOUR_SKY } from '../../theme';
@@ -41,6 +42,11 @@ export default function Today() {
   const hour = agpeyaIndex.find((h) => h.id === hid);
   const sky = HOUR_SKY[hid];
   const lit = overview.sections.find((s) => s.key === 'liturgy');
+  // In Holy Week the day's services and their readings. From Monday to Saturday they are the day's
+  // readings, read in the Readings tab; on the Saturday of Lazarus, Palm Sunday and Easter they
+  // follow the Katameros', in Prayers, Holy Week.
+  const pascha = holyWeekDayOn(day, holyWeek);
+  const paschaInReadings = overview.season === 'holy_week' && pascha != null;
   const verse = lit ? katameros.openings?.[lit.ref] : undefined;
   const ar = lang === 'ar';
   const row = ar ? ('row-reverse' as const) : ('row' as const);
@@ -119,36 +125,19 @@ export default function Today() {
     </Pressable>
   ) : null;
 
-  const list = overview.sections.length > 0 ? (
-    <View>
-      <SectionLabel>{isToday ? t.todaysReadings : t.readingsFor(dayMonthText(day, lang))}</SectionLabel>
-      <View style={[styles.list, { backgroundColor: colors.surface }, wide && [styles.listWide, { flexDirection: row }]]}>
-        {overview.sections.map((s, i) => (
-          <Pressable
-            key={s.key}
-            accessibilityRole="button"
-            // `at` makes every tap a new visit, so the section is found again even if the reader moved on.
-            onPress={() => router.push({ pathname: '/readings', params: { section: s.key, at: String(Date.now()) } })}
-            // Wide, the sections sit two by two, read across like the lines of a page.
-            style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 },
-              (wide ? i > 1 : i > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep },
-              wide && styles.rowHalf, wide && i % 2 === 1 && { [ar ? 'borderRightWidth' : 'borderLeftWidth']: StyleSheet.hairlineWidth, borderColor: colors.sep }]}
-          >
-            <CopticCross size={20} color={colors.crimson} />
-            <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: colors.label }, ar && styles.right]}>
-                {ar ? s.ar : s.sv}{ar ? '' : <Text style={[styles.rowTitleAr, { color: colors.label2 }]}>  {s.ar}</Text>}
-              </Text>
-              <Text numberOfLines={1} style={[styles.rowSub, { color: colors.label2 }, ar && styles.right]}>
-                {(ar ? s.refs.ar.map((r) => toArDigits(r)) : s.refs.sv).join(' · ')}
-              </Text>
-            </View>
-            <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  ) : null;
+  const readings: ListItem[] = paschaInReadings
+    ? serviceList(pascha, books).map((s) => ({ key: s.key, ar: s.ar, sv: s.sv, subAr: s.subAr, subSv: s.subSv }))
+    : overview.sections.map((s) => ({ key: s.key, ar: s.ar, sv: s.sv, subAr: s.refs.ar.map((r) => toArDigits(r)).join(' · '), subSv: s.refs.sv.join(' · ') }));
+  const services: ListItem[] = pascha && !paschaInReadings ? serviceList(pascha, books) : [];
+  const list = (
+    <>
+      {/* `at` makes every tap a new visit, so the section is found again even if the reader moved on. */}
+      <Sections label={isToday ? t.todaysReadings : t.readingsFor(dayMonthText(day, lang))} items={readings} wide={wide}
+        onPress={(key) => router.push({ pathname: '/readings', params: { section: key, at: String(Date.now()) } })} />
+      <Sections label={`${t.pascha} · ${ar ? pascha?.ar : pascha?.sv}`} items={services} wide={wide}
+        onPress={(key) => router.push({ pathname: '/prayers/pascha/[day]', params: { day: pascha!.id, section: key, at: String(Date.now()) } })} />
+    </>
+  );
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
@@ -171,6 +160,42 @@ export default function Today() {
         )}
       </ScrollView>
       <DayPicker visible={picking} day={day} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
+    </View>
+  );
+}
+
+interface ListItem { key: string; ar: string; sv: string; subAr: string; subSv: string }
+
+/** The day's sections, or its services, each with its references; wide, two by two, read across like the lines of a page. */
+function Sections({ label, items, wide, onPress }: { label: string; items: ListItem[]; wide: boolean; onPress: (key: string) => void }) {
+  const { lang, colors } = useSettings();
+  const ar = lang === 'ar';
+  const row = ar ? ('row-reverse' as const) : ('row' as const);
+  if (!items.length) return null;
+  return (
+    <View>
+      <SectionLabel>{label}</SectionLabel>
+      <View style={[styles.list, { backgroundColor: colors.surface }, wide && [styles.listWide, { flexDirection: row }]]}>
+        {items.map((s, i) => (
+          <Pressable
+            key={s.key}
+            accessibilityRole="button"
+            onPress={() => onPress(s.key)}
+            style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 },
+              (wide ? i > 1 : i > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep },
+              wide && styles.rowHalf, wide && i % 2 === 1 && { [ar ? 'borderRightWidth' : 'borderLeftWidth']: StyleSheet.hairlineWidth, borderColor: colors.sep }]}
+          >
+            <CopticCross size={20} color={colors.crimson} />
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, { color: colors.label }, ar && styles.right]}>
+                {ar ? s.ar : s.sv}{ar ? '' : <Text style={[styles.rowTitleAr, { color: colors.label2 }]}>  {s.ar}</Text>}
+              </Text>
+              {!!(ar ? s.subAr : s.subSv) && <Text numberOfLines={1} style={[styles.rowSub, { color: colors.label2 }, ar && styles.right]}>{ar ? s.subAr : s.subSv}</Text>}
+            </View>
+            <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }

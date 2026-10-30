@@ -17,7 +17,9 @@ export { agpeyaIndex, alhanBooks, books, hymnGroups, katameros, kholagyIndex };
 export const holyWeek: HolyWeek = require('../assets/holyweek/holyweek.json');
 
 /** One day of Holy Week as reader rows, its readings loaded from the Bible. */
-export const useHolyWeekDay = (day: HolyWeekDay) => useAsync(() => holyWeekRows(day, holyWeek, books, loadBook), [day.id]);
+/** A day of Holy Week, its readings loaded; `on` false loads nothing (a hook can't be left out). */
+export const useHolyWeekDay = (day: HolyWeekDay, on = true) =>
+  useAsync(() => (on ? holyWeekRows(day, holyWeek, books, loadBook) : Promise.resolve(null)), [day.id, on]);
 
 // ---------- Bible books and prayers (assets, read on demand) ----------
 
