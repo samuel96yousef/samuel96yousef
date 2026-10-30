@@ -101,6 +101,9 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
     case 'note':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1, lineHeight: base * 1.8, color: page.rule }
         : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * 0.82, lineHeight: base * 1.4, color: page.rule };
+    case 'ca':
+      // The Coptic of a hymn in Arabic letters, as it is sung: under the Arabic, in the colour of the responses.
+      return { writingDirection: 'rtl', textAlign: 'right', fontFamily: FONTS.ar, fontSize: base * 1.12, lineHeight: base * 2.1, color: page.formula };
     case 'cop':
       // A hymn line: the Coptic that is sung, and under it (or on the facing page) its meaning in Arabic.
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1.08, lineHeight: base * 1.85, color: page.ink2 }
@@ -275,7 +278,7 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
         );
       }
       const showAlt = !!O && (both || peeked || ALWAYS_BOTH.has(u.t));
-      const bar = roleBar(row.role, P, page);
+      const bar = u.t === 'ca' ? { borderRightWidth: 2, borderRightColor: page.rule2, paddingRight: 10 } : roleBar(row.role, P, page);
       const center = u.t === 'ref' || u.t === 'h' || u.t === 'H';
       return (
         <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>

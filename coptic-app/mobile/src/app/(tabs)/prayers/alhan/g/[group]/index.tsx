@@ -11,8 +11,8 @@ import type { Hymn } from '../../../../../../lib/types';
 import { useSettings } from '../../../../../../settings';
 import { FONTS } from '../../../../../../theme';
 
-/** The first Coptic line of a hymn, by which it is known. */
-const incipit = (h: Hymn) => h.units.find((u) => u.t === 'cop')?.cop ?? '';
+/** How a hymn begins: in Coptic (in Arabic letters, by which it is known) where there is, else in Arabic. */
+const incipit = (h: Hymn) => h.units.find((u) => u.t === 'ca')?.ar ?? h.units.find((u) => u.t === 'p')?.ar ?? h.units.find((u) => u.t === 'cop')?.cop ?? '';
 
 /** The hymn texts of one occasion, each with its first Coptic line; a search narrows them by title or text. */
 export default function HymnGroupPage() {
@@ -27,7 +27,7 @@ export default function HymnGroupPage() {
   const shown = useMemo(() => {
     const q = normalizeAr(query.trim());
     if (!data || !q) return data ?? [];
-    return data.filter((h) => normalizeAr(h.ar).includes(q) || h.units.some((u) => (u.ar && normalizeAr(u.ar).includes(q)) || u.cop?.toLowerCase().includes(q.toLowerCase())));
+    return data.filter((h) => normalizeAr(h.ar).includes(q) || h.units.some((u) => u.ar && normalizeAr(u.ar).includes(q)));
   }, [data, query]);
 
   const header = (
@@ -57,8 +57,11 @@ export default function HymnGroupPage() {
               index === 0 && styles.firstItem, index === shown.length - 1 && styles.lastItem,
               index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.sep }, pressed && { backgroundColor: colors.bg2 }]}>
             <View style={styles.text}>
-              <Text style={[styles.title, { color: colors.label }]}>{h.ar}</Text>
-              {incipit(h) ? <Text numberOfLines={1} style={[styles.incipit, { color: colors.label2 }]}>{incipit(h)}</Text> : null}
+              <View style={styles.titleRow}>
+                {h.ca && <View style={[styles.tag, { backgroundColor: colors.tint }]}><Text style={[styles.tagText, { color: colors.crimson }]}>قبطي معرّب</Text></View>}
+                <Text style={[styles.title, { color: colors.label }]}>{h.ar}</Text>
+              </View>
+              {incipit(h) ? <Text numberOfLines={1} style={[styles.incipit, { color: h.ca ? colors.crimson : colors.label2 }]}>{incipit(h)}</Text> : null}
             </View>
             <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
           </Pressable>
@@ -80,7 +83,10 @@ const styles = StyleSheet.create({
   text: { flex: 1, minWidth: 0 },
   // The titles are Arabic in either language of the app.
   title: { fontFamily: FONTS.arBold, fontSize: 17, lineHeight: 28, textAlign: 'right', writingDirection: 'rtl' },
-  incipit: { fontFamily: FONTS.cop, fontSize: 14, lineHeight: 22, textAlign: 'left', writingDirection: 'ltr' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
+  tag: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 },
+  tagText: { fontFamily: FONTS.arBold, fontSize: 12, lineHeight: 20 },
+  incipit: { fontFamily: FONTS.ar, fontSize: 15, lineHeight: 24, textAlign: 'right', writingDirection: 'rtl' },
   right: { textAlign: 'right', writingDirection: 'rtl' },
   flip: { transform: [{ scaleX: -1 }] },
 });

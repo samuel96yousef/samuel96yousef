@@ -136,10 +136,10 @@ const sv = {
   hazzatBooks: 'Med hazzat',
   hymnsByOccasion: 'Hymner efter tillfälle',
   hymnsCount: (n: number) => `${n} texter`,
-  hymnsLangs: 'På koptiska och arabiska',
+  hymnsLangs: 'På arabiska, med koptiskan i arabisk skrift där den finns',
   inSeason: 'Nu',
   nextHymn: 'Nästa',
-  hymnsSource: 'Texterna kommer från hymnbiblioteket på tasbeha.org och Synaxarium från copticchurch.net, båda från S:t Markus koptisk-ortodoxa kyrka i Jersey City. De finns på koptiska och arabiska, inte på svenska.',
+  hymnsSource: 'Tasbeha, doxologierna och rökelsens upptagande med koptiska i arabisk skrift kommer från Coptish Datastore (öppen källkod, MPL-2.0). Övriga texter kommer från hymnbiblioteket på tasbeha.org och Synaxarium från copticchurch.net, båda från S:t Markus koptisk-ortodoxa kyrka i Jersey City. Texterna finns inte på svenska.',
   alhanHint: 'Sidorna visas som i boken, för att hazzat, tecknen över orden som bär melodin, ska stå exakt rätt. Titlarna på svenska är översatta.',
 };
 
@@ -280,10 +280,10 @@ const ar: Strings = {
   hazzatBooks: 'مكتوبة بالهزات',
   hymnsByOccasion: 'الألحان حسب المناسبة',
   hymnsCount: (n: number) => `${toArDigits(n)} نصاً`,
-  hymnsLangs: 'بالقبطية والعربية',
+  hymnsLangs: 'بالعربية، مع القبطي المعرّب حيث يوجد',
   inSeason: 'الآن',
   nextHymn: 'التالي',
-  hymnsSource: 'النصوص من مكتبة الألحان في tasbeha.org والسنكسار من copticchurch.net، برعاية كنيسة مارمرقس القبطية الأرثوذكسية بجيرسي سيتي.',
+  hymnsSource: 'التسبحة والذكصولوجيات ورفع البخور بالقبطي المعرّب من Coptish Datastore (مفتوح المصدر). باقي النصوص من مكتبة الألحان في tasbeha.org والسنكسار من copticchurch.net، برعاية كنيسة مارمرقس القبطية الأرثوذكسية بجيرسي سيتي.',
   alhanHint: 'تظهر الصفحات كما في الكتاب، حتى تبقى الهزات فوق الكلمات في مكانها تماماً.',
 };
 

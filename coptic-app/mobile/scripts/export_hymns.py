@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the hymn texts and the Synaxarium from their EPUB books.
+"""Export the hymn texts and the Synaxarium.
 
 The zip holds two EPUBs, gathered from the hymn library at tasbeha.org and the
 Synaxarium at copticchurch.net:
@@ -8,6 +8,13 @@ Synaxarium at copticchurch.net:
                               Coptic line with its Arabic, or Arabic alone
     السنكسار_العربي.epub      the Synaxarium in Arabic, one file per Coptic day
 
+The Coptish Datastore (github.com/markrofail/coptish-datastore, MPL-2.0) has
+the Psalmody, the doxologies and the liturgy with the Arabic in running
+paragraphs and the Coptic written in Arabic letters, as it is sung. Those come
+first in their groups; the tasbeha.org texts follow where they add something,
+their Arabic lines joined into a paragraph per stanza and the Coptic script
+left out (it stays only where a stanza has no Arabic).
+
 Writes assets/hymns/ (not checked in, like the other texts):
 
     <group>.hymns     one group's hymns (JSON), read when the group is opened
@@ -15,9 +22,10 @@ Writes assets/hymns/ (not checked in, like the other texts):
     index.ts          the groups' names and counts, and the asset modules
 
 Usage:
-    python3 scripts/export_hymns.py <collection.zip>
+    python3 scripts/export_hymns.py <collection.zip> <coptish-datastore/data>
 """
 
+import glob
 import io
 import json
 import os
@@ -26,6 +34,8 @@ import shutil
 import sys
 import zipfile
 from html.parser import HTMLParser
+
+import yaml
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 OUT = os.path.join(ROOT, 'assets', 'hymns')
@@ -166,6 +176,144 @@ class Day(HTMLParser):
             self.text += data
 
 
+# Which Coptish texts lead which group, in order. A '*' is every text of a
+# folder; in the raising of incense the doxologies stand where the rite has them.
+COPTISH = {
+    '01': ['psalmody/*'],
+    '02': ['liturgy-st-basil/00-matins-raising-of-incense/*'],
+    '03': ['liturgy-st-basil/01-offering-of-the-lamb/*', 'liturgy-st-basil/02-liturgy-of-the-word/*',
+           'liturgy-st-basil/03-liturgy-of-the-believers/*', 'liturgy-st-basil/04-the-distribution-of-the-holy-mysteries/*'],
+    '05': ['doxologies/02-great-lent-doxology-1.yml'],
+}
+# The Psalmody has English titles only. Its Arabic titles, and the tasbeha.org
+# text each one replaces (the same hymn, which would otherwise stand twice).
+THEOTOKY = 'ثيؤطوكية الأحد – الجزء {}'
+TITLES = {
+    'psalmody/00-ten-thino': ('لحن تين ثينو', 'لحن تين ثينو'),
+    'psalmody/01-resurrection-tennav': ('لحن القيامة - تينناف', 'لحن القيامة - تينناف'),
+    'psalmody/02-first-hoos': ('الهوس الأول', 'الهوس الأول'),
+    'psalmody/03-lobsh-of-first-hoos': ('لبش الهوس الأول', 'لبش الهوس الأول'),
+    'psalmody/04-second-hoos': ('الهوس الثاني', 'الهوس الثاني'),
+    'psalmody/05-second-lobsh': ('لبش الهوس الثاني', 'لبش الهوس الثاني'),
+    'psalmody/06-third-hoos': ('الهوس الثالث', 'الهوس الثالث'),
+    'psalmody/07-arepsalin': ('إبصالية واطس للثلاثة فتية القديسين - رومية', 'إبصالية واطس للثلاثة فتية القديسين - رومية'),
+    'psalmody/08-ten-oweeh-enthok': ('مديح الثلاثة فتية القديسين - تين أوويه إنسوك', 'مديح واطس للثلاثة فتية القديسين - تين اوويه إنسوك'),
+    'psalmody/09-comemoration': ('مجمع القديسين', 'مجمع القديسين'),
+    'psalmody/10-doxology-st-mary': ('ذكصولوجية للعذراء مريم - تسبحة نصف الليل', 'ذكصولوجية للعذراء مريم - تسبحة نصف الليل'),
+    'psalmody/11-doxology-archangel-michael': ('ذكصولوجية الملاك ميخائيل', None),
+    'psalmody/12-doxology-st-anthony': ('ذكصولوجية الأنبا أنطونيوس', None),
+    'psalmody/13-conclusion-of-doxologies': ('ختام الذكصولوجيات', None),
+    'psalmody/14-fourth-hoos': ('الهوس الرابع', 'الهوس الرابع'),
+    'psalmody/15-aynahti': ('إبصالية الأحد الأولى - آي ناهتي', 'إبصالية الأحد الأول'),
+    'psalmody/16-aykoti': ('إبصالية الأحد الثانية - آي كوتي', 'إبصالية الأحد الثانية'),
+    'psalmody/17-theotoky-adam-intro': ('مقدمة الثيؤطوكيات الآدام', None),
+    'psalmody/18-theotoky-watos-intro': ('مقدمة الثيؤطوكيات الواطس', None),
+    'psalmody/25-gospel': ('الإنجيل لمعلمنا مار لوقا', 'الإنجيل لمعلمنا مار لوقا'),
+    'psalmody/26-shere-ne-maria': ('القطعة السابعة - شيري نيه ماريا', 'القطعة السابعة - شيري نيه ماريا'),
+    'psalmody/27-semouti': ('القطعة السابعة - سيموتي', 'القطعة السابعة - سيموتي'),
+    'psalmody/28-seven-times': ('القطعة الثامنة - شاشف إنسوب', 'القطعة الثامنة - شاشف إنسوب'),
+    'psalmody/38-your-mercies': ('نيك ناي أو باشويس - مراحمك يا رب', None),
+    'psalmody/39-creed-intro': ('بدء قانون الإيمان', None),
+    'psalmody/40-creed': ('قانون الإيمان', None),
+    'psalmody/41-amen-keryalison': ('آمين الليلويا - ختام التسبحة', None),
+    'doxologies/02-great-lent-doxology-1': ('الذكصولوجية الأولى', None),
+    'liturgy-st-basil/00-matins-raising-of-incense/03-eshleel': ('صلوا – إشليل', None),
+    'liturgy-st-basil/00-matins-raising-of-incense/06-eshleel': ('صلوا – إشليل', None),
+}
+# The Sunday Theotokia in its parts; the tasbeha.org pieces they replace.
+THEOTOKY_PARTS = {1: 'ثيؤطوكية الأحد', 10: 'القطعة العاشرة - تي اوي إنهيكانوس', 15: 'القطعة الخامسة عشر - أف إن بي أرشي إريفس', 16: 'القطعة السادسة عشر - نيم غار'}
+for n, file in [(1, 19), (2, 20), (3, 21), (4, 22), (5, 23), (6, 24)] + [(k, 19 + k) for k in range(10, 19)]:
+    TITLES[f'psalmody/{file:02d}-theotoky-part-{n}'] = (THEOTOKY.format(n), THEOTOKY_PARTS.get(n))
+
+ANNUAL_DOXOLOGIES = ['01-intro', '03-st-mary', '04-archangel-michael', '05-st-pishoy-and-st-paul', '06-conclusion']
+ROLES = {'priest', 'deacon', 'people'}
+
+
+def coptish_units(doc):
+    """A Coptish text as units: per stanza the Arabic, then the Coptic in Arabic letters; who sings it, and the rubrics."""
+    units = []
+    for sec in doc.get('sections') or []:
+        kind = sec.get('type')
+        if kind == 'info':
+            t = clean((sec.get('text') or {}).get('arabic') or '')
+            if t:
+                units.append({'t': 'rubric', 'ar': t})
+        elif kind == 'verses':
+            v = sec.get('verses') or {}
+            ar, ca, cop = v.get('arabic') or [], v.get('coptic_arabic') or [], v.get('coptic') or []
+            if sec.get('speaker') in ROLES:
+                units.append({'t': 'role', 'r': sec['speaker']})
+            for i in range(max(len(ar), len(ca))):
+                a = clean(ar[i]) if i < len(ar) and ar[i] else ''
+                c = clean(ca[i]) if i < len(ca) and ca[i] else ''
+                if not a and not c and i < len(cop) and cop[i]:
+                    units.append({'t': 'cop', 'cop': clean(cop[i])})
+                if a:
+                    units.append({'t': 'p', 'ar': a})
+                if c:
+                    units.append({'t': 'ca', 'ar': c})
+                units.append({'t': 'gap'})
+        # Readings ('reading') are in the day's readings; the fractions ('compound-prayer') in the Kholagy.
+    while units and units[-1]['t'] in ('gap', 'role'):
+        units.pop()
+    return units
+
+
+def coptish_item(data, path):
+    doc = yaml.safe_load(open(os.path.join(data, path), encoding='utf-8'))
+    units = coptish_units(doc)
+    if not any(u['t'] == 'ca' for u in units):
+        return None
+    t = doc.get('title') or {}
+    title, replaces = TITLES.get(path[:-4], (clean(t.get('arabic') or t.get('english') or ''), None))
+    item = {'id': 'c-' + re.sub(r'[^a-z0-9]+', '-', path[:-4].lower()).strip('-'), 'ar': title, 'ca': True, 'units': units}
+    return item, replaces
+
+
+def coptish(data):
+    """Group → its Coptish texts."""
+    out = {}
+    for gid, patterns in COPTISH.items():
+        paths = []
+        for pat in patterns:
+            found = sorted(os.path.relpath(f, data) for f in glob.glob(os.path.join(data, pat)) if not f.endswith('index.yml'))
+            for f in found:
+                if f.endswith('/12-doxologies.yml'):
+                    paths += [f'doxologies/{d}.yml' for d in ANNUAL_DOXOLOGIES]
+                else:
+                    paths.append(f)
+        out[gid] = [r for r in (coptish_item(data, p) for p in paths) if r]
+    return out
+
+
+def flowing(units):
+    """A tasbeha.org text as running Arabic: a stanza's lines joined into one paragraph, the Coptic script left out."""
+    out = []
+    stanza = []
+
+    def close():
+        lines = [u['ar'] for u in stanza if u['t'] == 'cop' and 'ar' in u]
+        if lines:
+            out.append({'t': 'p', 'ar': ' '.join(lines)})
+        elif stanza:
+            # A stanza with no Arabic keeps its Coptic, rather than vanish.
+            out.extend({'t': 'cop', 'cop': u['cop']} for u in stanza if u['t'] == 'cop')
+        stanza.clear()
+
+    for u in units:
+        if u['t'] == 'cop':
+            stanza.append(u)
+            continue
+        close()
+        out.append(u)
+    close()
+    return out
+
+
+def title_key(s):
+    return re.sub(r'[\u064b-\u065f\u0670\s]', '', s).replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا').replace('ى', 'ي').replace('ة', 'ه')
+
+
 def parse(cls, html):
     p = cls()
     p.feed(html)
@@ -179,9 +327,10 @@ def epub(outer, name):
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         sys.exit(__doc__)
     outer = zipfile.ZipFile(sys.argv[1])
+    lead = coptish(sys.argv[2])
     names = {n.split('/')[-1]: n for n in outer.namelist()}
     hymns = epub(outer, names['الألحان_عربي_وقبطي.epub'])
     synax = epub(outer, names['السنكسار_العربي.epub'])
@@ -205,7 +354,11 @@ def main():
             while h.units and h.units[-1]['t'] == 'gap':
                 h.units.pop()
             if h.units:
-                items.append({'id': f[2:-6], 'ar': h.title, 'units': h.units})
+                items.append({'id': f[2:-6], 'ar': h.title, 'units': flowing(h.units)})
+        # The Coptish texts first; a tasbeha.org text with the same title is not repeated.
+        first = lead.get(f'{g:02d}', [])
+        seen = {title_key(t) for it, rep in first for t in (it['ar'], rep) if t}
+        items = [it for it, _ in first] + [it for it in items if title_key(it['ar']) not in seen]
         with open(os.path.join(OUT, f'{gid}.hymns'), 'w', encoding='utf-8') as out:
             json.dump(items, out, ensure_ascii=False, separators=(',', ':'))
         if ar not in GROUPS_SV:
@@ -245,7 +398,7 @@ def main():
     ]
     with open(os.path.join(OUT, 'index.ts'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
-    print(f'{len(groups)} groups, {total} hymns; Synaxarium: {days} days')
+    print(f'{len(groups)} groups, {total} hymns ({sum(len(v) for v in lead.values())} from Coptish); Synaxarium: {days} days')
 
 
 if __name__ == '__main__':

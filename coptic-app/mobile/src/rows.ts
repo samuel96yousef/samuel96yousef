@@ -38,27 +38,31 @@ export function prayerRows(p: Prayer, run: { ar: string; sv: string }): Row[] {
   return [{ k: 'top' }, { k: 'run', ...run }, { k: 'cart', ar: p.ar, sv: p.sv }, ...unitRows(p.units), { k: 'bottom' }];
 }
 
-/** A hymn text: its occasion above, its title in the cartouche (Arabic: the texts have no Swedish), its lines. */
+/** A hymn text: its occasion above, its title in the cartouche (Arabic: the texts have no Swedish), its lines; who sings them, as in the liturgy. */
 export function hymnRows(h: Hymn, group: { ar: string; sv: string }): Row[] {
-  return [{ k: 'top' }, { k: 'run', ...group }, { k: 'cart', ar: h.ar, sv: '' }, ...unitRows(h.units), { k: 'bottom' }];
+  return [{ k: 'top' }, { k: 'run', ...group }, { k: 'cart', ar: h.ar, sv: '' }, ...roleRows(h.units), { k: 'bottom' }];
 }
 
 /** Liturgy rows: a role marker opens a block; the role colours the text until the next marker. */
 export function liturgyRows(p: Prayer): Row[] {
-  const rows: Row[] = [{ k: 'top' }, { k: 'run', ar: 'الخولاجي', sv: 'Kholagy' }, { k: 'cart', ar: p.ar, sv: p.sv }];
+  return [{ k: 'top' }, { k: 'run', ar: 'الخولاجي', sv: 'Kholagy' }, { k: 'cart', ar: p.ar, sv: p.sv }, ...roleRows(p.units), { k: 'bottom' }];
+}
+
+function roleRows(units: Unit[]): Row[] {
+  const rows: Row[] = [];
   let role: Role | undefined;
   let pending: Role | undefined;
-  for (const u of p.units) {
+  for (const u of units) {
     if (u.t === 'role') { pending = u.r; continue; }
     if (u.t === 'H') { rows.push({ k: 'u', u }); continue; }
-    if (pending && (u.t === 'p' || u.t === 'secret')) {
+    // A hymn stanza may be in Coptic only; its singer is named before it all the same.
+    if (pending && (u.t === 'p' || u.t === 'secret' || u.t === 'ca')) {
       rows.push({ k: 'role', r: pending });
       role = pending;
       pending = undefined;
     }
     rows.push({ k: 'u', u, role: u.t === 'p' || u.t === 'secret' ? role : undefined });
   }
-  rows.push({ k: 'bottom' });
   return rows;
 }
 

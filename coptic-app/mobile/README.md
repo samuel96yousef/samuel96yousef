@@ -9,7 +9,7 @@ Arabisk-svensk app för en koptisk församling i Sverige, byggd med Expo
 | --- | --- |
 | Idag | Veckan i ett eget kort, med det koptiska datumet under varje dag (idag markerad, vald dag som en röd ruta, högtider med en guldprick). Under den dagens kort, färgat efter vad dagen är: guld med ett strålande kors för stora högtider och de femtio dagarna, karmosin med ett ljus för helgon och änglar, oliv med vete för fastedagar och pergament med ett koptiskt kors övriga dagar. Sedan dagens ord (på papper i Katameros-ram), timbönen som gäller nu och dagens läsningar. Öppnar alltid på idag. Svep veckan för andra veckor och tryck på en dag för att läsa den; kalenderknappen öppnar en månadskalender för datum längre bort. |
 | Läsningar | Katameros för vilket datum som helst, med alla regler för fastor, påsktiden, söndagar och paramoun i Kiahk och Touba. Efter Praxis kommer dagens Synaxarium, helgonen och minnena för dagen, på arabiska (det läses inte under de heliga femtio dagarna och påskveckan). Visar samma dag som Idag: väljer du en dag på den ena följer den andra med. En vald dag gäller till midnatt eller tills appen varit borta en halvtimme, sedan är det idag igen. |
-| Böner | Tre böcker: Agpeya, Kholagy och Alhan. Agpeya (åtta timböner) och Kholagy (åtta liturgier) där präst, diakon och folk har olika stil. Kholagy visas i den ordning den bes: rökelsens upptagande kväll och morgon (under samma himlar som timbönerna), sedan liturgin från lammets offer genom en av de tre anafororna (med helgonets initial på koptiska och när den bes) till brödbrytelsen och distributionen. Alhan är kyrkans hymner, på två sätt. Hymnerna efter tillfälle är 26 grupper, från den årliga tasbeha och liturgin till varje högtid, med 1 238 texter rad för rad på koptiska med arabiska under (i den öppna boken koptiska på vänster sida och arabiska på höger). Dagens tillfälle står först, märkt Nu, och varje grupp har sökning. Boken med hazzat är hymnerna för stora fastan och Nineves fasta, skrivna med hazzat, tecknen över orden som bär melodin. Hazzat är teckningar och inte text, så bokens egna sidor visas, med innehållet från bokens register (55 hymner och texter, på arabiska och svenska) och sidan du senast läste. |
+| Böner | Tre böcker: Agpeya, Kholagy och Alhan. Agpeya (åtta timböner) och Kholagy (åtta liturgier) där präst, diakon och folk har olika stil. Kholagy visas i den ordning den bes: rökelsens upptagande kväll och morgon (under samma himlar som timbönerna), sedan liturgin från lammets offer genom en av de tre anafororna (med helgonets initial på koptiska och när den bes) till brödbrytelsen och distributionen. Alhan är kyrkans hymner, på två sätt. Hymnerna efter tillfälle är 26 grupper, från den årliga tasbeha och liturgin till varje högtid, med 1 262 texter. Arabiskan står i löpande stycken. Tasbeha, doxologierna och rökelsens upptagande har dessutom koptiskan skriven med arabiska bokstäver under varje strof, som den sjungs (märkta قبطي معرّب i listan); där står också vem som sjunger. Övriga texter är arabiska utan koptisk skrift. Dagens tillfälle står först, märkt Nu, och varje grupp har sökning. Boken med hazzat är hymnerna för stora fastan och Nineves fasta, skrivna med hazzat, tecknen över orden som bär melodin. Hazzat är teckningar och inte text, så bokens egna sidor visas, med innehållet från bokens register (55 hymner och texter, på arabiska och svenska) och sidan du senast läste. |
 | Bibeln | Alla 74 böcker kapitel för kapitel, med sökning på svenska och arabiska. Varje bok har en innehållssida som i Katameros: namnet i en kartusch, kapitlen med medaljong, början av första versen och antal verser, och "Fortsätt läsa" till kapitlet du senast öppnade. |
 
 Språk i läsningen: en sida i taget på huvudspråket. Språkknappen (ع | Sv)
@@ -136,8 +136,12 @@ bilden utan att någon bok läses in. Kör `npm run data` igen när exporten
 ändras.
 
 Hymntexterna och Synaxarium skapas med
-`python3 scripts/export_hymns.py <samling.zip>` ur samlingens två EPUB-böcker
-(hymnbiblioteket på tasbeha.org och Synaxarium från copticchurch.net). De
+`python3 scripts/export_hymns.py <samling.zip> <coptish-datastore/data>` ur
+samlingens två EPUB-böcker (hymnbiblioteket på tasbeha.org och Synaxarium från
+copticchurch.net) och Coptish Datastore
+(github.com/markrofail/coptish-datastore, MPL-2.0). Coptish-texterna, med
+koptiskan i arabisk skrift, står först i sina grupper; tasbeha.org-texterna
+följer där de tillför något, med arabiskan ihopslagen till ett stycke per strof. De
 ligger som filer (`.hymns`, en per tillfälle, och `.synax`, en per koptisk
 månad) i `assets/hymns/`, som inte checkas in, och läses in först när de behövs.
 
@@ -177,7 +181,8 @@ Påskveckans läsningar (Pascha-boken) finns i APK:n men är inte inbyggda än.
 Den svenska bibeltexten ser ut att vara Svenska Folkbibeln, och de svenska
 översättningarna av Agpeya, Kholagy och de liturgiska fraserna har någon
 upphovsman. Hymnboken för fastan är utgiven av kyrkan Sankta Maria och Anba
-Shenouda i Kairo. Hymntexterna och Synaxarium kommer från tasbeha.org och
+Shenouda i Kairo. Hymntexterna med koptiska i arabisk skrift kommer från Coptish Datastore
+(MPL-2.0), övriga hymntexter och Synaxarium från tasbeha.org och
 copticchurch.net, som drivs av S:t Markus koptisk-ortodoxa kyrka i Jersey
 City. Därför ligger inga texter i repot. Tillstånd behövs innan
 appen publiceras.

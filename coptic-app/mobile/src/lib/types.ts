@@ -55,10 +55,11 @@ export type Role = 'priest' | 'deacon' | 'people';
  * p: paragraph · h/H: heading · f: liturgical formula · ref: Bible reference ·
  * psalm · v: verse (c = chapter, n = number) · role: speaker change ·
  * rubric: instruction · secret: prayed silently by the priest · note: about the source text ·
- * cop: a line of a hymn in Coptic, with its Arabic · gap: the end of a stanza
+ * cop: a line of a hymn in Coptic script · ca: a stanza of a hymn in Coptic written in Arabic letters,
+ * as it is sung (in `ar`) · gap: the end of a stanza
  */
 export interface Unit {
-  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note' | 'cop' | 'gap';
+  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note' | 'cop' | 'ca' | 'gap';
   ar?: string;
   sv?: string;
   cop?: string;
@@ -118,10 +119,12 @@ export interface HymnGroup {
   count: number;
 }
 
-/** A hymn text: verses in Coptic with their Arabic, or Arabic alone. Most have no Swedish. */
+/** A hymn text: the Arabic in paragraphs, and where it is known the Coptic in Arabic letters. No Swedish. */
 export interface Hymn {
   id: string;
   ar: string;
+  /** Has the Coptic in Arabic letters (from the Coptish Datastore) */
+  ca?: boolean;
   units: Unit[];
 }
 
