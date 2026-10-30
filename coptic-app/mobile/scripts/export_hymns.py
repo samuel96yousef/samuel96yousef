@@ -185,6 +185,8 @@ COPTISH = {
     '03': ['liturgy-st-basil/01-offering-of-the-lamb/*', 'liturgy-st-basil/02-liturgy-of-the-word/*',
            'liturgy-st-basil/03-liturgy-of-the-believers/*', 'liturgy-st-basil/04-the-distribution-of-the-holy-mysteries/*'],
     '05': ['doxologies/02-great-lent-doxology-1.yml'],
+    # Tennav is sung every day of the Holy Fifty Days (and on Sundays until the end of Hatour, in the annual Tasbeha).
+    '15': ['psalmody/01-resurrection-tennav.yml'],
 }
 # The Psalmody has English titles only. Its Arabic titles, and the tasbeha.org
 # text each one replaces (the same hymn, which would otherwise stand twice).
@@ -229,6 +231,11 @@ for n, file in [(1, 19), (2, 20), (3, 21), (4, 22), (5, 23), (6, 24)] + [(k, 19 
     TITLES[f'psalmody/{file:02d}-theotoky-part-{n}'] = (THEOTOKY.format(ORDINALS[n]), THEOTOKY_PARTS.get(n))
 
 # Left out: '05-st-pishoy-and-st-paul' opens with Joseph (Ⲓⲱⲥⲏⲫ), not with the saints its title names; until it is checked.
+# When a text is sung, where the church's order makes it differ from the rest of its group.
+WHEN = {
+    'psalmody/01-resurrection-tennav': 'يُقال من عيد القيامة وطوال الخماسين المقدسة كل يوم، ثم في تسبحة الآحاد حتى آخر أحد من شهر هاتور.',
+}
+
 ANNUAL_DOXOLOGIES = ['01-intro', '03-st-mary', '04-archangel-michael', '06-conclusion']
 ROLES = {'priest', 'deacon', 'people'}
 
@@ -264,6 +271,8 @@ def coptish_item(data, path):
     hymn = path.startswith(('psalmody/', 'doxologies/'))
     if not any(u.get('ca') or (hymn and u.get('cop')) for u in units):
         return None
+    if path[:-4] in WHEN:
+        units.insert(0, {'t': 'rubric', 'ar': WHEN[path[:-4]]})
     t = doc.get('title') or {}
     title, replaces = TITLES.get(path[:-4], (clean(t.get('arabic') or t.get('english') or ''), None))
     item = {'id': 'c-' + re.sub(r'[^a-z0-9]+', '-', path[:-4].lower()).strip('-'), 'ar': title, 'ca': True, 'units': units}
