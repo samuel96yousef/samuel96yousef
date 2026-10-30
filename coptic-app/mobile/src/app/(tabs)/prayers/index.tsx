@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../../components/Icon';
 import { LargeTitle } from '../../../components/LargeTitle';
 import { BarButton, TopBar } from '../../../components/TopBar';
-import { agpeyaIndex, alhanBooks, hymnGroups, loadPrayers } from '../../../data';
+import { CopticCross } from '../../../components/CopticCross';
+import { agpeyaIndex, alhanBooks, holyWeek, hymnGroups, loadPrayers } from '../../../data';
 import { hourNow } from '../../../lib/coptic';
 import { useSettings } from '../../../settings';
 import { FONTS, HOUR_SKY } from '../../../theme';
@@ -15,11 +16,14 @@ import { FONTS, HOUR_SKY } from '../../../theme';
 const KHOLAGY_SKY: [string, string] = ['#A12F4B', '#4A1024'];
 // The violet of the fasts, whose hymns the first book holds.
 const ALHAN_SKY: [string, string] = ['#6A4A8C', '#2C1A45'];
+// Holy Week in the black of the Pascha, with the wine of the Passion.
+const PASCHA_SKY: [string, string] = ['#4A2530', '#140B0E'];
 
 /**
  * The prayer books, each a door of its own: the Agpeya under the sky of the
  * hour it is now, with a way straight into that hour, the Kholagy in crimson
- * with its chalice, and the Alhan, the hymn books, in the violet of the fasts.
+ * with its chalice, the Alhan, the hymn books, in the violet of the fasts, and
+ * Holy Week in the black of the Pascha.
  * Each opens its own page.
  */
 export default function Prayers() {
@@ -61,6 +65,9 @@ export default function Prayers() {
             sub={t.alhanSub} count={t.alhanCount(hymnGroups.reduce((n, g) => n + g.count, 0) + alhanBooks.reduce((n, b) => n + b.parts.reduce((m, p) => m + p.items.length, 0), 0))}
             onPress={() => router.push('/prayers/alhan')}
             art={<Icon name="hymns" size={52} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />} />
+          <Door colors={PASCHA_SKY} fg="#FFFFFF" title={t.pascha} second={t.paschaAr}
+            sub={t.paschaSub} count={t.paschaDays(holyWeek.days.length)} onPress={() => router.push('/prayers/pascha')}
+            art={<CopticCross size={50} color="rgba(255,255,255,0.75)" />} />
         </View>
       </ScrollView>
     </View>

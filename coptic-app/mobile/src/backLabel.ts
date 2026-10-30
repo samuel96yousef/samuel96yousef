@@ -7,10 +7,11 @@ import { useNavigation } from 'expo-router';
 
 import type { Strings } from './i18n';
 
-const SCREENS: Record<string, keyof Pick<Strings, 'agpeya' | 'kholagy' | 'alhan' | 'prayers' | 'bible' | 'today' | 'readings'>> = {
+const SCREENS: Record<string, keyof Pick<Strings, 'agpeya' | 'kholagy' | 'alhan' | 'pascha' | 'prayers' | 'bible' | 'today' | 'readings'>> = {
   agpeya: 'agpeya',
   kholagy: 'kholagy',
   'alhan/index': 'alhan',
+  'pascha/index': 'pascha',
   index: 'prayers',
 };
 

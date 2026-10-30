@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { agpeyaIndex, alhanBooks, books, hymnGroups, kholagyIndex } from '../data';
+import { agpeyaIndex, alhanBooks, books, holyWeek, hymnGroups, kholagyIndex } from '../data';
 import { pickDay, useReadingDay } from '../day';
 import { toArDigits } from '../lib/coptic';
 import { useReaderLink, type ReaderLink } from '../readerHub';
@@ -120,6 +120,16 @@ function Context({ section, path, link }: { section: Section; path: string; link
         {path.startsWith('/prayers/alhan')
           ? hymnGroups.map((g) => <Row key={g.id} label={ar ? g.ar : g.sv} on={g.id === groupId} onPress={() => router.navigate(`/prayers/alhan/g/${g.id}`)} />)
           : <Row label={t.hymnsByOccasion} on={false} onPress={() => router.navigate('/prayers/alhan')} />}
+        <Heading>{t.pascha}</Heading>
+        {holyWeek.days.map((d) => {
+          const on = path === `/prayers/pascha/${d.id}`;
+          return (
+            <View key={d.id}>
+              <Row label={ar ? d.ar : d.sv} on={on} onPress={() => router.navigate(`/prayers/pascha/${d.id}`)} />
+              {on && link && <Contents link={link} nested />}
+            </View>
+          );
+        })}
       </View>
     );
     const bookId = path.match(/^\/prayers\/alhan\/([^/]+)/)?.[1];

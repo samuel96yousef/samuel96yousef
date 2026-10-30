@@ -6,11 +6,18 @@ import { Platform } from 'react-native';
 import { alhanBooks } from '../assets/alhan';
 import { hymnAssets, hymnGroups, synaxAssets } from '../assets/hymns';
 import { agpeyaIndex, bibleAssets, books, katameros, kholagyIndex, prayerAssets } from '../assets/data';
+import { holyWeekRows, type HolyWeek, type HolyWeekDay } from './holyweek';
 import { isoDate } from './lib/coptic';
 import { dayOverview, readingsFor } from './lib/lectionary';
 import type { BookData, DayOverview, DayReadings, Hymn, Prayer, SynaxEntry } from './lib/types';
 
 export { agpeyaIndex, alhanBooks, books, hymnGroups, katameros, kholagyIndex };
+
+/** Holy Week's order (days, services, readings as references): small, so it ships with the code. */
+export const holyWeek: HolyWeek = require('../assets/holyweek/holyweek.json');
+
+/** One day of Holy Week as reader rows, its readings loaded from the Bible. */
+export const useHolyWeekDay = (day: HolyWeekDay) => useAsync(() => holyWeekRows(day, holyWeek, books, loadBook), [day.id]);
 
 // ---------- Bible books and prayers (assets, read on demand) ----------
 
