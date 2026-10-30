@@ -55,10 +55,10 @@ export default function HymnGroupPage() {
               index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.sep }, pressed && { backgroundColor: colors.bg2 }]}>
             <View style={styles.text}>
               <View style={styles.titleRow}>
-                {h.ca && <View style={[styles.tag, { backgroundColor: colors.tint }]}><Text style={[styles.tagText, { color: colors.crimson }]}>قبطي معرّب</Text></View>}
+                {h.units.some((u) => u.ca) && <View style={[styles.tag, { backgroundColor: colors.tint }]}><Text style={[styles.tagText, { color: colors.crimson }]}>قبطي معرّب</Text></View>}
                 <Text style={[styles.title, { color: colors.label }]}>{h.ar}</Text>
               </View>
-              {incipit(h) ? <Text numberOfLines={1} style={[styles.incipit, { color: h.ca ? colors.crimson : colors.label2 }]}>{incipit(h)}</Text> : null}
+              {incipit(h) ? <Text numberOfLines={1} style={[styles.incipit, { color: h.units.some((u) => u.ca) ? colors.crimson : colors.label2 }]}>{incipit(h)}</Text> : null}
             </View>
             <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
           </Pressable>

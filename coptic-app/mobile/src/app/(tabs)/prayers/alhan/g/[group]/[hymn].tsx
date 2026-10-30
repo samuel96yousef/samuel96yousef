@@ -6,12 +6,16 @@ import { Icon } from '../../../../../../components/Icon';
 import { Reader } from '../../../../../../components/Reader';
 import { Segmented } from '../../../../../../components/Segmented';
 import { hymnGroups, useHymns } from '../../../../../../data';
-import type { HymnMode } from '../../../../../../lib/types';
+import type { Hymn, HymnMode } from '../../../../../../lib/types';
 import { hymnRows } from '../../../../../../rows';
 import { useSettings } from '../../../../../../settings';
 import { FONTS } from '../../../../../../theme';
 
-const MODES: HymnMode[] = ['arca', 'ar', 'ca', 'cop'];
+/** The forms a hymn can be shown in: those its stanzas have. */
+function modesOf(h: Hymn): HymnMode[] {
+  const has = (k: 'ar' | 'ca' | 'cop') => h.units.some((u) => u[k]);
+  return (['arca', 'ar', 'ca', 'cop'] as const).filter((m) => (m === 'arca' ? has('ar') && has('ca') : has(m)));
+}
 
 /** One hymn text in the reader, in the forms chosen above it; at the end, the way on to the next hymn. */
 export default function HymnPage() {
@@ -37,10 +41,11 @@ export default function HymnPage() {
   ) : null;
 
   // The forms to choose between, where the hymn has the Coptic: as it is sung (in Arabic letters) and as it is written.
-  const header = !h ? <ActivityIndicator color={colors.crimson} style={styles.spin} /> : h.ca ? (
+  const modes = h ? modesOf(h) : [];
+  const header = !h ? <ActivityIndicator color={colors.crimson} style={styles.spin} /> : modes.length > 1 ? (
     <View style={styles.modes}>
-      <Segmented label={t.hymnForms} value={hymnMode} onChange={(m) => set({ hymnMode: m })}
-        options={MODES.map((m) => ({ value: m, label: t.hymnMode[m], style: styles.modeText }))} />
+      <Segmented label={t.hymnForms} value={modes.includes(hymnMode) ? hymnMode : modes[0]} onChange={(m) => set({ hymnMode: m })}
+        options={modes.map((m) => ({ value: m, label: t.hymnMode[m], style: styles.modeText }))} />
     </View>
   ) : null;
 

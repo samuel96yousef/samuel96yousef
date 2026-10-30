@@ -219,7 +219,7 @@ TITLES = {
     'psalmody/39-creed-intro': ('مقدمة قانون الإيمان', None),
     'psalmody/40-creed': ('قانون الإيمان', None),
     'psalmody/41-amen-keryalison': ('آمين كيرياليسون', None),
-    'doxologies/02-great-lent-doxology-1': ('ذكصولوجية الصوم الكبير الأولى', None),
+    'doxologies/02-great-lent-doxology-1': ('ذكصولوجية الصوم الكبير الأولى', 'الذكصولوجية الأولى'),
     'liturgy-st-basil/00-matins-raising-of-incense/03-eshleel': ('صلوا – إشليل', None),
     'liturgy-st-basil/00-matins-raising-of-incense/06-eshleel': ('صلوا – إشليل', None),
 }
@@ -259,7 +259,9 @@ def coptish_units(doc):
 def coptish_item(data, path):
     doc = yaml.safe_load(open(os.path.join(data, path), encoding='utf-8'))
     units = coptish_units(doc)
-    if not any(u.get('ca') for u in units):
+    # A Psalmody or doxology text may have the Coptic without its Arabic letters; a liturgy text needs those to count as a hymn.
+    hymn = path.startswith(('psalmody/', 'doxologies/'))
+    if not any(u.get('ca') or (hymn and u.get('cop')) for u in units):
         return None
     t = doc.get('title') or {}
     title, replaces = TITLES.get(path[:-4], (clean(t.get('arabic') or t.get('english') or ''), None))
