@@ -354,11 +354,17 @@ type Mark = React.ComponentRef<typeof View>;
 
 export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeader, print, barLead, barCenter, sectionTabs, peek = true }: ReaderProps) {
   const s = useSettings();
-  const { page, primary, show, spread, scale, t, hintOnce, set, sidebar } = s;
+  const { page, spread, scale, t, hintOnce, set, sidebar } = s;
+  const reduce = useReducedMotion();
+  // The language on the page lags the setting by a short fade: the old text
+  // goes, the new one is put in the same place, and only then shows.
+  const [shown, setShown] = useState({ primary: s.primary, show: s.show });
+  const { primary, show } = spread || reduce ? s : shown;
+  // The open book, or no motion: the page follows the setting at once.
+  if ((spread || reduce) && (shown.primary !== s.primary || shown.show !== s.show)) setShown({ primary: s.primary, show: s.show });
   const tabsOn = !!sectionTabs && !!outline && outline.items.length > 1 && !spread && !sidebar;
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const reduce = useReducedMotion();
   const listRef = useRef<FlatList<Row>>(null);
   const firstVisible = useRef(0);
   // Unfolded verses belong to one text and one display mode; anything else starts folded.
@@ -442,7 +448,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
    * height, worked out from it (a long paragraph's top may be above the screen).
    * `done` is called once it is there, or the reader has taken over.
    */
-  const scrollToRow = useCallback((index: number, at: number | ((h: number) => number), guess?: number, done?: () => void) => {
+  const scrollToRow = useCallback((index: number, at: number | ((h: number) => number), guess?: number, done?: () => void, landed?: () => void) => {
     const where = (h: number) => (typeof at === 'number' ? at : at(h));
     const viewOffset = guess ?? where(0);
     const goal = { index, viewOffset, tries: 0 };
@@ -450,35 +456,53 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     // A jump is not the reader scrolling on: the tabs stay, showing where it went.
     jumpedAt.current = Date.now();
     setTabsHidden(false);
-    const go = () => {
+    // When this last scrolled the list itself: a scroll soon after is its own, not the text still moving.
+    let ours = 0;
+    const byIndex = () => {
+      ours = Date.now();
       try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0, viewOffset }); } catch { /* handled by onScrollToIndexFailed */ }
+    };
+    // A row already laid out is placed from where it is on screen: the list's
+    // own measures can be stale (after a change of language, all of them are).
+    const go = () => {
+      const node = marks.current.get(index);
+      if (!node) { byIndex(); return; }
+      node.measureInWindow((_x, y, _w, h) => {
+        if (target.current !== goal) return;
+        if (h > 0) { ours = Date.now(); listRef.current?.scrollToOffset({ offset: Math.max(0, offsetY.current + y - where(h)), animated: false }); }
+        else byIndex();
+      });
     };
     go();
     let checks = 0;
     let waits = 0;
     let still = 0;
-    const finish = () => { if (target.current === goal) target.current = null; done?.(); };
+    let hit = false;
+    const land = () => { if (!hit) { hit = true; landed?.(); } };
+    const finish = () => { if (target.current === goal) target.current = null; land(); done?.(); };
     const verify = () => setTimeout(() => {
-      if (target.current !== goal) { done?.(); return; }
+      if (target.current !== goal) { land(); done?.(); return; }
       // Still moving: check once it has come to rest.
-      if (Date.now() - scrolledAt.current < 120 && waits++ < 40) { verify(); return; }
+      if (Date.now() - scrolledAt.current < 120 && scrolledAt.current - ours > 60 && waits++ < 40) { verify(); return; }
       if (checks++ >= 16) { finish(); return; }
       const node = marks.current.get(index);
       if (!node) { still = 0; go(); verify(); return; }
       node.measureInWindow((_x, y, _w, h) => {
-        if (target.current !== goal) { done?.(); return; }
+        if (target.current !== goal) { land(); done?.(); return; }
         if (h === 0) { still = 0; go(); verify(); return; }
         // The list's own idea of where the row is can be stale (the rows above
         // were measured in the other language); what is on screen is not.
         const want = where(h);
         if (Math.abs(y - want) > 4) {
           still = 0;
+          ours = Date.now();
           listRef.current?.scrollToOffset({ offset: Math.max(0, offsetY.current + y - want), animated: false });
           verify();
         }
         // Rows above it may still be laid out and push it down, so it is
         // watched until it has stayed put for half a second.
-        else if (++still < 4) verify();
+        // The new text shows as soon as the row is in place.
+        else if (++still < 4) { land(); verify(); }
         else finish();
       });
     }, checks ? 120 : 90);
@@ -521,16 +545,49 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     }, 160);
   }, [readLine]);
 
-  const restore = useCallback(() => {
+  const restore = useCallback((landed?: () => void) => {
     const a = anchor.current;
     restoring.current = true;
     clearTimeout(anchorTimer.current);
     const done = () => { restoring.current = false; takeAnchor(); };
     requestAnimationFrame(() => {
-      if (a) scrollToRow(a.index, (h) => readLine - a.frac * h, readLine - a.frac * a.h, done);
-      else scrollToRow(firstVisible.current, offset, undefined, done);
+      if (a) scrollToRow(a.index, (h) => readLine - a.frac * h, readLine - a.frac * a.h, done, landed);
+      else scrollToRow(firstVisible.current, offset, undefined, done, landed);
     });
   }, [offset, readLine, scrollToRow, takeAnchor]);
+
+  // A change of language: the text fades out, sliding the way it was swiped.
+  const fadeDir = useRef(0);
+  const fading = useRef(false);
+  // The fade is out and the new language not yet on the page.
+  const pending = useRef(false);
+  const fadeIn = useCallback(() => {
+    if (!fading.current) return;
+    fading.current = false;
+    shift.set(-fadeDir.current * 14);
+    opacity.set(withTiming(1, { duration: 220 }));
+    shift.set(withSpring(0, SPRING_SMOOTH));
+  }, [opacity, shift]);
+  useEffect(() => {
+    if (shown.primary === s.primary && shown.show === s.show) {
+      // Changed back before the fade was through: show the text again where it is.
+      if (pending.current) { pending.current = false; restoring.current = false; fadeIn(); }
+      return;
+    }
+    if (spread || reduce) return;
+    restoring.current = true;
+    clearTimeout(anchorTimer.current);
+    if (!fading.current) {
+      fading.current = true;
+      fadeDir.current = swipeDir.current || (s.primary === 'sv' ? 1 : -1);
+      swipeDir.current = 0;
+      opacity.set(withTiming(0, { duration: 130 }));
+      if (shown.primary !== s.primary) shift.set(withTiming(fadeDir.current * 14, { duration: 130 }));
+    }
+    pending.current = true;
+    const id = setTimeout(() => { pending.current = false; setShown({ primary: s.primary, show: s.show }); }, 140);
+    return () => clearTimeout(id);
+  }, [s.primary, s.show, shown, spread, reduce, opacity, shift, fadeIn]);
 
   // Keep the reader in the same place when the language or layout changes.
   // Before paint, so nothing measures the new text as if it were the old place.
@@ -539,17 +596,13 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     const p = prev.current;
     prev.current = { primary, show, spread };
     if (p.primary === primary && p.show === show && p.spread === spread) return;
-    // The open book finds its own page.
-    if (!spread) restore();
-    if (p.primary !== primary && !reduce) {
-      const d = swipeDir.current || (primary === 'sv' ? 1 : -1);
-      swipeDir.current = 0;
-      opacity.set(0);
-      shift.set(-d * 24);
-      opacity.set(withTiming(1, { duration: 260 }));
-      shift.set(withSpring(0, SPRING_SMOOTH));
-    }
-  }, [primary, show, spread, restore, reduce, opacity, shift]);
+    // The open book finds its own page. The new text shows once it is in place,
+    // or after a moment whatever happens, so it is never left hidden.
+    if (spread) { fadeIn(); return; }
+    restore(fadeIn);
+    const id = setTimeout(fadeIn, 700);
+    return () => clearTimeout(id);
+  }, [primary, show, spread, restore, fadeIn]);
 
   /**
    * Which outline item the reader is in: the last one that starts on or above
