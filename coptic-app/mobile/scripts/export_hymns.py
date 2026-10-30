@@ -228,7 +228,8 @@ THEOTOKY_PARTS = {1: 'ثيؤطوكية الأحد', 10: 'القطعة العاش
 for n, file in [(1, 19), (2, 20), (3, 21), (4, 22), (5, 23), (6, 24)] + [(k, 19 + k) for k in range(10, 19)]:
     TITLES[f'psalmody/{file:02d}-theotoky-part-{n}'] = (THEOTOKY.format(ORDINALS[n]), THEOTOKY_PARTS.get(n))
 
-ANNUAL_DOXOLOGIES = ['01-intro', '03-st-mary', '04-archangel-michael', '05-st-pishoy-and-st-paul', '06-conclusion']
+# Left out: '05-st-pishoy-and-st-paul' opens with Joseph (Ⲓⲱⲥⲏⲫ), not with the saints its title names; until it is checked.
+ANNUAL_DOXOLOGIES = ['01-intro', '03-st-mary', '04-archangel-michael', '06-conclusion']
 ROLES = {'priest', 'deacon', 'people'}
 
 
