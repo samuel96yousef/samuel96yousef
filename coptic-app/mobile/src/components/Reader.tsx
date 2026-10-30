@@ -15,7 +15,7 @@
  * With an outline, the wayfinder shows where in the text the reader is.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View, type ListViewToken, type NativeScrollEvent, type NativeSyntheticEvent, type TextStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
@@ -381,7 +381,6 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
   const seq = useRef(0);
   const lastLocate = useRef(0);
   const trailing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const markSet = useMemo(() => new Set(outline?.items.map((i) => i.index)), [outline]);
 
   const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t, hymn: s.hymnMode }), [page, scale, t, s.hymnMode]);
   const both = show === 'both';
@@ -438,7 +437,14 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     return () => events.forEach((e) => window.removeEventListener(e, stop, { capture: true }));
   }, []);
   const offsetY = useRef(0);
-  const scrollToRow = useCallback((index: number, viewOffset: number) => {
+  /**
+   * `at` is where the row's top should be on screen; or, given the row's
+   * height, worked out from it (a long paragraph's top may be above the screen).
+   * `done` is called once it is there, or the reader has taken over.
+   */
+  const scrollToRow = useCallback((index: number, at: number | ((h: number) => number), guess?: number, done?: () => void) => {
+    const where = (h: number) => (typeof at === 'number' ? at : at(h));
+    const viewOffset = guess ?? where(0);
     const goal = { index, viewOffset, tries: 0 };
     target.current = goal;
     // A jump is not the reader scrolling on: the tabs stay, showing where it went.
@@ -448,33 +454,36 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
       try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0, viewOffset }); } catch { /* handled by onScrollToIndexFailed */ }
     };
     go();
-    if (!markSet.has(index)) return;
     let checks = 0;
     let waits = 0;
     let still = 0;
+    const finish = () => { if (target.current === goal) target.current = null; done?.(); };
     const verify = () => setTimeout(() => {
-      if (target.current !== goal) return;
+      if (target.current !== goal) { done?.(); return; }
       // Still moving: check once it has come to rest.
       if (Date.now() - scrolledAt.current < 120 && waits++ < 40) { verify(); return; }
-      if (checks++ >= 16) return;
+      if (checks++ >= 16) { finish(); return; }
       const node = marks.current.get(index);
       if (!node) { still = 0; go(); verify(); return; }
       node.measureInWindow((_x, y, _w, h) => {
-        if (target.current !== goal) return;
+        if (target.current !== goal) { done?.(); return; }
         if (h === 0) { still = 0; go(); verify(); return; }
-        // The list's own idea of where the row is can be stale; what is on screen is not.
-        if (Math.abs(y - viewOffset) > 4) {
+        // The list's own idea of where the row is can be stale (the rows above
+        // were measured in the other language); what is on screen is not.
+        const want = where(h);
+        if (Math.abs(y - want) > 4) {
           still = 0;
-          listRef.current?.scrollToOffset({ offset: Math.max(0, offsetY.current + y - viewOffset), animated: false });
+          listRef.current?.scrollToOffset({ offset: Math.max(0, offsetY.current + y - want), animated: false });
           verify();
         }
         // Rows above it may still be laid out and push it down, so it is
         // watched until it has stayed put for half a second.
         else if (++still < 4) verify();
+        else finish();
       });
     }, checks ? 120 : 90);
     verify();
-  }, [markSet, setTabsHidden]);
+  }, [setTabsHidden]);
   const onScrollFailed = useCallback((info: { index: number; highestMeasuredFrameIndex: number }) => {
     const goal = target.current;
     if (!goal || goal.index !== info.index || goal.tries++ > 40) return;
@@ -485,18 +494,53 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     }, 40);
   }, []);
 
-  const restore = useCallback((index: number) => {
-    requestAnimationFrame(() => scrollToRow(index, offset));
-  }, [offset, scrollToRow]);
+  /**
+   * Where the reader is: the row under the reading line, and how far down it
+   * the line is. Taken when the text comes to rest, from what is on screen, so
+   * that a change of language can find the same place in the other one: the
+   * same part of a long prayer, not the top of the row that happens to show first.
+   */
+  const anchor = useRef<{ index: number; frac: number; h: number } | null>(null);
+  const restoring = useRef(false);
+  const anchorTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const takeAnchor = useCallback(() => {
+    clearTimeout(anchorTimer.current);
+    anchorTimer.current = setTimeout(() => {
+      if (restoring.current) return;
+      // The list reports what is on screen a little late, so a few rows either side are measured.
+      const from = firstVisible.current - 3;
+      const nodes = [...marks.current.entries()].filter(([i]) => i >= from && i < from + 16);
+      let left = nodes.length;
+      let best: { index: number; frac: number; h: number } | null = null;
+      for (const [index, node] of nodes) {
+        node.measureInWindow((_x, y, _w, h) => {
+          if (h > 0 && y <= readLine && y + h > readLine && (!best || index < best.index)) best = { index, frac: (readLine - y) / h, h };
+          if (--left === 0 && best && !restoring.current) anchor.current = best;
+        });
+      }
+    }, 160);
+  }, [readLine]);
 
-  // Keep the reader on the same verse when the language or layout changes.
+  const restore = useCallback(() => {
+    const a = anchor.current;
+    restoring.current = true;
+    clearTimeout(anchorTimer.current);
+    const done = () => { restoring.current = false; takeAnchor(); };
+    requestAnimationFrame(() => {
+      if (a) scrollToRow(a.index, (h) => readLine - a.frac * h, readLine - a.frac * a.h, done);
+      else scrollToRow(firstVisible.current, offset, undefined, done);
+    });
+  }, [offset, readLine, scrollToRow, takeAnchor]);
+
+  // Keep the reader in the same place when the language or layout changes.
+  // Before paint, so nothing measures the new text as if it were the old place.
   const prev = useRef({ primary, show, spread });
-  useEffect(() => {
+  useLayoutEffect(() => {
     const p = prev.current;
     prev.current = { primary, show, spread };
     if (p.primary === primary && p.show === show && p.spread === spread) return;
     // The open book finds its own page.
-    if (!spread) restore(firstVisible.current);
+    if (!spread) restore();
     if (p.primary !== primary && !reduce) {
       const d = swipeDir.current || (primary === 'sv' ? 1 : -1);
       swipeDir.current = 0;
@@ -601,6 +645,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     const max = contentSize.height - layoutMeasurement.height;
     scrolledAt.current = Date.now();
     offsetY.current = contentOffset.y;
+    takeAnchor();
     progress.set(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 0);
     // Reading once the large title is under the top bar; apart thresholds, so it does not flicker at the edge.
     const y = contentOffset.y;
@@ -616,7 +661,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     clearTimeout(trailing.current);
     const now = Date.now();
     if (now - lastLocate.current > 90) { lastLocate.current = now; locate(); } else trailing.current = setTimeout(locate, 120);
-  }, [outline, locate, progress, way, tabsOn, setTabsHidden]);
+  }, [outline, locate, progress, way, tabsOn, setTabsHidden, takeAnchor]);
 
   const onMark = useCallback((i: number, node: Mark | null, prevNode?: Mark) => {
     if (node) marks.current.set(i, node);
@@ -667,8 +712,8 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
 
   const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => (
     <ReaderRow row={item} index={index} ctx={ctx} primary={primary} both={both}
-      peeked={peeks.has(index)} onPeek={togglePeek} mark={markSet.has(index)} onMark={onMark} />
-  ), [ctx, primary, both, peeks, togglePeek, markSet, onMark]);
+      peeked={peeks.has(index)} onPeek={togglePeek} onMark={onMark} />
+  ), [ctx, primary, both, peeks, togglePeek, onMark]);
 
   return (
     <View style={styles.fill}>
@@ -780,9 +825,8 @@ interface RowProps {
   row: Row; index: number; ctx: Ctx; primary: Lang; both: boolean; peeked: boolean; onPeek: (i: number) => void;
 }
 
-/** Rows the wayfinder measures (section titles, headings, verses) get a wrapper it can find on screen. */
-const ReaderRow = memo(function ReaderRow({ mark, onMark, ...p }: RowProps & { mark: boolean; onMark: (i: number, node: Mark | null, prev?: Mark) => void }) {
-  if (!mark) return <RowView {...p} />;
+/** Every row gets a wrapper that can be found on screen: the wayfinder measures the section titles and headings, a change of language the row being read. */
+const ReaderRow = memo(function ReaderRow({ onMark, ...p }: RowProps & { onMark: (i: number, node: Mark | null, prev?: Mark) => void }) {
   return (
     <View collapsable={false} ref={(n) => { if (!n) return; onMark(p.index, n); return () => onMark(p.index, null, n); }}>
       <RowView {...p} />
