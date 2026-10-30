@@ -24,7 +24,7 @@ import Svg, { Line } from 'react-native-svg';
 
 import type { Grid } from '../book';
 import { toArDigits } from '../lib/coptic';
-import type { Lang, Role, Unit } from '../lib/types';
+import type { HymnMode, Lang, Role, Unit } from '../lib/types';
 import { itemAt, type Outline } from '../rows';
 import { useSettings } from '../settings';
 import { FONTS, SPRING_SMOOTH, type PagePalette } from '../theme';
@@ -73,6 +73,7 @@ interface Ctx {
   page: PagePalette;
   base: number;
   t: ReturnType<typeof useSettings>['t'];
+  hymn: HymnMode;
 }
 
 // ---------- Text styles ----------
@@ -101,13 +102,9 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
     case 'note':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1, lineHeight: base * 1.8, color: page.rule }
         : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * 0.82, lineHeight: base * 1.4, color: page.rule };
-    case 'ca':
-      // The Coptic of a hymn in Arabic letters, as it is sung: under the Arabic, in the colour of the responses.
-      return { writingDirection: 'rtl', textAlign: 'right', fontFamily: FONTS.ar, fontSize: base * 1.12, lineHeight: base * 2.1, color: page.formula };
-    case 'cop':
-      // A hymn line: the Coptic that is sung, and under it (or on the facing page) its meaning in Arabic.
-      return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1.08, lineHeight: base * 1.85, color: page.ink2 }
-        : { ...dir, fontFamily: FONTS.cop, fontSize: base * 1.08, lineHeight: base * 1.7, color: page.ink };
+    case 'st':
+      // A hymn stanza, for the open book's line grid: the Arabic on its page, the Coptic in Arabic letters on the other.
+      return { writingDirection: 'rtl', textAlign: 'right', fontFamily: FONTS.ar, fontSize: base * 1.3, lineHeight: base * 2.4, color: page.ink };
     case 'secret':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.12), lineHeight: base * 1.9, color: page.ink2 }
         : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.92), lineHeight: base * 1.55, color: page.ink2 };
@@ -131,7 +128,7 @@ function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
 }
 
 function UnitText({ u, lang, ctx, secondary, showC, role }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role }) {
-  let s = lang === 'ar' ? u.ar : u.t === 'cop' ? u.cop : u.sv;
+  let s = lang === 'ar' ? u.ar : u.sv;
   if (!s) return null;
   if (u.t === 'ref' && lang === 'ar') s = toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
   const num = u.t === 'v' ? (showC ? `${u.c}:${u.n}` : String(u.n)) : null;
@@ -176,7 +173,8 @@ function roleBar(role: Role | undefined, lang: Lang, page: PagePalette) {
 function rowText(row: Row): { ar?: string; sv?: string } | null {
   switch (row.k) {
     case 'run': case 'cart': case 'title': return row;
-    case 'u': return { ar: row.u.ar, sv: row.u.t === 'cop' ? row.u.cop : row.u.sv };
+    // A hymn stanza chooses its forms itself (Stanza).
+    case 'u': return row.u.t === 'st' ? null : { ar: row.u.ar, sv: row.u.sv };
     default: return null;
   }
 }
@@ -268,17 +266,10 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
     case 'u': {
       const u = row.u;
       if (u.t === 'role') return null;
-      if (u.t === 'gap') return <View style={{ height: base * 0.9 }} />;
-      if (u.t === 'cop') {
-        // Scrolling, the Arabic stands under each Coptic line; in the open book, Coptic on the left page and Arabic on the right.
-        return (
-          <View style={styles.unit}>
-            {(O ? ['sv', 'ar'] as const : [P]).map((l) => <UnitText key={l} u={u} lang={l} ctx={ctx} secondary={false} />)}
-          </View>
-        );
-      }
+      // In the open book (one language a page) the Arabic stands on its page, the Coptic forms on the other.
+      if (u.t === 'st') return <Stanza u={u} ctx={ctx} side={O ? undefined : P} />;
       const showAlt = !!O && (both || peeked || ALWAYS_BOTH.has(u.t));
-      const bar = u.t === 'ca' ? { borderRightWidth: 2, borderRightColor: page.rule2, paddingRight: 10 } : roleBar(row.role, P, page);
+      const bar = roleBar(row.role, P, page);
       const center = u.t === 'ref' || u.t === 'h' || u.t === 'H';
       return (
         <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>
@@ -295,6 +286,33 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
     default:
       return null;
   }
+}
+
+const FORMS: Record<HymnMode, StanzaForm[]> = { arca: ['ar', 'ca'], ar: ['ar'], ca: ['ca'], cop: ['cop'] };
+type StanzaForm = 'ar' | 'ca' | 'cop';
+
+/**
+ * A hymn stanza in the forms the reader chose: the Arabic, the Coptic in
+ * Arabic letters as it is sung, the Coptic. A stanza that lacks the chosen
+ * form shows what it has, so nothing goes blank.
+ */
+function Stanza({ u, ctx, side }: { u: Unit; ctx: Ctx; side?: Lang }) {
+  const { page, base } = ctx;
+  let forms = FORMS[ctx.hymn].filter((k) => u[k]);
+  if (!forms.length) forms = (['ar', 'ca', 'cop'] as const).filter((k) => u[k]).slice(0, 1);
+  if (side) forms = forms.filter((k) => (k === 'ar') === (side === 'ar'));
+  const rtl: TextStyle = { writingDirection: 'rtl', textAlign: 'right' };
+  const style = (k: StanzaForm, under: boolean): TextStyle => {
+    if (k === 'cop') return { writingDirection: 'ltr', textAlign: 'left', fontFamily: FONTS.cop, fontSize: base * 1.12, lineHeight: base * 1.75, color: page.ink };
+    // Under the Arabic, the Coptic in Arabic letters takes the colour of the responses, with a rule beside it.
+    if (under) return { ...rtl, fontFamily: FONTS.ar, fontSize: base * 1.12, lineHeight: base * 2.1, color: page.formula, borderRightWidth: 2, borderRightColor: page.rule2, paddingRight: 10, marginTop: 4 };
+    return { ...rtl, fontFamily: FONTS.ar, fontSize: base * 1.3, lineHeight: base * 2.4, color: page.ink };
+  };
+  return (
+    <View style={styles.unit}>
+      {forms.map((k, i) => <Text key={k} style={style(k, i > 0 && k === 'ca')}>{u[k]}</Text>)}
+    </View>
+  );
 }
 
 const ROLE_SV: Record<Role, string> = { priest: 'Prästen', deacon: 'Diakonen', people: 'Folket' };
@@ -365,7 +383,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
   const trailing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const markSet = useMemo(() => new Set(outline?.items.map((i) => i.index)), [outline]);
 
-  const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t }), [page, scale, t]);
+  const ctx = useMemo<Ctx>(() => ({ page, base: 18 * scale, t, hymn: s.hymnMode }), [page, scale, t, s.hymnMode]);
   const both = show === 'both';
 
   // The open book: the row it turns to, and whether the device has just unfolded.

@@ -10,7 +10,8 @@ Synaxarium at copticchurch.net:
 
 The Coptish Datastore (github.com/markrofail/coptish-datastore, MPL-2.0) has
 the Psalmody, the doxologies and the liturgy with the Arabic in running
-paragraphs and the Coptic written in Arabic letters, as it is sung. Those come
+paragraphs, the Coptic written in Arabic letters, as it is sung, and the
+Coptic itself; each stanza keeps all three, and the reader picks. Those come
 first in their groups; the tasbeha.org texts follow where they add something,
 their Arabic lines joined into a paragraph per stanza and the Coptic script
 left out (it stays only where a stanza has no Arabic).
@@ -187,50 +188,52 @@ COPTISH = {
 }
 # The Psalmody has English titles only. Its Arabic titles, and the tasbeha.org
 # text each one replaces (the same hymn, which would otherwise stand twice).
-THEOTOKY = 'ثيؤطوكية الأحد – الجزء {}'
+THEOTOKY = 'ثيؤطوكية الأحد: القطعة {}'
+ORDINALS = {1: 'الأولى', 2: 'الثانية', 3: 'الثالثة', 4: 'الرابعة', 5: 'الخامسة', 6: 'السادسة', 10: 'العاشرة', 11: 'الحادية عشرة',
+            12: 'الثانية عشرة', 13: 'الثالثة عشرة', 14: 'الرابعة عشرة', 15: 'الخامسة عشرة', 16: 'السادسة عشرة', 17: 'السابعة عشرة', 18: 'الثامنة عشرة'}
 TITLES = {
-    'psalmody/00-ten-thino': ('لحن تين ثينو', 'لحن تين ثينو'),
-    'psalmody/01-resurrection-tennav': ('لحن القيامة - تينناف', 'لحن القيامة - تينناف'),
+    'psalmody/00-ten-thino': ('قوموا يا بني النور (تين ثينو)', 'لحن تين ثينو'),
+    'psalmody/01-resurrection-tennav': ('لحن القيامة (تين ناف)', 'لحن القيامة - تينناف'),
     'psalmody/02-first-hoos': ('الهوس الأول', 'الهوس الأول'),
     'psalmody/03-lobsh-of-first-hoos': ('لبش الهوس الأول', 'لبش الهوس الأول'),
     'psalmody/04-second-hoos': ('الهوس الثاني', 'الهوس الثاني'),
     'psalmody/05-second-lobsh': ('لبش الهوس الثاني', 'لبش الهوس الثاني'),
     'psalmody/06-third-hoos': ('الهوس الثالث', 'الهوس الثالث'),
-    'psalmody/07-arepsalin': ('إبصالية واطس للثلاثة فتية القديسين - رومية', 'إبصالية واطس للثلاثة فتية القديسين - رومية'),
-    'psalmody/08-ten-oweeh-enthok': ('مديح الثلاثة فتية القديسين - تين أوويه إنسوك', 'مديح واطس للثلاثة فتية القديسين - تين اوويه إنسوك'),
+    'psalmody/07-arepsalin': ('أريبصالين', 'إبصالية واطس للثلاثة فتية القديسين - رومية'),
+    'psalmody/08-ten-oweeh-enthok': ('تين أوويه إنثوك', 'مديح واطس للثلاثة فتية القديسين - تين اوويه إنسوك'),
     'psalmody/09-comemoration': ('مجمع القديسين', 'مجمع القديسين'),
-    'psalmody/10-doxology-st-mary': ('ذكصولوجية للعذراء مريم - تسبحة نصف الليل', 'ذكصولوجية للعذراء مريم - تسبحة نصف الليل'),
-    'psalmody/11-doxology-archangel-michael': ('ذكصولوجية الملاك ميخائيل', None),
+    'psalmody/10-doxology-st-mary': ('ذكصولوجية العذراء مريم', 'ذكصولوجية للعذراء مريم - تسبحة نصف الليل'),
+    'psalmody/11-doxology-archangel-michael': ('ذكصولوجية رئيس الملائكة ميخائيل', None),
     'psalmody/12-doxology-st-anthony': ('ذكصولوجية الأنبا أنطونيوس', None),
     'psalmody/13-conclusion-of-doxologies': ('ختام الذكصولوجيات', None),
     'psalmody/14-fourth-hoos': ('الهوس الرابع', 'الهوس الرابع'),
-    'psalmody/15-aynahti': ('إبصالية الأحد الأولى - آي ناهتي', 'إبصالية الأحد الأول'),
-    'psalmody/16-aykoti': ('إبصالية الأحد الثانية - آي كوتي', 'إبصالية الأحد الثانية'),
+    'psalmody/15-aynahti': ('إبصالية آدام (آي ناهتي)', 'إبصالية الأحد الأول'),
+    'psalmody/16-aykoti': ('إبصالية الأحد (آي كوتي)', 'إبصالية الأحد الثانية'),
     'psalmody/17-theotoky-adam-intro': ('مقدمة الثيؤطوكيات الآدام', None),
     'psalmody/18-theotoky-watos-intro': ('مقدمة الثيؤطوكيات الواطس', None),
-    'psalmody/25-gospel': ('الإنجيل لمعلمنا مار لوقا', 'الإنجيل لمعلمنا مار لوقا'),
-    'psalmody/26-shere-ne-maria': ('القطعة السابعة - شيري نيه ماريا', 'القطعة السابعة - شيري نيه ماريا'),
-    'psalmody/27-semouti': ('القطعة السابعة - سيموتي', 'القطعة السابعة - سيموتي'),
-    'psalmody/28-seven-times': ('القطعة الثامنة - شاشف إنسوب', 'القطعة الثامنة - شاشف إنسوب'),
-    'psalmody/38-your-mercies': ('نيك ناي أو باشويس - مراحمك يا رب', None),
-    'psalmody/39-creed-intro': ('بدء قانون الإيمان', None),
+    'psalmody/25-gospel': ('الإنجيل', 'الإنجيل لمعلمنا مار لوقا'),
+    'psalmody/26-shere-ne-maria': ('شيري ني ماريا', 'القطعة السابعة - شيري نيه ماريا'),
+    'psalmody/27-semouti': ('سيموتي', 'القطعة السابعة - سيموتي'),
+    'psalmody/28-seven-times': ('سبع مرات', 'القطعة الثامنة - شاشف إنسوب'),
+    'psalmody/38-your-mercies': ('مراحمك يا إلهي', None),
+    'psalmody/39-creed-intro': ('مقدمة قانون الإيمان', None),
     'psalmody/40-creed': ('قانون الإيمان', None),
-    'psalmody/41-amen-keryalison': ('آمين الليلويا - ختام التسبحة', None),
-    'doxologies/02-great-lent-doxology-1': ('الذكصولوجية الأولى', None),
+    'psalmody/41-amen-keryalison': ('آمين كيرياليسون', None),
+    'doxologies/02-great-lent-doxology-1': ('ذكصولوجية الصوم الكبير الأولى', None),
     'liturgy-st-basil/00-matins-raising-of-incense/03-eshleel': ('صلوا – إشليل', None),
     'liturgy-st-basil/00-matins-raising-of-incense/06-eshleel': ('صلوا – إشليل', None),
 }
 # The Sunday Theotokia in its parts; the tasbeha.org pieces they replace.
 THEOTOKY_PARTS = {1: 'ثيؤطوكية الأحد', 10: 'القطعة العاشرة - تي اوي إنهيكانوس', 15: 'القطعة الخامسة عشر - أف إن بي أرشي إريفس', 16: 'القطعة السادسة عشر - نيم غار'}
 for n, file in [(1, 19), (2, 20), (3, 21), (4, 22), (5, 23), (6, 24)] + [(k, 19 + k) for k in range(10, 19)]:
-    TITLES[f'psalmody/{file:02d}-theotoky-part-{n}'] = (THEOTOKY.format(n), THEOTOKY_PARTS.get(n))
+    TITLES[f'psalmody/{file:02d}-theotoky-part-{n}'] = (THEOTOKY.format(ORDINALS[n]), THEOTOKY_PARTS.get(n))
 
 ANNUAL_DOXOLOGIES = ['01-intro', '03-st-mary', '04-archangel-michael', '05-st-pishoy-and-st-paul', '06-conclusion']
 ROLES = {'priest', 'deacon', 'people'}
 
 
 def coptish_units(doc):
-    """A Coptish text as units: per stanza the Arabic, then the Coptic in Arabic letters; who sings it, and the rubrics."""
+    """A Coptish text as units: a stanza in up to three forms (Arabic, Coptic in Arabic letters, Coptic), who sings it, the rubrics."""
     units = []
     for sec in doc.get('sections') or []:
         kind = sec.get('type')
@@ -240,21 +243,15 @@ def coptish_units(doc):
                 units.append({'t': 'rubric', 'ar': t})
         elif kind == 'verses':
             v = sec.get('verses') or {}
-            ar, ca, cop = v.get('arabic') or [], v.get('coptic_arabic') or [], v.get('coptic') or []
+            forms = {k: v.get(src) or [] for k, src in (('ar', 'arabic'), ('ca', 'coptic_arabic'), ('cop', 'coptic'))}
             if sec.get('speaker') in ROLES:
                 units.append({'t': 'role', 'r': sec['speaker']})
-            for i in range(max(len(ar), len(ca))):
-                a = clean(ar[i]) if i < len(ar) and ar[i] else ''
-                c = clean(ca[i]) if i < len(ca) and ca[i] else ''
-                if not a and not c and i < len(cop) and cop[i]:
-                    units.append({'t': 'cop', 'cop': clean(cop[i])})
-                if a:
-                    units.append({'t': 'p', 'ar': a})
-                if c:
-                    units.append({'t': 'ca', 'ar': c})
-                units.append({'t': 'gap'})
+            for i in range(max(len(x) for x in forms.values())):
+                st = {k: clean(x[i]) for k, x in forms.items() if i < len(x) and x[i] and clean(x[i])}
+                if st:
+                    units.append({'t': 'st', **st})
         # Readings ('reading') are in the day's readings; the fractions ('compound-prayer') in the Kholagy.
-    while units and units[-1]['t'] in ('gap', 'role'):
+    while units and units[-1]['t'] == 'role':
         units.pop()
     return units
 
@@ -262,7 +259,7 @@ def coptish_units(doc):
 def coptish_item(data, path):
     doc = yaml.safe_load(open(os.path.join(data, path), encoding='utf-8'))
     units = coptish_units(doc)
-    if not any(u['t'] == 'ca' for u in units):
+    if not any(u.get('ca') for u in units):
         return None
     t = doc.get('title') or {}
     title, replaces = TITLES.get(path[:-4], (clean(t.get('arabic') or t.get('english') or ''), None))
@@ -287,25 +284,26 @@ def coptish(data):
 
 
 def flowing(units):
-    """A tasbeha.org text as running Arabic: a stanza's lines joined into one paragraph, the Coptic script left out."""
+    """A tasbeha.org text as running Arabic: a stanza's lines joined into one paragraph; the Coptic script only where there is no Arabic."""
     out = []
     stanza = []
 
     def close():
-        lines = [u['ar'] for u in stanza if u['t'] == 'cop' and 'ar' in u]
+        lines = [u['ar'] for u in stanza if 'ar' in u]
         if lines:
-            out.append({'t': 'p', 'ar': ' '.join(lines)})
+            out.append({'t': 'st', 'ar': ' '.join(lines)})
         elif stanza:
-            # A stanza with no Arabic keeps its Coptic, rather than vanish.
-            out.extend({'t': 'cop', 'cop': u['cop']} for u in stanza if u['t'] == 'cop')
+            out.append({'t': 'st', 'cop': ' '.join(u['cop'] for u in stanza)})
         stanza.clear()
 
     for u in units:
         if u['t'] == 'cop':
             stanza.append(u)
-            continue
-        close()
-        out.append(u)
+        elif u['t'] == 'gap':
+            close()
+        else:
+            close()
+            out.append(u)
     close()
     return out
 

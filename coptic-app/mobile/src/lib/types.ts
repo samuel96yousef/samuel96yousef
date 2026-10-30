@@ -55,13 +55,14 @@ export type Role = 'priest' | 'deacon' | 'people';
  * p: paragraph · h/H: heading · f: liturgical formula · ref: Bible reference ·
  * psalm · v: verse (c = chapter, n = number) · role: speaker change ·
  * rubric: instruction · secret: prayed silently by the priest · note: about the source text ·
- * cop: a line of a hymn in Coptic script · ca: a stanza of a hymn in Coptic written in Arabic letters,
- * as it is sung (in `ar`) · gap: the end of a stanza
+ * st: a stanza of a hymn, in Arabic (`ar`), in Coptic written in Arabic letters as it is sung (`ca`)
+ * and in Coptic (`cop`), as far as each is known
  */
 export interface Unit {
-  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note' | 'cop' | 'ca' | 'gap';
+  t: 'p' | 'h' | 'H' | 'f' | 'ref' | 'psalm' | 'v' | 'role' | 'rubric' | 'secret' | 'note' | 'st';
   ar?: string;
   sv?: string;
+  ca?: string;
   cop?: string;
   c?: number;
   n?: number;
@@ -119,14 +120,17 @@ export interface HymnGroup {
   count: number;
 }
 
-/** A hymn text: the Arabic in paragraphs, and where it is known the Coptic in Arabic letters. No Swedish. */
+/** A hymn text: the Arabic in paragraphs and, where they are known, the Coptic in Arabic letters and in Coptic. No Swedish. */
 export interface Hymn {
   id: string;
   ar: string;
-  /** Has the Coptic in Arabic letters (from the Coptish Datastore) */
+  /** Has the Coptic in Arabic letters and in Coptic (from the Coptish Datastore) */
   ca?: boolean;
   units: Unit[];
 }
+
+/** Which forms of a hymn the reader shows: Arabic with the Coptic in Arabic letters under it, or one of the three alone. */
+export type HymnMode = 'arca' | 'ar' | 'ca' | 'cop';
 
 /** One commemoration of the Synaxarium: its title and its account, in Arabic. */
 export interface SynaxEntry {

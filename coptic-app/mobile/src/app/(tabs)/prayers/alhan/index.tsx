@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlhanBookCard } from '../../../../components/AlhanContents';
 import { Icon } from '../../../../components/Icon';
 import { LargeTitle } from '../../../../components/LargeTitle';
 import { TopBar } from '../../../../components/TopBar';
-import { alhanBooks, hymnGroups } from '../../../../data';
-import { hymnGroupFor } from '../../../../hymns';
+import { alhanBooks, hymnGroups, searchHymns, useAsync } from '../../../../data';
+import { hymnGroupFor, incipit } from '../../../../hymns';
 import type { HymnGroup } from '../../../../lib/types';
 import { useSettings } from '../../../../settings';
 import { FONTS } from '../../../../theme';
@@ -22,6 +23,8 @@ export default function Alhan() {
   const insets = useSafeAreaInsets();
   const ar = lang === 'ar';
   const now = hymnGroupFor(new Date());
+  const [query, setQuery] = useState('');
+  const searching = query.trim().length >= 2;
   // The day's occasion first, then the book's order.
   const groups = [...hymnGroups].sort((a, b) => Number(b.id === now) - Number(a.id === now));
   return (
@@ -29,6 +32,13 @@ export default function Alhan() {
       <TopBar back={sidebar ? undefined : t.prayers} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
         <LargeTitle title={t.alhan} subtitle={t.alhanSub} />
+        <View style={[styles.search, { backgroundColor: colors.surface, flexDirection: ar ? 'row-reverse' : 'row' }]}>
+          <Icon name="search" size={18} color={colors.label2} />
+          <TextInput value={query} onChangeText={setQuery} placeholder={t.searchAllHymns} placeholderTextColor={colors.label3}
+            style={[styles.input, { color: colors.label }, ar && styles.right]} returnKeyType="search" clearButtonMode="while-editing" />
+        </View>
+        {searching ? <Results query={query} /> : (
+        <>
 
         <Label>{t.hazzatBooks}</Label>
         {alhanBooks.map((b) => (
@@ -44,7 +54,36 @@ export default function Alhan() {
         </View>
         <Text style={[styles.hint, { color: colors.label3 }, ar && styles.right]}>{t.hymnsSource}</Text>
         <Text style={[styles.hint, { color: colors.label3 }, ar && styles.right]}>{t.alhanHint}</Text>
+        </>
+        )}
       </ScrollView>
+    </View>
+  );
+}
+
+/** Hymns from every occasion whose title or text holds the query: the title, the occasion, and how it begins. */
+function Results({ query }: { query: string }) {
+  const { t, lang, colors } = useSettings();
+  const ar = lang === 'ar';
+  const { data } = useAsync(() => searchHymns(query), [query.trim()]);
+  if (!data) return <ActivityIndicator color={colors.crimson} style={styles.spin} />;
+  if (!data.hits.length) return <Text style={[styles.hint, { color: colors.label2 }, ar && styles.right]}>{t.noHymns}</Text>;
+  return (
+    <View>
+      <View style={[styles.group, { backgroundColor: colors.surface }]}>
+        {data.hits.map(({ group, hymn }, i) => {
+          const g = hymnGroups.find((x) => x.id === group)!;
+          return (
+            <Pressable key={`${group}:${hymn.id}`} accessibilityRole="button" onPress={() => router.push(`/prayers/alhan/g/${group}/${hymn.id}`)}
+              style={({ pressed }) => [styles.hit, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.sep }, pressed && { backgroundColor: colors.bg2 }]}>
+              <Text style={[styles.hitTitle, { color: colors.label }]}>{hymn.ar}</Text>
+              <Text style={[styles.hitGroup, { color: colors.crimson }, ar && styles.right]}>{ar ? g.ar : g.sv}</Text>
+              <Text numberOfLines={1} style={[styles.hitText, { color: colors.label2 }]}>{incipit(hymn)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {data.more && <Text style={[styles.hint, { color: colors.label3 }, ar && styles.right]}>{t.moreHymns}</Text>}
     </View>
   );
 }
@@ -91,6 +130,14 @@ const styles = StyleSheet.create({
   secondSv: { fontSize: 13.5, lineHeight: 20, marginTop: 2 },
   count: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   hint: { fontSize: 12.5, lineHeight: 18, marginTop: 16, marginHorizontal: 4 },
+  search: { alignItems: 'center', gap: 8, height: 44, borderRadius: 12, paddingHorizontal: 12, marginBottom: 6 },
+  input: { flex: 1, fontSize: 16, height: 44 },
+  spin: { marginTop: 24 },
+  hit: { paddingVertical: 10, paddingHorizontal: 14 },
+  // Titles and texts are Arabic in either language of the app.
+  hitTitle: { fontFamily: FONTS.arBold, fontSize: 17, lineHeight: 28, textAlign: 'right', writingDirection: 'rtl' },
+  hitGroup: { fontSize: 12.5, fontWeight: '600' },
+  hitText: { fontFamily: FONTS.ar, fontSize: 15, lineHeight: 24, textAlign: 'right', writingDirection: 'rtl' },
   left: { textAlign: 'left' },
   right: { textAlign: 'right', writingDirection: 'rtl' },
   flip: { transform: [{ scaleX: -1 }] },

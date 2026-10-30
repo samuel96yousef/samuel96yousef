@@ -5,7 +5,7 @@ import { Appearance as SystemAppearance, Platform, useColorScheme, useWindowDime
 
 import { STRINGS, type Strings } from './i18n';
 import { DEFAULT_PRINT, type PrintOptions } from './print/html';
-import type { Lang } from './lib/types';
+import type { HymnMode, Lang } from './lib/types';
 import { DARK, LIGHT, PAGES, SIDEBAR_MIN_HEIGHT, SIDEBAR_MIN_WIDTH, SIDEBAR_W, SPREAD_MIN_HEIGHT, SPREAD_MIN_WIDTH, type PagePalette, type Palette, type ReadTheme } from './theme';
 
 export type Show = Lang | 'both';
@@ -29,6 +29,8 @@ export interface Settings {
   dock: DockPlace;
   /** How the reader last printed or saved a PDF. */
   printOpts: PrintOptions;
+  /** Which forms of the hymns are shown */
+  hymnMode: HymnMode;
 }
 
 interface SettingsContext extends Settings {
@@ -53,7 +55,7 @@ interface SettingsContext extends Settings {
 const KEY = 'settings.v1';
 const deviceLang: Lang = getLocales().some((l) => l.languageCode === 'ar') ? 'ar' : 'sv';
 // The dock starts on the right, a little below the middle: where a right thumb rests.
-const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', appearance: 'auto', hints: {}, dock: { side: 'right', y: 0.62 }, printOpts: DEFAULT_PRINT };
+const DEFAULTS: Settings = { lang: deviceLang, primary: deviceLang, show: deviceLang, scale: 1, read: 'auto', spreadPref: 'auto', appearance: 'auto', hints: {}, dock: { side: 'right', y: 0.62 }, printOpts: DEFAULT_PRINT, hymnMode: 'arca' };
 
 const Ctx = createContext<SettingsContext | null>(null);
 

@@ -6,13 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../../../../../components/Icon';
 import { LargeTitle } from '../../../../../../components/LargeTitle';
 import { TopBar } from '../../../../../../components/TopBar';
-import { hymnGroups, normalizeAr, useHymns } from '../../../../../../data';
-import type { Hymn } from '../../../../../../lib/types';
+import { hymnGroups, hymnMatches, normalizeAr, useHymns } from '../../../../../../data';
+import { incipit } from '../../../../../../hymns';
 import { useSettings } from '../../../../../../settings';
 import { FONTS } from '../../../../../../theme';
-
-/** How a hymn begins: in Coptic (in Arabic letters, by which it is known) where there is, else in Arabic. */
-const incipit = (h: Hymn) => h.units.find((u) => u.t === 'ca')?.ar ?? h.units.find((u) => u.t === 'p')?.ar ?? h.units.find((u) => u.t === 'cop')?.cop ?? '';
 
 /** The hymn texts of one occasion, each with its first Coptic line; a search narrows them by title or text. */
 export default function HymnGroupPage() {
@@ -27,7 +24,7 @@ export default function HymnGroupPage() {
   const shown = useMemo(() => {
     const q = normalizeAr(query.trim());
     if (!data || !q) return data ?? [];
-    return data.filter((h) => normalizeAr(h.ar).includes(q) || h.units.some((u) => u.ar && normalizeAr(u.ar).includes(q)));
+    return data.filter((h) => hymnMatches(h, q));
   }, [data, query]);
 
   const header = (

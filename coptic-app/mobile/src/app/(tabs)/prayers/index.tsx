@@ -57,7 +57,7 @@ export default function Prayers() {
           <Door colors={KHOLAGY_SKY} fg="#FFFFFF" title={t.kholagy} second={ar ? 'Kholagy' : 'الخولاجي'}
             sub={t.kholagySub} count={t.liturgiesCount(3)} onPress={() => router.push('/prayers/kholagy')}
             art={<Icon name="liturgy" size={56} color="rgba(255,255,255,0.75)" strokeWidth={1.4} />} />
-          <Door colors={ALHAN_SKY} fg="#FFFFFF" title={t.alhan} second={ar ? 'Alhan' : 'الألحان'}
+          <Door colors={ALHAN_SKY} fg="#FFFFFF" title={t.alhan} second={t.alhanAr}
             sub={t.alhanSub} count={t.alhanCount(hymnGroups.reduce((n, g) => n + g.count, 0) + alhanBooks.reduce((n, b) => n + b.parts.reduce((m, p) => m + p.items.length, 0), 0))}
             onPress={() => router.push('/prayers/alhan')}
             art={<Icon name="hymns" size={52} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />} />

@@ -1,5 +1,10 @@
-/** Which group of hymn texts belongs to a day: the feast it is, or the season it is in. */
+/** Which group of hymn texts belongs to a day: the feast it is, or the season it is in; and how a hymn begins. */
 import { coptic, dayDiff, easter } from './lib/coptic';
+import type { Hymn } from './lib/types';
+
+/** How a hymn begins: in Coptic (in Arabic letters, by which it is known) where there is, else in Arabic. */
+export const incipit = (h: Hymn) =>
+  h.units.find((u) => u.ca)?.ca ?? h.units.find((u) => u.ar && (u.t === 'st' || u.t === 'p'))?.ar ?? h.units.find((u) => u.cop)?.cop ?? '';
 
 /** Feasts on a fixed day of the Coptic year: "month-day" → group. */
 const FIXED: Record<string, string> = {

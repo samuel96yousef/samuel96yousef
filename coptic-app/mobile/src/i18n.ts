@@ -1,5 +1,5 @@
 import { toArDigits } from './lib/coptic';
-import type { Lang, Role } from './lib/types';
+import type { HymnMode, Lang, Role } from './lib/types';
 
 const sv = {
   today: 'Idag',
@@ -126,7 +126,13 @@ const sv = {
   printChapter: (c: string) => c,
   printBook: (b: string) => `Hela ${b}`,
   printDays: '7 dagar',
-  alhan: 'Alhan',
+  alhan: 'Hymner och tasbeha',
+  alhanAr: 'مكتبة الألحان والتسبحة',
+  hymnForms: 'Visa hymnen som',
+  hymnMode: { arca: 'عربي ومعرّب', ar: 'عربي', ca: 'معرّب', cop: 'قبطي' } as Record<HymnMode, string>,
+  searchAllHymns: 'Sök i alla hymner',
+  noHymns: 'Inga hymner hittades.',
+  moreHymns: 'Fler träffar finns, skriv mer för att begränsa.',
   alhanSub: 'Kyrkans hymner för året och högtiderna',
   alhanCount: (n: number) => `${n} hymner och texter`,
   page: (n: number) => `Sida ${n}`,
@@ -270,7 +276,13 @@ const ar: Strings = {
   printChapter: (c: string) => c,
   printBook: (b: string) => `${b} كاملاً`,
   printDays: '٧ أيام',
-  alhan: 'الألحان',
+  alhan: 'مكتبة الألحان والتسبحة',
+  alhanAr: 'Hymner och tasbeha',
+  hymnForms: 'عرض اللحن',
+  hymnMode: { arca: 'عربي ومعرّب', ar: 'عربي', ca: 'معرّب', cop: 'قبطي' } as Record<HymnMode, string>,
+  searchAllHymns: 'البحث في كل الألحان',
+  noHymns: 'لم يتم العثور على ألحان.',
+  moreHymns: 'توجد نتائج أخرى، اكتب أكثر لتضييق البحث.',
   alhanSub: 'ألحان الكنيسة على مدار السنة وفي الأعياد',
   alhanCount: (n: number) => `${toArDigits(n)} لحناً ونصاً`,
   page: (n: number) => `صفحة ${toArDigits(n)}`,

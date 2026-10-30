@@ -4,15 +4,19 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Icon } from '../../../../../../components/Icon';
 import { Reader } from '../../../../../../components/Reader';
+import { Segmented } from '../../../../../../components/Segmented';
 import { hymnGroups, useHymns } from '../../../../../../data';
+import type { HymnMode } from '../../../../../../lib/types';
 import { hymnRows } from '../../../../../../rows';
 import { useSettings } from '../../../../../../settings';
 import { FONTS } from '../../../../../../theme';
 
-/** One hymn text in the reader: each Coptic line with its Arabic; at the end, the way on to the next hymn. */
+const MODES: HymnMode[] = ['arca', 'ar', 'ca', 'cop'];
+
+/** One hymn text in the reader, in the forms chosen above it; at the end, the way on to the next hymn. */
 export default function HymnPage() {
   const { group, hymn } = useLocalSearchParams<{ group: string; hymn: string }>();
-  const { t, lang, colors } = useSettings();
+  const { t, lang, colors, hymnMode, set } = useSettings();
   const g = hymnGroups.find((x) => x.id === group) ?? hymnGroups[0];
   const { data } = useHymns(g.id);
   const at = data ? data.findIndex((h) => h.id === hymn) : -1;
@@ -32,10 +36,17 @@ export default function HymnPage() {
     </Pressable>
   ) : null;
 
+  // The forms to choose between, where the hymn has the Coptic: as it is sung (in Arabic letters) and as it is written.
+  const header = !h ? <ActivityIndicator color={colors.crimson} style={styles.spin} /> : h.ca ? (
+    <View style={styles.modes}>
+      <Segmented label={t.hymnForms} value={hymnMode} onChange={(m) => set({ hymnMode: m })}
+        options={MODES.map((m) => ({ value: m, label: t.hymnMode[m], style: styles.modeText }))} />
+    </View>
+  ) : null;
+
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
-      <Reader rows={rows} back={ar ? g.ar : g.sv} footer={footer} peek={false}
-        header={!h ? <ActivityIndicator color={colors.crimson} style={styles.spin} /> : null} />
+      <Reader rows={rows} back={ar ? g.ar : g.sv} footer={footer} peek={false} header={header} />
     </View>
   );
 }
@@ -43,6 +54,8 @@ export default function HymnPage() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   spin: { marginTop: 40 },
+  modes: { paddingHorizontal: 16, paddingBottom: 6 },
+  modeText: { fontFamily: FONTS.arBold, fontSize: 14 },
   next: { alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 18 },
   nextText: { flex: 1, minWidth: 0 },
   nextLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },

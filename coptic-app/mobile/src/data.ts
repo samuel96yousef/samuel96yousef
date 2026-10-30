@@ -76,6 +76,26 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
 export const usePrayer = (kind: PrayerBook, id: string) =>
   useAsync(() => loadPrayers(kind).then((all) => all.find((p) => p.id === id) ?? all[0]), [kind, id]);
 
+/** A hymn whose title or text (Arabic, or Coptic in Arabic letters) holds a normalised Arabic query. */
+export const hymnMatches = (h: Hymn, q: string) =>
+  normalizeAr(h.ar).includes(q) || h.units.some((u) => (u.ar && normalizeAr(u.ar).includes(q)) || (u.ca && normalizeAr(u.ca).includes(q)));
+
+/** Every hymn text whose title or text holds the query, with its group; loads the groups not yet read. */
+export async function searchHymns(query: string, limit = 80): Promise<{ hits: { group: string; hymn: Hymn }[]; more: boolean }> {
+  const q = normalizeAr(query.trim());
+  const hits: { group: string; hymn: Hymn }[] = [];
+  if (q.length < 2) return { hits, more: false };
+  const all = await Promise.all(hymnGroups.map(async (g) => [g.id, await loadHymns(g.id)] as const));
+  for (const [group, hymns] of all) {
+    for (const hymn of hymns) {
+      if (!hymnMatches(hymn, q)) continue;
+      if (hits.length === limit) return { hits, more: true };
+      hits.push({ group, hymn });
+    }
+  }
+  return { hits, more: false };
+}
+
 /** One group of hymn texts, loaded when opened. */
 export const useHymns = (group: string) => useAsync(() => loadHymns(group), [group]);
 

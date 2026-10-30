@@ -56,7 +56,7 @@ function roleRows(units: Unit[]): Row[] {
     if (u.t === 'role') { pending = u.r; continue; }
     if (u.t === 'H') { rows.push({ k: 'u', u }); continue; }
     // A hymn stanza may be in Coptic only; its singer is named before it all the same.
-    if (pending && (u.t === 'p' || u.t === 'secret' || u.t === 'ca')) {
+    if (pending && (u.t === 'p' || u.t === 'secret' || u.t === 'st')) {
       rows.push({ k: 'role', r: pending });
       role = pending;
       pending = undefined;
