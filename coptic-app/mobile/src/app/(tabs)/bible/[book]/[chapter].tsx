@@ -31,7 +31,14 @@ export default function Chapter() {
 
   const print = useMemo(() => bibleScopes(b, n, t, lang), [b, n, t, lang]);
   const go = (c: number) => router.replace(`/bible/${b.bid}/${c}`);
-  const nav = (
+  // In the open book the buttons sit together at the page's outer edge, clear of the tab bar in the middle,
+  // and name the chapters they go to; under a scrolling chapter they take the width.
+  const nav = spread ? (
+    <View style={[styles.navBook, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
+      {n > 1 && <NavButton label={t.chapter(n - 1)} dir="prev" onPress={() => go(n - 1)} />}
+      {n < b.chapters && <NavButton label={t.chapter(n + 1)} dir="next" onPress={() => go(n + 1)} />}
+    </View>
+  ) : (
     <View style={[styles.nav, { flexDirection: ar ? 'row-reverse' : 'row' }]}>
       {n > 1 ? <NavButton label={t.prevChapter} dir="prev" onPress={() => go(n - 1)} /> : <View />}
       {n < b.chapters ? <NavButton label={t.nextChapter} dir="next" onPress={() => go(n + 1)} /> : <View />}
@@ -73,6 +80,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { paddingHorizontal: 16 },
   nav: { justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 18 },
+  navBook: { justifyContent: 'flex-end', gap: 8 },
   navBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 14, height: 40 },
   navText: { fontSize: 15, fontWeight: '600' },
 });
