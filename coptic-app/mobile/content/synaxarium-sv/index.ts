@@ -2,4 +2,5 @@
 // The Synaxarium in Swedish, one Coptic month to a file; a month not translated yet is not here.
 export const synaxSvAssets: Record<number, number> = {
   1: require('./01.synax'),
+  2: require('./02.synax'),
 };
