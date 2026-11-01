@@ -41,6 +41,8 @@ interface SettingsContext extends Settings {
   dark: boolean;
   /** Wide enough (or forced) to show the open-book spread. */
   spread: boolean;
+  /** The screen is large enough for the open book by itself. */
+  bookFits: boolean;
   /** A large screen: the sidebar takes the tab bar's place. */
   sidebar: boolean;
   /** The width the screens have beside the sidebar (all of it without one). */
@@ -68,8 +70,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const latest = useRef(s);
   useEffect(() => { latest.current = s; }, [s]);
 
+  // Turning the open book off lasts until the app is opened again: a large screen opens as a book.
   const save = useCallback((next: Settings) => {
-    AsyncStorage.setItem(KEY, JSON.stringify({ ...next, hints: hints.current })).catch(() => {});
+    const spreadPref = next.spreadPref === 'off' ? 'auto' : next.spreadPref;
+    AsyncStorage.setItem(KEY, JSON.stringify({ ...next, spreadPref, hints: hints.current })).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -77,6 +81,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .then((raw) => {
         if (!raw) return;
         const stored: Settings = { ...DEFAULTS, ...JSON.parse(raw) };
+        // Saved before turning it off was only for the time being.
+        if (stored.spreadPref === 'off') stored.spreadPref = 'auto';
         hints.current = stored.hints ?? {};
         setS(stored);
       })
@@ -115,10 +121,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SettingsContext>(() => {
     const dark = s.appearance === 'auto' ? scheme === 'dark' : s.appearance === 'dark';
     const page = PAGES[s.read === 'auto' ? (dark ? 'night' : 'paper') : s.read];
-    const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && width >= SPREAD_MIN_WIDTH && height >= SPREAD_MIN_HEIGHT);
+    const bookFits = width >= SPREAD_MIN_WIDTH && height >= SPREAD_MIN_HEIGHT;
+    const spread = s.spreadPref === 'on' || (s.spreadPref === 'auto' && bookFits);
     const sidebar = width >= SIDEBAR_MIN_WIDTH && height >= SIDEBAR_MIN_HEIGHT;
     const contentWidth = sidebar ? width - SIDEBAR_W : width;
-    return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, sidebar, contentWidth, set, setLang, hintOnce };
+    return { ...s, ready, t: STRINGS[s.lang], colors: dark ? DARK : LIGHT, page, dark, spread, bookFits, sidebar, contentWidth, set, setLang, hintOnce };
   }, [s, ready, scheme, width, height, set, setLang, hintOnce]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

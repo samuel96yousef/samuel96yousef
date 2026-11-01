@@ -13,7 +13,7 @@ import { BarButton } from './TopBar';
  * card. Printing shows only where the screen says what can be printed.
  */
 export function ReaderActions({ inline, print }: { inline?: boolean; print?: PrintScope[] }) {
-  const { spread, set, t, colors } = useSettings();
+  const { spread, bookFits, set, t, colors } = useSettings();
   const [printing, setPrinting] = useState(false);
   const sheet = print?.length ? <PrintSheet visible={printing} scopes={print} onClose={() => setPrinting(false)} /> : null;
   if (inline) {
@@ -27,7 +27,7 @@ export function ReaderActions({ inline, print }: { inline?: boolean; print?: Pri
       <>
         {sheet && round(t.printAction, () => setPrinting(true), <Icon name="print" size={19} color={colors.label} strokeWidth={2} />)}
         {sheet}
-        {round(t.spread, () => set({ spreadPref: spread ? 'off' : 'on' }), <Icon name="book" size={19} color={spread ? colors.crimson : colors.label} strokeWidth={2} />, spread)}
+        {round(t.spread, () => set({ spreadPref: spread ? 'off' : bookFits ? 'auto' : 'on' }), <Icon name="book" size={19} color={spread ? colors.crimson : colors.label} strokeWidth={2} />, spread)}
         {round(t.settings, () => router.push('/settings'), <Icon name="textSize" size={20} color={colors.label} strokeWidth={2} />)}
       </>
     );
@@ -36,7 +36,7 @@ export function ReaderActions({ inline, print }: { inline?: boolean; print?: Pri
     <>
       {sheet && <BarButton icon="print" label={t.printAction} onPress={() => setPrinting(true)} />}
       {sheet}
-      <BarButton icon="book" label={t.spread} active={spread} onPress={() => set({ spreadPref: spread ? 'off' : 'on' })} />
+      <BarButton icon="book" label={t.spread} active={spread} onPress={() => set({ spreadPref: spread ? 'off' : bookFits ? 'auto' : 'on' })} />
       <BarButton icon="textSize" label={t.settings} onPress={() => router.push('/settings')} />
     </>
   );

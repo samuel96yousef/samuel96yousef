@@ -24,7 +24,7 @@ const STRIP_FROM = 24;
 
 export default function Book() {
   const { book } = useLocalSearchParams<{ book: string }>();
-  const { t, lang, primary, colors, page } = useSettings();
+  const { t, lang, primary, colors, page, spread } = useSettings();
   const insets = useSafeAreaInsets();
   const b = books.find((x) => x.bid === Number(book)) ?? books[0];
   const ar = lang === 'ar';
@@ -106,6 +106,28 @@ export default function Book() {
     );
   };
 
+  // On a large screen the contents are an open book: the title page and the first chapters on the
+  // first page, the rest on the second, each page in its frame (the first on the right in Arabic).
+  if (spread) {
+    const half = Math.ceil(chapters.length / 2) + (chapters.length > 6 ? 2 : 0);
+    const pages = [chapters.slice(0, half), chapters.slice(half)];
+    return (
+      <View style={[styles.fill, { backgroundColor: colors.bg }]}>
+        <TopBar back={t.bible} />
+        <ScrollView contentContainerStyle={[styles.spread, dir, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 130 }]}>
+          {pages.map((list, k) => (
+            <View key={k} style={styles.page}>
+              {k === 0 ? header : <View><PageTop /><PageBody style={styles.head}><Text style={[styles.running, { color: page.rule }]}>{ar ? b.ar : b.sv}</Text><Dots color={page.ink2} /></PageBody></View>}
+              {list.map((n) => <View key={n}>{renderItem({ item: n })}</View>)}
+              <PageBody style={styles.pageFill}>{null}</PageBody>
+              <PageBottom />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }]}>
       <TopBar back={t.bible} />
@@ -146,6 +168,9 @@ function Dots({ color }: { color: string }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { maxWidth: 820, width: '100%', alignSelf: 'center' },
+  spread: { gap: 16, paddingHorizontal: 16, maxWidth: 1240, width: '100%', alignSelf: 'center', alignItems: 'stretch' },
+  page: { flex: 1, minWidth: 0 },
+  pageFill: { flexGrow: 1 },
   head: { paddingTop: 4, paddingBottom: 6 },
   running: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase', textAlign: 'center', marginBottom: 6 },
   titleSv: { fontFamily: FONTS.svSemi, fontSize: 21, lineHeight: 28, textAlign: 'center' },
