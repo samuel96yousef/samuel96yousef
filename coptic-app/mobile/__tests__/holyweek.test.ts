@@ -11,11 +11,15 @@ const week: HolyWeek = {
   days: [{
     id: 'holy_tuesday', ar: 'الثلاثاء من البصخة', sv: 'Tisdag i påskveckan', offset: -5,
     services: [{
-      ar: 'الحادية عشرة', sv: 'Elfte timmen', praise: ['default', 'tuesday_11th_hour'],
-      readings: [
-        { kind: 'prophecy', kindAr: 'نبوة', kindSv: 'Profetia', ref: 'isa 5 : 1 - 2' },
-        { kind: 'psalm', kindAr: 'مزمور', kindSv: 'Psalm', psalm: '50:7' },
-        { kind: 'gospel', kindAr: 'إنجيل', kindSv: 'Evangelium', ref: 'john 12 : 20 - 21' },
+      ar: 'الحادية عشرة', sv: 'Elfte timmen', listAr: 'الحادية عشرة', listSv: 'Elfte timmen', praise: ['default', 'tuesday_11th_hour'],
+      part: { night: false, ar: 'يوم الثلاثاء', sv: 'Tisdagen' }, tabSv: '11:e timmen',
+      items: [
+        { t: 'say', f: true, ar: 'من سفر إشعياء النبي', sv: 'Ur Jesaja' },
+        { t: 'reading', kind: 'prophecy', kindAr: 'نبوة', kindSv: 'Profetia', ref: 'isa 5 : 1 - 2' },
+        { t: 'praise' },
+        { t: 'reading', kind: 'psalm', kindAr: 'مزمور', kindSv: 'Psalm', psalm: '9:1' },
+        { t: 'say', r: 'priest', ar: 'اللهم تراءف علينا', sv: 'Gud, förbarma dig' },
+        { t: 'reading', kind: 'gospel', kindAr: 'إنجيل', kindSv: 'Evangelium', ref: 'john 12 : 20 - 21' },
       ],
     }],
   }],
@@ -36,12 +40,14 @@ describe('Holy Week', () => {
     expect(isoDate(dateOf(week.days[0], 2027))).toBe('2027-04-27');
   });
 
-  test('the praise follows the prophecies, with the invocations said by then', async () => {
+  test('a service in its order: the praise with the invocations said by then, the priest named', async () => {
     const { rows, outline } = await holyWeekRows(week.days[0], week, [], async (bid) => BOOKS[bid]);
     const units = rows.flatMap((r) => (r.k === 'u' ? [r.u] : []));
     const kinds = units.map((u) => (u.t === 'v' ? `v${u.n}` : u.t === 'st' ? `st:${u.ar}` : u.t));
-    expect(kinds).toEqual(['ref', 'v1', 'v2', 'rubric', 'st:لك القوة', 'st:عمانوئيل', 'st:مخلصي الصالح', 'ref', 'note', 'ref', 'v20', 'v21']);
-    expect(outline.items.map((i) => i.sv)).toEqual(['Elfte timmen']);
+    expect(kinds).toEqual(['H', 'f', 'ref', 'v1', 'v2', 'rubric', 'st:لك القوة', 'st:عمانوئيل', 'st:مخلصي الصالح', 'ref', 'note', 'p', 'ref', 'v20', 'v21']);
+    // The priest is named before his prayer; the tab has the hour's short name.
+    expect(rows.some((r) => r.k === 'role' && r.r === 'priest')).toBe(true);
+    expect(outline.items.map((i) => i.sv)).toEqual(['11:e timmen']);
   });
 
   test('finds the day a date is, and lists its services by their gospel', () => {

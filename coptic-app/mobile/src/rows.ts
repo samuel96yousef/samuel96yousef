@@ -48,7 +48,7 @@ export function liturgyRows(p: Prayer): Row[] {
   return [{ k: 'top' }, { k: 'run', ar: 'الخولاجي', sv: 'Kholagy' }, { k: 'cart', ar: p.ar, sv: p.sv }, ...roleRows(p.units), { k: 'bottom' }];
 }
 
-function roleRows(units: Unit[]): Row[] {
+export function roleRows(units: Unit[]): Row[] {
   const rows: Row[] = [];
   let role: Role | undefined;
   let pending: Role | undefined;

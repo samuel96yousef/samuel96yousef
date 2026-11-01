@@ -21,6 +21,8 @@ import shutil
 import sys
 import zipfile
 
+import holy_week_order as order
+
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 OUT = os.path.join(ROOT, 'assets', 'holyweek')
 BOOKS = os.path.join(ROOT, 'assets', 'data', 'books.json')
@@ -57,6 +59,17 @@ KINDS = {
     'بولس': ('pauline', 'Paulus brev'), 'كاثوليكون': ('catholic', 'Katholikon'), 'إبركسيس': ('praxis', 'Praxis'),
     'تسبحة كتابية': ('ode', 'Biblisk lovsång'),
 }
+
+# A reading the pack gives wrongly, by the hymn library (06:954): the Bright Saturday third hour's psalm is 15:10-11.
+FIXES = {('bright_saturday', 'الثالثة', 'مز 10-11'): 'مز 15:10-11'}
+
+# A day's hours: the night's, prayed the evening before, and the day's.
+WEEKDAY = {'holy_monday': ('الاثنين', 'Måndagen'), 'holy_tuesday': ('الثلاثاء', 'Tisdagen'), 'holy_wednesday': ('الأربعاء', 'Onsdagen'),
+           'covenant_thursday': ('الخميس', 'Skärtorsdagen'), 'good_friday': ('الجمعة', 'Långfredagen')}
+HOUR_TITLE = {'الأولى': ('الساعة الأولى', 'Första timmen', '1'), 'الثالثة': ('الساعة الثالثة', 'Tredje timmen', '3'),
+              'السادسة': ('الساعة السادسة', 'Sjätte timmen', '6'), 'التاسعة': ('الساعة التاسعة', 'Nionde timmen', '9'),
+              'الحادية عشرة': ('الساعة الحادية عشرة', 'Elfte timmen', '11'), 'الثانية عشرة': ('الساعة الثانية عشرة', 'Tolfte timmen', '12'),
+              'باكر': ('باكر', 'Morgonen, första timmen', None)}
 
 # The hours of the Pascha, Monday to Friday, in which the praise is said.
 PASCHA_DAYS = {'holy_monday', 'holy_tuesday', 'holy_wednesday', 'covenant_thursday', 'good_friday'}
@@ -140,6 +153,7 @@ def main():
     refs_ts = open(os.path.join(ROOT, 'src', 'lib', 'refs.ts'), encoding='utf-8').read()
     ABBR.extend(re.findall(r"\['([0-9a-z]+)', '", refs_ts[refs_ts.index('export const BOOKS'):refs_ts.index('const INDEX')]))
     books = json.load(open(BOOKS, encoding='utf-8'))
+    books_by_abbr = {ABBR[b['bid']]: b for b in books if b['bid'] < len(ABBR)}
     cache = {}
 
     def bible(bid):
@@ -171,6 +185,7 @@ def main():
             if not services or services[-1]['ar'] != r['service_ar']:
                 services.append({'ar': r['service_ar'], 'sv': service_sv(r['service_ar']), 'from': r['source_entry_no'], 'readings': []})
             kind, kind_sv = KINDS[r['reading_type_ar']]
+            r = {**r, 'passage_ar': FIXES.get((d['id'], r['service_ar'], r['passage_ar']), r['passage_ar'])}
             ref = to_ref(r['osis_book'], r['passage_ar'])
             if r['osis_book'] == 'PSA':
                 # The psalms are numbered as the church numbers them (the Septuagint), the app's Bible as the
@@ -189,14 +204,31 @@ def main():
             services[-1]['readings'].append({'kind': kind, 'kindAr': r['reading_type_ar'], 'kindSv': kind_sv, 'ref': ref,
                                              # The source names the whole chapter, without verses.
                                              **({'wholeChapter': True} if ':' not in r['passage_ar'] else {})})
+        out_services = []
         for s in services:
-            hour = s['ar'].split(' - ')[-1]
-            if d['id'] in PASCHA_DAYS and hour in PASCHA_HOURS:
-                s['praise'] = [k for k, n in start.items() if n <= s['from']]
-            del s['from']
+            night_name, _, hour = s['ar'].rpartition(' - ')
+            night = night_name.startswith('ليلة')
+            pascha = d['id'] in PASCHA_DAYS and hour in PASCHA_HOURS
+            o = {'ar': s['ar'], 'sv': s['sv'], 'listAr': s['ar'], 'listSv': s['sv']}
+            if pascha:
+                o['praise'] = [k for k, n in start.items() if n <= s['from']]
+                title_ar, title_sv, n = HOUR_TITLE[hour]
+                o['ar'], o['sv'] = title_ar, title_sv
+                if night:
+                    o['part'] = {'night': True, 'ar': night_name, 'sv': f"Natten till {NIGHT_SV[night_name]}"}
+                    o['tabAr'], o['tabSv'] = f'{hour} ليلاً', f'Natt {n}'
+                else:
+                    wd_ar, wd_sv = WEEKDAY[d['id']]
+                    o['part'] = {'night': False, 'ar': f'يوم {wd_ar}', 'sv': wd_sv}
+                    o['tabAr'], o['tabSv'] = hour, 'Morgon' if hour == 'باكر' else f'{n}:e timmen'
+                o['items'] = order.pascha_hour(d['id'], s, night, books_by_abbr)
+            else:
+                o['items'] = order.other_service(d['id'], s, books_by_abbr)
+            out_services.append(o)
+        services = out_services
         if d['id'] == 'resurrection_sunday':
-            services.insert(1, {'ar': 'تسبحة القيامة', 'sv': service_sv('تسبحة القيامة'), 'readings': [],
-                                'hymn': {'ar': 'لحن القيامة (تين ناف)', 'stanzas': [stanza(v) for v in tennav['verses']]}})
+            services.insert(1, {'ar': 'تسبحة القيامة', 'sv': service_sv('تسبحة القيامة'), 'listAr': 'تسبحة القيامة', 'listSv': service_sv('تسبحة القيامة'),
+                                'items': [{'t': 'lib', 'ar': 'لحن القيامة (تين ناف)', 'units': [{'t': 'st', **stanza(v)} for v in tennav['verses']]}]})
         days.append({'id': d['id'], 'ar': d['title_ar'], 'sv': DAYS_SV[d['id']], 'offset': d['days_from_resurrection'], 'services': services})
 
     out = {
@@ -213,7 +245,7 @@ def main():
     os.makedirs(OUT)
     with open(os.path.join(OUT, 'holyweek.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    n = sum(len(s['readings']) for d in days for s in d['services'])
+    n = sum(1 for d in days for s in d['services'] for i in s['items'] if i['t'] == 'reading')
     print(f"{len(days)} days, {sum(len(d['services']) for d in days)} services, {n} readings")
     for p in problems:
         print('  not in the Bible:', p)
