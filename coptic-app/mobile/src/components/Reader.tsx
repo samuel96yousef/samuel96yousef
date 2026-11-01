@@ -913,7 +913,8 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
 }
 
 const styles = StyleSheet.create({
-  pinned: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15, overflow: 'hidden' },
+  // A soft shadow under the bar, rather than a line across the page's frame.
+  pinned: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15, overflow: 'hidden', boxShadow: '0 10px 16px -14px rgba(52,22,36,0.45)' },
   fill: { flex: 1 },
   fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
   fadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
