@@ -5,11 +5,12 @@ import { Platform } from 'react-native';
 
 import { alhanBooks } from '../assets/alhan';
 import { hymnAssets, hymnGroups, synaxAssets } from '../assets/hymns';
+import { synaxSvAssets } from '../content/synaxarium-sv';
 import { agpeyaIndex, bibleAssets, books, katameros, kholagyIndex, prayerAssets } from '../assets/data';
 import { holyWeekRows, type HolyWeek, type HolyWeekDay } from './holyweek';
 import { isoDate } from './lib/coptic';
 import { dayOverview, readingsFor } from './lib/lectionary';
-import type { BookData, DayOverview, DayReadings, Hymn, Prayer, SynaxEntry } from './lib/types';
+import type { BookData, DayOverview, DayReadings, Hymn, Prayer, SynaxDaySv, SynaxEntry } from './lib/types';
 
 export { agpeyaIndex, alhanBooks, books, hymnGroups, katameros, kholagyIndex };
 
@@ -56,7 +57,12 @@ export const loadHymns = (group: string) => cached(hymnCache, group, () => readA
 const synaxCache = new Map<number, Promise<Record<string, SynaxEntry[]>>>();
 export const loadSynax = (month: number) => cached(synaxCache, month, () => readAsset<Record<string, SynaxEntry[]>>(synaxAssets[month]));
 
-export const getReadings = (d: Date) => readingsFor(d, katameros, books, { book: loadBook, synax: loadSynax });
+const synaxSvCache = new Map<number, Promise<Record<string, SynaxDaySv> | null>>();
+/** A month of the Synaxarium in Swedish, or null where it is not translated yet. */
+export const loadSynaxSv = (month: number) =>
+  cached(synaxSvCache, month, () => (synaxSvAssets[month] ? readAsset<Record<string, SynaxDaySv>>(synaxSvAssets[month]) : Promise.resolve(null)));
+
+export const getReadings = (d: Date) => readingsFor(d, katameros, books, { book: loadBook, synax: loadSynax, synaxSv: loadSynaxSv });
 
 /** The day's sections as titles and references: at once, with no Bible books loaded. Kept per day. */
 let overview: DayOverview | null = null;

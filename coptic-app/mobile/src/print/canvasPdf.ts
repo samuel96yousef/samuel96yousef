@@ -315,7 +315,7 @@ function builder(o: PrintOptions, pal: Palette, W: number) {
         } }];
       case 'u': {
         const u = row.u;
-        if (u.t === 'role') return [];
+        if (u.t === 'role' || (u.only && langs !== 'both' && u.only !== langs)) return [];
         if (ALWAYS_BOTH.has(u.t)) {
           const sSt = u.t === 'ref' ? sv(b * 0.92, { font: FONTS.svSemi }) : u.t === 'H' ? sv(b, { font: FONTS.svSemi, spacing: 0.06 }) : sv(b, { font: FONTS.svSemi });
           const aSt = u.t === 'H' ? ar(b * 1.45, { font: FONTS.arBold }) : ar(a, { font: FONTS.arBold });

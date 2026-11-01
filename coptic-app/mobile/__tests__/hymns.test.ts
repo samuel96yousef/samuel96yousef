@@ -58,6 +58,17 @@ const load = <T,>(name: string): T => JSON.parse(fs.readFileSync(path.join(DATA,
     expect(s.units).toEqual([{ t: 'h', ar: 'نياحة القديس' }, { t: 'p', ar: 'في مثل هذا اليوم' }]);
   });
 
+  it('in Swedish where translated: each language on its own, the Swedish titles for the list', async () => {
+    const synaxSv = async () => ({ '14': { titles: ['Den heliges insomnande'], paras: ['# Den heliges insomnande', 'På denna dag'] } });
+    const r = await readingsFor(d('2026-10-24'), kat, books, { book, synax, synaxSv });
+    const s = r.sections.find((x) => x.key === 'synaxarium')!;
+    expect(s.units).toEqual([
+      { t: 'h', ar: 'نياحة القديس', only: 'ar' }, { t: 'p', ar: 'في مثل هذا اليوم', only: 'ar' },
+      { t: 'h', sv: 'Den heliges insomnande', only: 'sv' }, { t: 'p', sv: 'På denna dag', only: 'sv' },
+    ]);
+    expect(s.refs.sv).toEqual(['Den heliges insomnande']);
+  });
+
   it('is not read in the Holy Fifty Days', async () => {
     const r = await readingsFor(addDays(easter(2027), 10), kat, books, { book, synax: async () => new Proxy({}, { get: () => [{ title: 't', paras: ['p'] }] }) });
     expect(r.sections.some((s) => s.key === 'synaxarium')).toBe(false);

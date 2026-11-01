@@ -16,7 +16,7 @@
  */
 import { coptic, dayDiff, easter, isoDate, nativityRule, theophanyParamoun } from './coptic';
 import { bookOfRef, parseRef, psalmLabel, psalmRefFromTable, refLabel, versesOf } from './refs';
-import type { BibleBook, BookData, DayOverview, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, SynaxEntry, Unit } from './types';
+import type { BibleBook, BookData, DayOverview, DayReadings, KatamerosData, ReadingRow, Season, Section, SectionKey, SynaxDaySv, SynaxEntry, Unit } from './types';
 
 /** Fixed feasts that keep their readings whatever the season (Coptic month-day). */
 const FEAST_DAYS = new Set(['1-1', '1-17', '1-18', '1-19', '4-29', '4-30', '5-6', '5-10', '5-11', '5-12', '5-13',
@@ -91,6 +91,8 @@ export interface BookSource {
   book(bid: number): Promise<BookData>;
   /** One Coptic month of the Synaxarium, day → commemorations. Without it the day has no Synaxarium. */
   synax?(month: number): Promise<Record<string, SynaxEntry[]>>;
+  /** The same month in Swedish, where it is translated */
+  synaxSv?(month: number): Promise<Record<string, SynaxDaySv> | null>;
 }
 
 const TITLES: Record<SectionKey, [ar: string, sv: string, capAr: string, capSv: string]> = {
@@ -100,7 +102,7 @@ const TITLES: Record<SectionKey, [ar: string, sv: string, capAr: string, capSv: 
   pauline: ['البولس', 'Paulus epistel', 'من رسائل بولس الرسول', 'Ur aposteln Paulus brev'],
   catholic: ['الكاثوليكون', 'Katholikon', 'من الرسائل الجامعة', 'Ur de allmänna breven'],
   praxis: ['الإبركسيس', 'Praxis', 'من سفر أعمال الرسل', 'Ur Apostlagärningarna'],
-  synaxarium: ['السنكسار', 'Synaxarium', 'تذكارات هذا اليوم', 'Dagens helgon och minnen, på arabiska'],
+  synaxarium: ['السنكسار', 'Synaxarium', 'تذكارات هذا اليوم', 'Dagens helgon och minnen'],
   liturgy: ['إنجيل القداس', 'Evangeliet', 'مزمور وإنجيل القداس', 'Liturgins psalm och evangelium'],
 };
 
@@ -210,7 +212,9 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
 
 /**
  * The day's Synaxarium: each commemoration's title and account, in Arabic
- * (there is no Swedish Synaxarium). It is not read in the Holy Fifty Days or
+ * and, where the month is translated, in Swedish. The two are not paragraph
+ * for paragraph the same, so each is read on its own: the Swedish when Swedish
+ * is read, the Arabic when Arabic is, both one after the other when both are. It is not read in the Holy Fifty Days or
  * in Holy Week, whose readings come from their own books.
  */
 async function synaxSection(d: Date, season: Season, source: BookSource): Promise<Section | null> {
@@ -219,7 +223,12 @@ async function synaxSection(d: Date, season: Season, source: BookSource): Promis
   const entries = (await source.synax(c.month))[String(c.day)] ?? [];
   if (!entries.length) return null;
   const [ar, sv, captionAr, captionSv] = TITLES.synaxarium;
-  const units: Unit[] = entries.flatMap((e): Unit[] => [{ t: 'h', ar: e.title }, ...e.paras.map((p): Unit => ({ t: 'p', ar: p }))]);
+  const sw = (await source.synaxSv?.(c.month))?.[String(c.day)];
+  const only = sw ? { only: 'ar' as const } : {};
+  const units: Unit[] = entries.flatMap((e): Unit[] => [{ t: 'h', ar: e.title, ...only }, ...e.paras.map((p): Unit => ({ t: 'p', ar: p, ...only }))]);
+  if (sw) {
+    for (const p of sw.paras) units.push(p.startsWith('# ') ? { t: 'h', sv: p.slice(2), only: 'sv' } : { t: 'p', sv: p, only: 'sv' });
+  }
   const titles = entries.map((e) => e.title);
-  return { key: 'synaxarium', ar, sv, captionAr, captionSv, refs: { ar: titles, sv: titles }, units };
+  return { key: 'synaxarium', ar, sv, captionAr, captionSv, refs: { ar: titles, sv: sw?.titles ?? titles }, units };
 }

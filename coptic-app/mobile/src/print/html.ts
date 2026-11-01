@@ -139,7 +139,7 @@ function rowHtml(row: Row, langs: PrintLangs): string {
       return '<div class="sep"><span>✠</span></div>';
     case 'u': {
       const u = row.u;
-      if (u.t === 'role') return '';
+      if (u.t === 'role' || (u.only && langs !== 'both' && u.only !== langs)) return '';
       const cls = `u t-${u.t}${row.role ? ` r-${row.role}` : ''}`;
       if (ALWAYS_BOTH.has(u.t)) return `<div class="${cls} c">${stack(unitText(u, 'ar'), unitText(u, 'sv'), langs)}</div>`;
       if (langs === 'both') {

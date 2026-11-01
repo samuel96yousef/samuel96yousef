@@ -67,6 +67,8 @@ export interface Unit {
   c?: number;
   n?: number;
   r?: Role;
+  /** A text in one language only, with no counterpart in the other (the Synaxarium's): shown only when that language is read */
+  only?: Lang;
 }
 
 export interface Prayer {
@@ -135,6 +137,12 @@ export type HymnMode = 'arca' | 'ar' | 'ca' | 'cop';
 /** One commemoration of the Synaxarium: its title and its account, in Arabic. */
 export interface SynaxEntry {
   title: string;
+  paras: string[];
+}
+
+/** A Synaxarium day in Swedish: its commemorations' titles, and its account; a paragraph starting "# " is a heading. */
+export interface SynaxDaySv {
+  titles: string[];
   paras: string[];
 }
 

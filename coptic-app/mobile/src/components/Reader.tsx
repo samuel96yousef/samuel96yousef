@@ -120,7 +120,7 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
 
 /** Where the lines of a row's text fall, so the open book can break a long row between two lines. */
 function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
-  if (row.k !== 'u' || row.u.t === 'role') return null;
+  if (row.k !== 'u' || row.u.t === 'role' || (row.u.only && row.u.only !== lang)) return null;
   const t = row.u.t;
   const lh = textStyle(lang, t, ctx, false, row.role).lineHeight;
   // The first line starts below the unit's top padding (styles.unit, unitCenter, unitH, unith).
@@ -551,10 +551,16 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
     clearTimeout(anchorTimer.current);
     const done = () => { restoring.current = false; takeAnchor(); };
     requestAnimationFrame(() => {
-      if (a) scrollToRow(a.index, (h) => readLine - a.frac * h, readLine - a.frac * a.h, done, landed);
+      // A text in the language left (the Synaxarium's) is not there in the other: go to its section's start.
+      const r = a ? rows[a.index] : undefined;
+      if (a && r?.k === 'u' && r.u.only && !both && r.u.only !== primary) {
+        let t = a.index;
+        while (t > 0 && rows[t].k !== 'title') t--;
+        scrollToRow(t, jumpOffset, undefined, done, landed);
+      } else if (a) scrollToRow(a.index, (h) => readLine - a.frac * h, readLine - a.frac * a.h, done, landed);
       else scrollToRow(firstVisible.current, offset, undefined, done, landed);
     });
-  }, [offset, readLine, scrollToRow, takeAnchor]);
+  }, [offset, readLine, jumpOffset, rows, both, primary, scrollToRow, takeAnchor]);
 
   // A change of language: the text fades out, sliding the way it was swiped.
   const fadeDir = useRef(0);
@@ -670,6 +676,7 @@ export function Reader({ rows, header, footer, scrollTo, outline, back, ownHeade
   }, [outline, progress, way, hasHeader]);
   const getStart = useCallback(() => firstVisible.current, []);
   const renderBookRow = useCallback((row: Row, lang: Lang) => {
+    if (row.k === 'u' && row.u.only && row.u.only !== lang) return null;
     const content = <RowContent row={row} langs={[lang]} ctx={ctx} />;
     return row.k === 'u' && row.highlight ? <View style={{ backgroundColor: page.peek }}>{content}</View> : content;
   }, [ctx, page.peek]);
@@ -891,6 +898,8 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
   const { page } = ctx;
   if (row.k === 'top') return <PageTop />;
   if (row.k === 'bottom') return <PageBottom />;
+  // A text in one language only (the Synaxarium's) shows when that language is read, or both are.
+  if (row.k === 'u' && row.u.only && !both && row.u.only !== primary) return null;
   const langs: Lang[] = [primary, other(primary)];
   const tappable = row.k === 'u' && PEEKABLE.has(row.u.t) && !both && !!row.u.sv && !!row.u.ar;
   const content = <RowContent row={row} langs={langs} ctx={ctx} peeked={peeked} both={both} />;
