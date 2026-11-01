@@ -12,8 +12,9 @@ import { useWay, type WayStore } from './Wayfinder';
  * A tap jumps to the section; the row keeps the current tab in view.
  */
 export function SectionTabs({ outline, store, onJump, pinned }: { outline: Outline; store: WayStore; onJump: (index: number, fade: boolean) => void; pinned?: boolean }) {
-  const { colors, lang } = useSettings();
-  const ar = lang === 'ar';
+  // The tabs speak the language being read, as the wayfinder does.
+  const { colors, primary } = useSettings();
+  const ar = primary === 'ar';
   const current = useWay(store, (s) => s.current);
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [layouts, setLayouts] = useState<Record<number, LayoutRectangle>>({});
