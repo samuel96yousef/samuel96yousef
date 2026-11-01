@@ -17,7 +17,7 @@ const LABEL_KEY = { index: 'today', readings: 'readings', prayers: 'prayers', bi
 
 /** Screens where text is read; the tab bar compacts to make room for the language pill. */
 export const isReaderPath = (p: string) =>
-  p === '/readings' || /^\/prayers\/(hour|liturgy)\//.test(p) || /^\/bible\/\d+\/\d+/.test(p);
+  p === '/readings' || /^\/prayers\/(hour|liturgy|pascha)\/[^/]+/.test(p) || /^\/bible\/\d+\/\d+/.test(p);
 
 // The bar compacts without a bounce; only the lens under the active tab is lively.
 const layout = LinearTransition.springify().damping(SPRING_SMOOTH.damping).stiffness(SPRING_SMOOTH.stiffness);
