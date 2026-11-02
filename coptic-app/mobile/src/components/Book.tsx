@@ -310,9 +310,8 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
       // Underneath: this spread's left page, and the next right page that the leaf uncovers.
       place(`n${a}`, a, 'near'),
       <View key={`r${b}`} style={[styles.sheet, { left: W, top: top(b), width: W }]}>{sheet(b, 'far')}</View>,
-      <LeafShadow key="s" p={p} W={W} top={tallest} height={sheetH - tallest} />,
-      // The leaf turns over the spine: this right page on its front, the next left page on its back.
-      <Leaf key={`l${a}`} p={p} W={W} frontTop={top(a)} backTop={top(b)} front={sheet(a, 'far')} back={sheet(b, 'near')} />,
+      // The leaf curls over the spine, as in Apple Books: this right page on its front, the next left page on its back.
+      <Curl key={`l${a}`} p={p} W={W} frontTop={top(a)} backTop={top(b)} shadowTop={tallest} shadowH={sheetH - tallest} front={sheet(a, 'far')} back={sheet(b, 'near')} />,
     ];
   } else if (cur >= 0) {
     layers = [
@@ -428,55 +427,94 @@ function Bed({ W, top, height }: { W: number; top: number; height: number }) {
   );
 }
 
+/** Strips the curling leaf is cut into: enough for a smooth bend, few enough to draw quickly. */
+const STRIPS = 14;
+
 /**
- * The turning leaf: the right page rises from the spine and swings over it,
- * in perspective, until its back, the next left page, lies on the left.
- * The front turns about its left edge up to standing on edge at the spine;
- * from there the back comes down about the same line. The light falls off
- * the paper as it rises, and comes back as it lands.
+ * Where a point of the turning leaf is, `u` from the spine (0) to the outer
+ * edge (W), when the turn is `p` through: the paper is flat up to the line of
+ * the curl, wraps round a cylinder there, and beyond it lies turned over. The
+ * cylinder is widest mid-turn and flat at either end, so the page lifts from
+ * and lands on the book flat. Returns the point's distance from the spine
+ * (negative on the left page) and the angle the paper has turned through there.
  */
-function Leaf({ p, W, frontTop, backTop, front, back }: { p: SharedValue<number>; W: number; frontTop: number; backTop: number; front: ReactElement | null; back: ReactElement | null }) {
-  const frontStyle = useAnimatedStyle(() => {
-    const v = p.get();
-    return { opacity: v < 0.5 ? 1 : 0, transform: [{ perspective: 2200 }, { rotateY: `${-180 * Math.min(v, 0.5)}deg` }] };
-  });
-  const backStyle = useAnimatedStyle(() => {
-    const v = p.get();
-    return { opacity: v >= 0.5 ? 1 : 0, transform: [{ perspective: 2200 }, { rotateY: `${180 - 180 * Math.max(v, 0.5)}deg` }] };
-  });
-  const frontShade = useAnimatedStyle(() => ({ opacity: Math.min(1, p.get() * 2) * 0.45 }));
-  const backShade = useAnimatedStyle(() => ({ opacity: Math.min(1, (1 - p.get()) * 2) * 0.45 }));
+function curlAt(u: number, p: number, W: number) {
+  'worklet';
+  const r = W * 0.17 * Math.sin(Math.PI * p);
+  const f = (1 - p) * W - p * (Math.PI * r) / 2;
+  const s = u - f;
+  if (s <= 0) return { x: u, a: 0 };
+  if (r > 0.5 && s <= Math.PI * r) {
+    const a = s / r;
+    return { x: f + r * Math.sin(a), a };
+  }
+  return { x: f - (s - Math.PI * r), a: Math.PI };
+}
+
+/**
+ * The turning leaf as Apple Books curls a page: cut into upright strips, each
+ * placed where the curl puts it and narrowed as the paper turns away. Facing
+ * the reader a strip shows the front, this right page; turned past upright it
+ * shows the back, the next left page, which ends lying in place on the left.
+ * The paper darkens where it bends away from the light.
+ */
+function Curl({ p, W, frontTop, backTop, shadowTop, shadowH, front, back }: {
+  p: SharedValue<number>; W: number; frontTop: number; backTop: number; shadowTop: number; shadowH: number; front: ReactElement | null; back: ReactElement | null;
+}) {
+  const w = W / STRIPS;
+  const strips = Array.from({ length: STRIPS }, (_, i) => i);
   return (
     <>
-      <Animated.View pointerEvents="none" style={[styles.sheet, styles.originLeft, { left: W, top: frontTop, width: W }, frontStyle]}>
-        {front}
-        <Animated.View style={[StyleSheet.absoluteFill, frontShade]}>
-          <LinearGradient colors={['rgba(30,15,10,0.35)', 'rgba(30,15,10,0.05)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-        </Animated.View>
-      </Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.sheet, styles.originRight, { left: 0, top: backTop, width: W }, backStyle]}>
-        {back}
-        <Animated.View style={[StyleSheet.absoluteFill, backShade]}>
-          <LinearGradient colors={['rgba(30,15,10,0.05)', 'rgba(30,15,10,0.35)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-        </Animated.View>
-      </Animated.View>
+      <CurlShadow p={p} W={W} top={shadowTop} height={shadowH} />
+      {strips.map((i) => <Strip key={`f${i}`} i={i} w={w} W={W} p={p} top={frontTop} side="front">{front}</Strip>)}
+      {strips.map((i) => <Strip key={`b${i}`} i={i} w={w} W={W} p={p} top={backTop} side="back">{back}</Strip>)}
     </>
   );
 }
 
-/** The shadow the rising leaf casts by the spine: on the page it uncovers, then on the page it lands on. */
-function LeafShadow({ p, W, top, height }: { p: SharedValue<number>; W: number; top: number; height: number }) {
-  const right = useAnimatedStyle(() => ({ opacity: p.get() < 0.5 ? Math.sin(Math.PI * p.get()) : 0 }));
-  const left = useAnimatedStyle(() => ({ opacity: p.get() >= 0.5 ? Math.sin(Math.PI * p.get()) : 0 }));
+function Strip({ i, w, W, p, top, side, children }: { i: number; w: number; W: number; p: SharedValue<number>; top: number; side: 'front' | 'back'; children: ReactElement | null }) {
+  const a = i * w;
+  const b = a + w;
+  const box = useAnimatedStyle(() => {
+    const A = curlAt(a, p.get(), W);
+    const B = curlAt(b, p.get(), W);
+    const facing = B.x > A.x;
+    const show = side === 'front' ? facing : !facing;
+    const wide = Math.abs(B.x - A.x);
+    return {
+      opacity: show && wide > 0.2 ? 1 : 0,
+      transform: [{ translateX: W + Math.min(A.x, B.x) }, { scaleX: Math.max(wide, 0.01) / w }],
+    };
+  });
+  const shade = useAnimatedStyle(() => {
+    const t = curlAt(a + w / 2, p.get(), W).a;
+    // Light from the reader: full on paper lying flat, none on paper standing on edge.
+    const lit = Math.abs(Math.cos(t));
+    return { opacity: (1 - lit) * 0.42 };
+  });
+  // The front shows its own slice; the back the slice of the left page that lands there.
+  const offset = side === 'front' ? -a : -(W - b);
   return (
-    <>
-      <Animated.View pointerEvents="none" style={[styles.shadow, { left: W, top, height, width: W * 0.5 }, right]}>
-        <LinearGradient colors={['rgba(30,15,10,0.32)', 'rgba(30,15,10,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-      </Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.shadow, { left: W * 0.5, top, height, width: W * 0.5 }, left]}>
-        <LinearGradient colors={['rgba(30,15,10,0)', 'rgba(30,15,10,0.32)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-      </Animated.View>
-    </>
+    <Animated.View pointerEvents="none" style={[styles.strip, styles.originLeft, { left: 0, top, width: w }, box]}>
+      <View style={{ width: W, transform: [{ translateX: offset }] }}>{children}</View>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgb(30,15,10)' }, shade]} />
+    </Animated.View>
+  );
+}
+
+/** The shadow the curl casts on the page it uncovers, just beyond the bend. */
+function CurlShadow({ p, W, top, height }: { p: SharedValue<number>; W: number; top: number; height: number }) {
+  const style = useAnimatedStyle(() => {
+    const v = p.get();
+    const r = W * 0.17 * Math.sin(Math.PI * v);
+    const f = (1 - v) * W - v * (Math.PI * r) / 2;
+    const edge = W + f + r;
+    return { opacity: Math.sin(Math.PI * v), transform: [{ translateX: Math.min(edge, 2 * W) }] };
+  });
+  return (
+    <Animated.View pointerEvents="none" style={[styles.shadow, { left: 0, top, height, width: W * 0.22 }, style]}>
+      <LinearGradient colors={['rgba(30,15,10,0.34)', 'rgba(30,15,10,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+    </Animated.View>
   );
 }
 
@@ -502,6 +540,7 @@ const styles = StyleSheet.create({
   sheet: { position: 'absolute' },
   originRight: { transformOrigin: 'right center' },
   originLeft: { transformOrigin: 'left center' },
+  strip: { position: 'absolute', overflow: 'hidden' },
   paper: { overflow: 'hidden' },
   paperNear: { borderTopLeftRadius: 5, borderBottomLeftRadius: 5 },
   paperFar: { borderTopRightRadius: 5, borderBottomRightRadius: 5 },
