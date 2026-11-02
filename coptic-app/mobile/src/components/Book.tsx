@@ -182,7 +182,9 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
   }, [p]);
   const settle = useCallback((to: 0 | 1) => {
     const ms = Math.max(160, Math.abs(to - p.get()) * TURN_MS);
-    p.set(withTiming(to, { duration: ms, easing: Easing.out(Easing.cubic) }));
+    // A whole turn lifts, swings and lands; a page let go mid-turn just finishes.
+    const whole = Math.abs(to - p.get()) > 0.9;
+    p.set(withTiming(to, { duration: ms, easing: whole ? Easing.inOut(Easing.cubic) : Easing.out(Easing.cubic) }));
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       const tr = live.current.turn;
@@ -305,14 +307,12 @@ export function Book({ rows, renderRow, gridOf, sizeKey, header, footer, start, 
     const { a, b } = turn;
     const tallest = Math.min(top(a), top(b));
     layers = [
-      // Underneath, the next right page, uncovered as the fold passes. (The
-      // next left page is the back of the turning page.)
-      <Reveal key={`r${b}`} p={p} W={W} top={top(b)}>{sheet(b, 'far')}</Reveal>,
-      // On top, this spread: the left page stays, the right page lifts away.
+      // Underneath: this spread's left page, and the next right page that the leaf uncovers.
       place(`n${a}`, a, 'near'),
-      <FarClip key={`c${a}`} p={p} W={W} top={top(a)}>{sheet(a, 'far')}</FarClip>,
-      <Shadows key="s" p={p} W={W} top={tallest} height={sheetH - tallest} />,
-      <Flap key={`b${b}`} p={p} W={W} top={top(b)} height={sheetH - top(b)}>{sheet(b, 'near')}</Flap>,
+      <View key={`r${b}`} style={[styles.sheet, { left: W, top: top(b), width: W }]}>{sheet(b, 'far')}</View>,
+      <LeafShadow key="s" p={p} W={W} top={tallest} height={sheetH - tallest} />,
+      // The leaf turns over the spine: this right page on its front, the next left page on its back.
+      <Leaf key={`l${a}`} p={p} W={W} frontTop={top(a)} backTop={top(b)} front={sheet(a, 'far')} back={sheet(b, 'near')} />,
     ];
   } else if (cur >= 0) {
     layers = [
@@ -429,67 +429,53 @@ function Bed({ W, top, height }: { W: number; top: number; height: number }) {
 }
 
 /**
- * The part of the right page that has not lifted yet: everything left of the
- * fold. The box slides left and its content slides back, so only transforms
- * move while the page turns.
+ * The turning leaf: the right page rises from the spine and swings over it,
+ * in perspective, until its back, the next left page, lies on the left.
+ * The front turns about its left edge up to standing on edge at the spine;
+ * from there the back comes down about the same line. The light falls off
+ * the paper as it rises, and comes back as it lands.
  */
-function FarClip({ p, W, top, children }: { p: SharedValue<number>; W: number; top: number; children: ReactElement | null }) {
-  const box = useAnimatedStyle(() => ({ transform: [{ translateX: -W * p.get() }] }));
-  const content = useAnimatedStyle(() => ({ transform: [{ translateX: W * p.get() }] }));
-  return (
-    <Animated.View style={[styles.clip, { left: W, top, width: W }, box]}>
-      <Animated.View style={content}>{children}</Animated.View>
-    </Animated.View>
-  );
-}
-
-/** The next right page, right of the fold. */
-function Reveal({ p, W, top, children }: { p: SharedValue<number>; W: number; top: number; children: ReactElement | null }) {
-  const box = useAnimatedStyle(() => ({ transform: [{ translateX: W - W * p.get() }] }));
-  const content = useAnimatedStyle(() => ({ transform: [{ translateX: W * p.get() - W }] }));
-  return (
-    <Animated.View style={[styles.clip, { left: W, top, width: W }, box]}>
-      <Animated.View style={content}>{children}</Animated.View>
-    </Animated.View>
-  );
-}
-
-/**
- * The folded-over part of the turning page. Its back is the next spread's
- * left page, which lands exactly in place as the turn completes. The fold is
- * at the box's right edge; the shading there gives the paper its curve.
- */
-function Flap({ p, W, top, height, children }: { p: SharedValue<number>; W: number; top: number; height: number; children: ReactElement | null }) {
-  const box = useAnimatedStyle(() => ({ transform: [{ translateX: W - W * p.get() }] }));
-  const content = useAnimatedStyle(() => ({ transform: [{ translateX: W - W * p.get() }] }));
-  const curve = useAnimatedStyle(() => ({ opacity: Math.sin(Math.PI * p.get()) }));
-  return (
-    <Animated.View style={[styles.clip, { left: 0, top, width: W, height }, box]}>
-      <Animated.View style={content}>{children}</Animated.View>
-      <Animated.View pointerEvents="none" style={[styles.curve, curve]}>
-        <LinearGradient colors={['rgba(40,20,10,0)', 'rgba(40,20,10,0.10)', 'rgba(40,20,10,0.26)']} locations={[0, 0.7, 1]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-      </Animated.View>
-    </Animated.View>
-  );
-}
-
-/** The shadow the turning page casts: on the page it uncovers, right of the fold, and on the pages under its edge. */
-function Shadows({ p, W, top, height }: { p: SharedValue<number>; W: number; top: number; height: number }) {
-  const fold = useAnimatedStyle(() => ({ opacity: Math.sin(Math.PI * p.get()), transform: [{ translateX: W - W * p.get() }] }));
-  const edge = useAnimatedStyle(() => ({ opacity: Math.sin(Math.PI * p.get()) * 0.9, transform: [{ translateX: 2 * W - 2 * W * p.get() - 34 }] }));
+function Leaf({ p, W, frontTop, backTop, front, back }: { p: SharedValue<number>; W: number; frontTop: number; backTop: number; front: ReactElement | null; back: ReactElement | null }) {
+  const frontStyle = useAnimatedStyle(() => {
+    const v = p.get();
+    return { opacity: v < 0.5 ? 1 : 0, transform: [{ perspective: 2200 }, { rotateY: `${-180 * Math.min(v, 0.5)}deg` }] };
+  });
+  const backStyle = useAnimatedStyle(() => {
+    const v = p.get();
+    return { opacity: v >= 0.5 ? 1 : 0, transform: [{ perspective: 2200 }, { rotateY: `${180 - 180 * Math.max(v, 0.5)}deg` }] };
+  });
+  const frontShade = useAnimatedStyle(() => ({ opacity: Math.min(1, p.get() * 2) * 0.45 }));
+  const backShade = useAnimatedStyle(() => ({ opacity: Math.min(1, (1 - p.get()) * 2) * 0.45 }));
   return (
     <>
-      <View pointerEvents="none" style={[styles.clip, { left: W, top, width: W, height }]}>
-        <Animated.View style={[styles.shadow, { width: 56 }, fold]}>
-          <LinearGradient colors={['rgba(30,15,10,0.24)', 'rgba(30,15,10,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      <Animated.View pointerEvents="none" style={[styles.sheet, styles.originLeft, { left: W, top: frontTop, width: W }, frontStyle]}>
+        {front}
+        <Animated.View style={[StyleSheet.absoluteFill, frontShade]}>
+          <LinearGradient colors={['rgba(30,15,10,0.35)', 'rgba(30,15,10,0.05)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
         </Animated.View>
-      </View>
-      <View pointerEvents="none" style={[styles.clip, { left: 0, top, width: 2 * W, height }]}>
-        <Animated.View style={[styles.shadow, { width: 34 }, edge]}>
-          <LinearGradient colors={['rgba(30,15,10,0)', 'rgba(30,15,10,0.16)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.sheet, styles.originRight, { left: 0, top: backTop, width: W }, backStyle]}>
+        {back}
+        <Animated.View style={[StyleSheet.absoluteFill, backShade]}>
+          <LinearGradient colors={['rgba(30,15,10,0.05)', 'rgba(30,15,10,0.35)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
         </Animated.View>
-      </View>
+      </Animated.View>
+    </>
+  );
+}
+
+/** The shadow the rising leaf casts by the spine: on the page it uncovers, then on the page it lands on. */
+function LeafShadow({ p, W, top, height }: { p: SharedValue<number>; W: number; top: number; height: number }) {
+  const right = useAnimatedStyle(() => ({ opacity: p.get() < 0.5 ? Math.sin(Math.PI * p.get()) : 0 }));
+  const left = useAnimatedStyle(() => ({ opacity: p.get() >= 0.5 ? Math.sin(Math.PI * p.get()) : 0 }));
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[styles.shadow, { left: W, top, height, width: W * 0.5 }, right]}>
+        <LinearGradient colors={['rgba(30,15,10,0.32)', 'rgba(30,15,10,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.shadow, { left: W * 0.5, top, height, width: W * 0.5 }, left]}>
+        <LinearGradient colors={['rgba(30,15,10,0)', 'rgba(30,15,10,0.32)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+      </Animated.View>
     </>
   );
 }
@@ -515,7 +501,7 @@ const styles = StyleSheet.create({
   book: { position: 'absolute' },
   sheet: { position: 'absolute' },
   originRight: { transformOrigin: 'right center' },
-  clip: { position: 'absolute', overflow: 'hidden' },
+  originLeft: { transformOrigin: 'left center' },
   paper: { overflow: 'hidden' },
   paperNear: { borderTopLeftRadius: 5, borderBottomLeftRadius: 5 },
   paperFar: { borderTopRightRadius: 5, borderBottomRightRadius: 5 },
@@ -526,8 +512,7 @@ const styles = StyleSheet.create({
   stack: { position: 'absolute', borderRadius: 6, borderWidth: StyleSheet.hairlineWidth },
   window: { position: 'absolute', overflow: 'hidden' },
   row: { position: 'absolute', left: 0, right: 0 },
-  curve: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 72 },
-  shadow: { position: 'absolute', top: 0, bottom: 0, left: 0 },
+  shadow: { position: 'absolute' },
   flip: { transform: [{ scaleX: -1 }] },
   zone: { position: 'absolute', top: 0, bottom: 0 },
   header: { position: 'absolute', left: 0, right: 0 },
