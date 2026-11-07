@@ -145,14 +145,15 @@ function VerseNum({ u, lang, ctx, showC }: { u: Unit; lang: Lang; ctx: Ctx; show
   );
 }
 
-function UnitText({ u, lang, ctx, secondary, showC, role, hang }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role; hang?: boolean }) {
+function UnitText({ u, lang, ctx, secondary, showC, role, hang, plain }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role; hang?: boolean; plain?: boolean }) {
   let s = lang === 'ar' ? u.ar : u.sv;
   if (!s) return null;
   if (u.t === 'ref' && lang === 'ar') s = toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
   // A verse's own number hangs in the margin (VerseNum); under it, the other language carries its number inline.
   const num = u.t === 'v' && !hang ? (showC ? `${u.c}:${u.n}` : String(u.n)) : null;
   const style = textStyle(lang, u.t, ctx, secondary, role);
-  const alt: TextStyle | null = secondary && !ALWAYS_BOTH.has(u.t)
+  // Under the text, the other language is set off by a bar; in its own box (an opened verse) it needs none.
+  const alt: TextStyle | null = secondary && !plain && !ALWAYS_BOTH.has(u.t)
     ? lang === 'ar'
       ? { borderRightWidth: 2, borderColor: ctx.page.rule2, paddingRight: 10, marginTop: 6 }
       : { borderLeftWidth: 2, borderColor: ctx.page.rule2, paddingLeft: 10, marginTop: 6 }
@@ -304,12 +305,18 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
       // A formula outside the liturgy's parts stands in a tinted box with a gold bar each side, as on the printed sheets.
       const box = u.t === 'f' && !row.role ? [styles.formula, { backgroundColor: `${page.gold}17`, borderColor: page.gold }] : null;
       const verse = u.t === 'v' && u.n != null;
+      // A verse opened to its other language: each language in its own box, a gap between them.
+      // (A formula keeps its own box: the other language comes in under it there.)
+      const boxed = !!peeked && !both && !ALWAYS_BOTH.has(u.t) && !(u.t === 'f' && !row.role);
+      const peekBox = boxed ? [styles.peekBox, { backgroundColor: page.peek }] : null;
       const body = (
         <>
-          <UnitText u={u} lang={P} ctx={ctx} secondary={false} showC={row.showC} role={row.role} hang={verse} />
+          <View style={peekBox}>
+            <UnitText u={u} lang={P} ctx={ctx} secondary={false} showC={row.showC} role={row.role} hang={verse} />
+          </View>
           {showAlt && O && (
-            <Animated.View entering={ALWAYS_BOTH.has(u.t) ? undefined : FadeIn.duration(220)} exiting={FadeOut.duration(120)}>
-              <UnitText u={u} lang={O} ctx={ctx} secondary showC={row.showC} role={row.role} />
+            <Animated.View entering={ALWAYS_BOTH.has(u.t) ? undefined : FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={boxed && [peekBox, styles.peekGap]}>
+              <UnitText u={u} lang={O} ctx={ctx} secondary showC={row.showC} role={row.role} plain={boxed} />
             </Animated.View>
           )}
         </>
@@ -955,7 +962,7 @@ function RowView({ row, index, ctx, primary, both, peeked, onPeek }: RowProps) {
           accessibilityState={{ expanded: peeked }}
           accessibilityHint={ctx.t.hintPeek(primary)}
           onPress={() => onPeek(index)}
-          style={({ pressed }) => [styles.tap, (pressed || peeked) && { backgroundColor: page.peek }, highlight]}
+          style={({ pressed }) => [styles.tap, pressed && !peeked && { backgroundColor: page.peek }, highlight]}
         >
           {content}
         </Pressable>
@@ -986,6 +993,8 @@ const styles = StyleSheet.create({
   sepLine: { flex: 1, height: StyleSheet.hairlineWidth * 2 },
   sepCross: { width: 18, height: 18 },
   unit: { paddingVertical: 5 },
+  peekBox: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6 },
+  peekGap: { marginTop: 8 },
   formula: { borderLeftWidth: 2.5, borderRightWidth: 2.5, paddingHorizontal: 14, paddingVertical: FORMULA_PAD, marginVertical: FORMULA_TOP - FORMULA_PAD },
   verse: { alignItems: 'flex-start', gap: 6 },
   verseText: { flex: 1, minWidth: 0 },
