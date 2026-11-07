@@ -1,0 +1,256 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { CopticCross } from '../../components/CopticCross';
+import { DayCard } from '../../components/DayCard';
+import { DayPicker } from '../../components/DayPicker';
+import { Icon } from '../../components/Icon';
+import { SectionLabel } from '../../components/LargeTitle';
+import { FramedCard } from '../../components/Page';
+import { WeekStrip } from '../../components/WeekStrip';
+import { agpeyaIndex, books, getOverview, holyWeek, katameros } from '../../data';
+import { pickDay, useReadingDay } from '../../day';
+import { holyWeekDayOn, serviceList } from '../../holyweek';
+import { dayDiff, dayMonthText, HOURS, hourNow, toArDigits, weekdayText } from '../../lib/coptic';
+import { useSettings } from '../../settings';
+import { FONTS, HOUR_SKY } from '../../theme';
+
+function useMinute() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+export default function Today() {
+  const { t, lang, colors, page, primary, contentWidth, sidebar } = useSettings();
+  const insets = useSafeAreaInsets();
+  const wide = contentWidth >= 720;
+  const now = useMinute();
+  // The day shown is today unless the reader picks another; the prayer hour is always now.
+  const { day, isToday } = useReadingDay();
+  const [picking, setPicking] = useState(false);
+  // Nothing here waits for a Bible book: the readings are titles and
+  // references, and the word of the day ships with the lectionary.
+  const overview = getOverview(day);
+  const hid = hourNow(now);
+  const hour = agpeyaIndex.find((h) => h.id === hid);
+  const sky = HOUR_SKY[hid];
+  const lit = overview.sections.find((s) => s.key === 'liturgy');
+  // In Holy Week the day's services and their readings. From Monday to Saturday they are the day's
+  // readings, read in the Readings tab; on the Saturday of Lazarus, Palm Sunday and Easter they
+  // follow the Katameros', in Prayers, Holy Week.
+  const pascha = holyWeekDayOn(day, holyWeek);
+  const paschaInReadings = overview.season === 'holy_week' && pascha != null;
+  const verse = lit ? katameros.openings?.[lit.ref] : undefined;
+  const ar = lang === 'ar';
+  const row = ar ? ('row-reverse' as const) : ('row' as const);
+  const second = primary === 'ar' ? 'sv' : 'ar';
+
+  const diff = dayDiff(day, now);
+  const sameYear = day.getFullYear() === now.getFullYear();
+  const year = sameYear ? '' : ` ${ar ? toArDigits(day.getFullYear()) : day.getFullYear()}`;
+  // "Idag torsdag 22 oktober"; another day reads "7 november lördag", with
+  // the year in the small text when it is another year, so the title stays on one line.
+  const relative = isToday ? t.today : diff === 1 ? t.tomorrow : diff === -1 ? t.yesterday : '';
+  const title = relative || dayMonthText(day, lang);
+  // Away from today the strip shows the weekday already; the small text then only adds another year.
+  const subtitle = relative ? `${weekdayText(day, lang)} ${dayMonthText(day, lang)}${year}` : year.trim();
+
+  // The date as a week: a short title line with the calendar, the week with
+  // the Coptic day under each date, and one line with the Coptic date and
+  // what the day keeps. Swipe the week for others; the calendar goes further.
+  const header = (
+    <View style={[styles.head, { backgroundColor: colors.surface }, wide && [styles.headWide, { flexDirection: row }]]}>
+      <View style={[styles.titleRow, { flexDirection: row }, wide && styles.titleRowWide]}>
+        <View style={[styles.titleText, { flexDirection: row }, wide && [styles.titleStack, { alignItems: ar ? 'flex-end' : 'flex-start' }]]}>
+          <Text accessibilityRole="header" numberOfLines={1} style={[styles.title, !relative && styles.titleDate, { color: colors.label }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.subtitle, { color: colors.label2 }]}>{subtitle}</Text>
+        </View>
+        {!isToday && (
+          <Pressable accessibilityRole="button" onPress={() => pickDay(new Date())}
+            style={({ pressed }) => [styles.todayPill, { backgroundColor: colors.tint }, pressed && styles.dim]}>
+            <Text style={[styles.todayText, { color: colors.crimson }]}>{t.goToday}</Text>
+          </Pressable>
+        )}
+        <Pressable accessibilityRole="button" accessibilityLabel={t.pickDay} onPress={() => setPicking(true)} hitSlop={6}
+          style={({ pressed }) => pressed && styles.dim}>
+          <View style={[styles.calendar, { backgroundColor: colors.tint }]}><Icon name="calendar" size={19} color={colors.crimson} strokeWidth={2} /></View>
+        </Pressable>
+        {/* Settings live in the card too, so the page needs no bar of its own above it (the sidebar has them on a large screen). */}
+        {!sidebar && <Pressable accessibilityRole="button" accessibilityLabel={t.settings} onPress={() => router.push('/settings')} hitSlop={6}
+          style={({ pressed }) => pressed && styles.dim}>
+          <View style={[styles.calendar, { backgroundColor: colors.bg2 }]}><Icon name="gear" size={19} color={colors.label} strokeWidth={2} /></View>
+        </Pressable>}
+      </View>
+      {/* Across a wide screen the week keeps a hand's width, beside the title rather than under it. */}
+      <View style={wide && styles.weekWide}><WeekStrip day={day} onPick={pickDay} /></View>
+    </View>
+  );
+
+  // The word of the day is the page of the Katameros here: on paper, in the
+  // double crimson frame. A tap opens the gospel it begins.
+  const word = lit && verse ? (
+    <Pressable accessibilityRole="button" accessibilityHint={ar ? lit.ar : lit.sv}
+      onPress={() => router.push({ pathname: '/readings', params: { section: 'liturgy', at: String(Date.now()) } })}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <FramedCard style={styles.wordCard}>
+        <View style={[styles.wordHead, { flexDirection: row }]}>
+          <Text style={[styles.wordLabel, { color: page.rule }, ar && styles.wordLabelAr]}>{t.word}</Text>
+          <Text style={[styles.wordRef, { color: page.ink2 }]}>{ar ? toArDigits(lit.refs.ar[lit.refs.ar.length - 1]) : lit.refs.sv[lit.refs.sv.length - 1]}</Text>
+        </View>
+        {[primary, second].map((l, i) => (
+          <Text key={l} style={[l === 'ar' ? styles.wordAr : styles.wordSv, { color: i ? page.ink2 : page.ink }, i ? (l === 'ar' ? styles.wordAr2 : styles.wordSv2) : null]}>
+            {l === 'ar' ? verse[0] : verse[1]}
+          </Text>
+        ))}
+      </FramedCard>
+    </Pressable>
+  ) : null;
+
+  const hourCard = hour && sky ? (
+    <Pressable accessibilityRole="button" onPress={() => router.push(`/prayers/hour/${hid}`, { withAnchor: true })} style={({ pressed }) => [wide && styles.cell, pressed && styles.pressed]}>
+      <LinearGradient colors={sky.colors} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={[styles.hourCard, wide && styles.fillCell]}>
+        <View style={[styles.sun, sky.moon ? styles.moon : { backgroundColor: '#FFF4CC' }, ar ? { left: 26 } : { right: 26 }]} />
+        <Text style={[styles.hourEyebrow, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{t.now} · {ar ? HOURS[hid].ar : HOURS[hid].sv}</Text>
+        <Text style={[styles.hourName, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{ar ? hour.ar : hour.sv}</Text>
+        <Text style={[styles.hourName2, { color: sky.dark ? '#fff' : '#2B1722' }, ar && styles.right]}>{ar ? hour.sv : hour.ar}</Text>
+        <View style={[styles.go, ar && { alignSelf: 'flex-end' }]}><Text style={[styles.goText, { color: sky.dark ? '#fff' : '#2B1722' }]}>{t.prayNow}</Text></View>
+      </LinearGradient>
+    </Pressable>
+  ) : null;
+
+  const readings: ListItem[] = paschaInReadings
+    ? serviceList(pascha, books).map((s) => ({ key: s.key, ar: s.ar, sv: s.sv, subAr: s.subAr, subSv: s.subSv }))
+    : overview.sections.map((s) => ({ key: s.key, ar: s.ar, sv: s.sv, subAr: s.refs.ar.map((r) => toArDigits(r)).join(' · '), subSv: s.refs.sv.join(' · ') }));
+  const services: ListItem[] = pascha && !paschaInReadings ? serviceList(pascha, books) : [];
+  const list = (
+    <>
+      {/* `at` makes every tap a new visit, so the section is found again even if the reader moved on. */}
+      <Sections label={isToday ? t.todaysReadings : t.readingsFor(dayMonthText(day, lang))} items={readings} wide={wide}
+        onPress={(key) => router.push({ pathname: '/readings', params: { section: key, at: String(Date.now()) } })} />
+      <Sections label={`${t.pascha} · ${ar ? pascha?.ar : pascha?.sv}`} items={services} wide={wide}
+        onPress={(key) => router.push({ pathname: '/prayers/pascha/[day]', params: { day: pascha!.id, section: key, at: String(Date.now()) } })} />
+    </>
+  );
+
+  return (
+    <View style={[styles.fill, { backgroundColor: colors.bg }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 130 }]}>
+        {header}
+        {wide ? (
+          // Wide: in rows, so no column runs on with empty space beside it. The
+          // day and the hour side by side and as tall as each other, then the
+          // word as a page across, then the readings two by two.
+          <View style={styles.stack}>
+            <View style={[styles.pair, { flexDirection: row }]}>
+              <View style={styles.cell}><DayCard day={day} style={styles.fillCell} /></View>
+              {hourCard}
+            </View>
+            {word}
+            {list}
+          </View>
+        ) : (
+          <View style={styles.stack}><DayCard day={day} />{word}{hourCard}{list}</View>
+        )}
+      </ScrollView>
+      <DayPicker visible={picking} day={day} onPick={(d) => { setPicking(false); pickDay(d); }} onClose={() => setPicking(false)} />
+    </View>
+  );
+}
+
+interface ListItem { key: string; ar: string; sv: string; subAr: string; subSv: string }
+
+/** The day's sections, or its services, each with its references; wide, two by two, read across like the lines of a page. */
+function Sections({ label, items, wide, onPress }: { label: string; items: ListItem[]; wide: boolean; onPress: (key: string) => void }) {
+  const { lang, colors } = useSettings();
+  const ar = lang === 'ar';
+  const row = ar ? ('row-reverse' as const) : ('row' as const);
+  if (!items.length) return null;
+  return (
+    <View>
+      <SectionLabel>{label}</SectionLabel>
+      <View style={[styles.list, { backgroundColor: colors.surface }, wide && [styles.listWide, { flexDirection: row }]]}>
+        {items.map((s, i) => (
+          <Pressable
+            key={s.key}
+            accessibilityRole="button"
+            onPress={() => onPress(s.key)}
+            style={({ pressed }) => [styles.rowBtn, { flexDirection: row }, pressed && { backgroundColor: colors.bg2 },
+              (wide ? i > 1 : i > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.sep },
+              wide && styles.rowHalf, wide && i % 2 === 1 && { [ar ? 'borderRightWidth' : 'borderLeftWidth']: StyleSheet.hairlineWidth, borderColor: colors.sep }]}
+          >
+            <CopticCross size={20} color={colors.crimson} />
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, { color: colors.label }, ar && styles.right]}>
+                {ar ? s.ar : s.sv}{ar ? '' : <Text style={[styles.rowTitleAr, { color: colors.label2 }]}>  {s.ar}</Text>}
+              </Text>
+              {!!(ar ? s.subAr : s.subSv) && <Text numberOfLines={1} style={[styles.rowSub, { color: colors.label2 }, ar && styles.right]}>{ar ? s.subAr : s.subSv}</Text>}
+            </View>
+            <View style={ar && styles.flip}><Icon name="chevR" size={16} color={colors.label3} strokeWidth={2.2} /></View>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  content: { paddingHorizontal: 16, maxWidth: 1040, width: '100%', alignSelf: 'center' },
+  stack: { gap: 20 },
+  pair: { gap: 20, alignItems: 'stretch' },
+  cell: { flex: 1, minWidth: 0 },
+  fillCell: { flex: 1 },
+  // The week in its own card, like a widget.
+  head: { gap: 8, marginBottom: 20, borderRadius: 24, paddingTop: 14, paddingBottom: 10, paddingHorizontal: 14 },
+  headWide: { alignItems: 'center', gap: 20, paddingVertical: 14, paddingHorizontal: 20 },
+  // The title and its buttons take what they need; the week gets the rest, up to a hand's width.
+  titleRowWide: { flexShrink: 0 },
+  // Beside the week the date goes under the title, so neither is cut short.
+  titleStack: { flexDirection: 'column', gap: 0, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  weekWide: { flex: 1, maxWidth: 520, minWidth: 0, marginStart: 'auto' },
+  titleRow: { alignItems: 'center', gap: 8 },
+  titleText: { flex: 1, minWidth: 0, alignItems: 'baseline', gap: 10 },
+  // The title never gives way; the small weekday beside it does.
+  title: { fontSize: 24, fontWeight: '700', lineHeight: 30, flexShrink: 0 },
+  titleDate: { fontSize: 22 },
+  subtitle: { fontSize: 15, flexShrink: 1 },
+  dim: { opacity: 0.6 },
+  todayPill: { borderRadius: 999, paddingHorizontal: 11, height: 34, justifyContent: 'center' },
+  todayText: { fontSize: 14, fontWeight: '700' },
+  calendar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  wordCard: { paddingVertical: 30, paddingHorizontal: 30 },
+  wordHead: { justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 10 },
+  wordLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textTransform: 'uppercase' },
+  wordLabelAr: { fontFamily: FONTS.arBold, fontWeight: undefined, fontSize: 15, letterSpacing: 0, textTransform: 'none' },
+  wordRef: { fontSize: 13 },
+  wordAr: { fontFamily: FONTS.ar, fontSize: 24, lineHeight: 46, textAlign: 'right', writingDirection: 'rtl' },
+  wordSv: { fontFamily: FONTS.sv, fontSize: 19, lineHeight: 29 },
+  wordAr2: { fontSize: 20, lineHeight: 38, marginTop: 8 },
+  wordSv2: { fontSize: 16, lineHeight: 24, marginTop: 10 },
+  hourCard: { borderRadius: 28, padding: 22, minHeight: 160, overflow: 'hidden', gap: 4 },
+  sun: { position: 'absolute', top: 22, width: 46, height: 46, borderRadius: 23, boxShadow: '0 0 30px 8px rgba(255,240,200,0.45)' },
+  moon: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F1ECDC', boxShadow: '0 0 30px 4px rgba(240,236,220,0.25)' },
+  hourEyebrow: { fontSize: 13, fontWeight: '600', opacity: 0.85 },
+  hourName: { fontSize: 26, fontWeight: '700' },
+  hourName2: { fontFamily: FONTS.arBold, fontSize: 22, lineHeight: 36, opacity: 0.95 },
+  go: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.26)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
+  goText: { fontSize: 15, fontWeight: '600' },
+  list: { borderRadius: 24, overflow: 'hidden' },
+  listWide: { flexWrap: 'wrap' },
+  rowHalf: { width: '50%' },
+  rowBtn: { alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
+  rowText: { flex: 1, minWidth: 0 },
+  rowTitle: { fontSize: 16, fontWeight: '600' },
+  rowTitleAr: { fontFamily: FONTS.arBold, fontSize: 17, fontWeight: 'normal' },
+  rowSub: { fontSize: 13, marginTop: 2 },
+  right: { textAlign: 'right', writingDirection: 'rtl' },
+  flip: { transform: [{ scaleX: -1 }] },
+  pressed: { transform: [{ scale: 0.98 }] },
+});
