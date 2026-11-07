@@ -65,6 +65,8 @@ const LIST_WINDOW = Platform.OS === 'web'
   ? { windowSize: 10001, maxToRenderPerBatch: 40, updateCellsBatchingPeriod: 16 }
   : { windowSize: 11 };
 
+/** The padding of an opened verse's boxes. */
+const PEEK_PAD = 10;
 /** The formula box: its padding, and how far its first line sits below the unit's top. */
 const FORMULA_PAD = 7;
 const FORMULA_TOP = 11;
@@ -133,12 +135,12 @@ function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
 }
 
 /** A verse's number, set apart in the margin: bold, the text hanging beside it. */
-function VerseNum({ u, lang, ctx, showC }: { u: Unit; lang: Lang; ctx: Ctx; showC?: boolean }) {
+function VerseNum({ u, lang, ctx, showC, drop = 0 }: { u: Unit; lang: Lang; ctx: Ctx; showC?: boolean; drop?: number }) {
   const n = showC ? `${u.c}:${u.n}` : String(u.n);
   const ar = lang === 'ar';
   const lh = textStyle(lang, 'v', ctx, false).lineHeight ?? ctx.base * 1.6;
   return (
-    <Text style={[styles.vnum, { width: ctx.base * (showC ? 3 : 1.9), lineHeight: lh, color: ctx.page.ink2, textAlign: ar ? 'left' : 'right' },
+    <Text style={[styles.vnum, { width: ctx.base * (showC ? 3 : 1.9), lineHeight: lh, marginTop: drop, color: ctx.page.ink2, textAlign: ar ? 'left' : 'right' },
       ar ? { fontFamily: FONTS.arBold, fontSize: ctx.base * 0.95 } : { fontFamily: FONTS.svSemi, fontSize: ctx.base * 0.8 }]}>
       {ar ? toArDigits(n) : `${n}.`}
     </Text>
@@ -325,7 +327,8 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
         <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>
           {verse ? (
             <View style={[styles.verse, { flexDirection: P === 'ar' ? 'row-reverse' : 'row' }]}>
-              <VerseNum u={u} lang={P} ctx={ctx} showC={row.showC} />
+              {/* In line with the first line of its text, also when that stands in a box. */}
+              <VerseNum u={u} lang={P} ctx={ctx} showC={row.showC} drop={boxed ? PEEK_PAD : 0} />
               <View style={styles.verseText}>{body}</View>
             </View>
           ) : box ? <View style={box}>{body}</View> : body}
@@ -993,8 +996,8 @@ const styles = StyleSheet.create({
   sepLine: { flex: 1, height: StyleSheet.hairlineWidth * 2 },
   sepCross: { width: 18, height: 18 },
   unit: { paddingVertical: 5 },
-  peekBox: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6 },
-  peekGap: { marginTop: 8 },
+  peekBox: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: PEEK_PAD },
+  peekGap: { marginTop: 14 },
   formula: { borderLeftWidth: 2.5, borderRightWidth: 2.5, paddingHorizontal: 14, paddingVertical: FORMULA_PAD, marginVertical: FORMULA_TOP - FORMULA_PAD },
   verse: { alignItems: 'flex-start', gap: 6 },
   verseText: { flex: 1, minWidth: 0 },
