@@ -35,18 +35,21 @@ export function dayRows(r: DayReadings, d: Date, holyWeek: { ar: string; sv: str
 
 export const sectionIndex = (rows: Row[], id: string) => rows.findIndex((r) => r.k === 'title' && r.id === id);
 
+// Every text's running head is set as on the printed reading sheets: the book it is from at the start,
+// what it is at the end.
+
 export function prayerRows(p: Prayer, run: { ar: string; sv: string }): Row[] {
-  return [{ k: 'top' }, { k: 'run', ...run }, { k: 'cart', ar: p.ar, sv: p.sv }, ...unitRows(p.units), { k: 'bottom' }];
+  return [{ k: 'top' }, { k: 'run', lead: run, ar: p.ar, sv: p.sv }, { k: 'cart', ar: p.ar, sv: p.sv }, ...unitRows(p.units), { k: 'bottom' }];
 }
 
 /** A hymn text: its occasion above, its title in the cartouche (Arabic: the texts have no Swedish), its lines; who sings them, as in the liturgy. */
 export function hymnRows(h: Hymn, group: { ar: string; sv: string }): Row[] {
-  return [{ k: 'top' }, { k: 'run', ...group }, { k: 'cart', ar: h.ar, sv: '' }, ...roleRows(h.units), { k: 'bottom' }];
+  return [{ k: 'top' }, { k: 'run', lead: { ar: 'مكتبة الألحان', sv: 'Hymner' }, ...group }, { k: 'cart', ar: h.ar, sv: '' }, ...roleRows(h.units), { k: 'bottom' }];
 }
 
 /** Liturgy rows: a role marker opens a block; the role colours the text until the next marker. */
 export function liturgyRows(p: Prayer): Row[] {
-  return [{ k: 'top' }, { k: 'run', ar: 'الخولاجي', sv: 'Kholagy' }, { k: 'cart', ar: p.ar, sv: p.sv }, ...roleRows(p.units), { k: 'bottom' }];
+  return [{ k: 'top' }, { k: 'run', lead: { ar: 'الخولاجي', sv: 'Kholagy' }, ar: p.ar, sv: p.sv }, { k: 'cart', ar: p.ar, sv: p.sv }, ...roleRows(p.units), { k: 'bottom' }];
 }
 
 export function roleRows(units: Unit[]): Row[] {
@@ -156,7 +159,7 @@ export function itemAt(items: OutlineItem[], row: number) {
 export function chapterRows(book: BibleBook, chapter: number, verses: Verse[], highlight?: number): Row[] {
   return [
     { k: 'top' },
-    { k: 'run', ar: book.ar, sv: book.sv },
+    { k: 'run', lead: { ar: 'الكتاب المقدس', sv: 'Bibeln' }, ar: `${book.ar} ${toArDigits(chapter)}`, sv: `${book.sv} ${chapter}` },
     { k: 'cart', ar: `الأصحاح ${toArDigits(chapter)}`, sv: `Kapitel ${chapter}` },
     ...verses.map(([n, ar, sv]): Row => ({ k: 'u', u: { t: 'v', c: chapter, n, ar, sv }, highlight: n === highlight })),
     { k: 'bottom' },

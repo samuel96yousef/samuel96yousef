@@ -23,7 +23,7 @@ const GEO: Record<Paper, { edge: number; edgeBottom: number; pad: number; gap: n
   A5: { edge: 7.5 * MM, edgeBottom: 11.5 * MM, pad: 6 * MM, gap: 6 * MM },
 };
 
-interface Palette { ink: string; ink2: string; rule: string; rule2: string; gold: string; formula: string }
+interface Palette { ink: string; ink2: string; rule: string; rule2: string; gold: string; goldbg: string; formula: string }
 
 interface Style {
   font: string;
@@ -38,7 +38,8 @@ interface Style {
   spacing?: number;
 }
 
-interface Line { text: string; style: Style; prefix?: { text: string; style: Style } }
+/** `hang`: every line starts this far in, the prefix (a verse number) standing in the margin it leaves. */
+interface Line { text: string; style: Style; prefix?: { text: string; style: Style }; hang?: number }
 
 /** Everything a page draws: a measured block that can sit at any height, and some can be split between lines. */
 interface Block {
@@ -72,7 +73,8 @@ function width(text: string, st: Style) {
 }
 
 /** Break text into lines of at most `w` points, word by word; a newline starts a new line. */
-function wrap(text: string, st: Style, w: number, prefix?: { text: string; style: Style }): Line[] {
+function wrap(text: string, st: Style, w: number, prefix?: { text: string; style: Style }, hang?: number): Line[] {
+  if (hang) return wrap(text, st, w - hang).map((l, i) => ({ ...l, hang, prefix: i ? undefined : prefix }));
   const lines: Line[] = [];
   const pre = prefix ? width(`${prefix.text} `, prefix.style) : 0;
   text.split('\n').forEach((para, pi) => {
@@ -109,7 +111,16 @@ function drawLines(c: CanvasRenderingContext2D, lines: Line[], x: number, y: num
       c.fillText(text, (x + w / 2) * S, base * S);
     } else {
       let start = st.rtl ? x + w : x;
-      if (l.prefix) {
+      if (l.hang) {
+        if (l.prefix) {
+          setFont(c, l.prefix.style);
+          c.fillStyle = l.prefix.style.color;
+          c.direction = st.rtl ? 'rtl' : 'ltr';
+          c.textAlign = st.rtl ? 'right' : 'left';
+          c.fillText(l.prefix.text, start * S, base * S);
+        }
+        start += st.rtl ? -l.hang : l.hang;
+      } else if (l.prefix) {
         const p = l.prefix;
         setFont(c, p.style);
         c.fillStyle = p.style.color;
@@ -257,6 +268,20 @@ function builder(o: PrintOptions, pal: Palette, W: number) {
       case 'bottom':
         return [];
       case 'run': {
+        if (row.lead) {
+          // The book at the start, what the text is at the end, as on the printed reading sheets.
+          const rtl = langs === 'ar';
+          const leadSt = rtl ? ar(b * 0.95, { font: FONTS.arBold, color: pal.ink }) : sv(b * 0.78, { font: FONTS.svSemi, color: pal.ink, upper: true, spacing: 0.14 });
+          const endSt = rtl ? ar(b * 0.95, { font: FONTS.arBold, color: pal.ink }) : sv(b * 0.85, { font: FONTS.svSemi, color: pal.ink });
+          const lead = [{ text: rtl ? row.lead.ar : row.lead.sv, style: leadSt }];
+          const end = [{ text: rtl ? row.ar : row.sv, style: endSt }];
+          const lh = Math.max(leadSt.lh, endSt.lh) * (rtl ? 0.8 : 1);
+          return [{ h: lh + 4, top: 0, bottom: 10, draw: (c, y) => {
+            drawPieces(c, lead, 0, y, W, rtl ? 'right' : 'left', lh);
+            drawPieces(c, end, 0, y, W, rtl ? 'left' : 'right', lh);
+            rule(c, 0, y + lh + 3, W, y + lh + 3, pal.ink, 1.6);
+          } }];
+        }
         const sSt = sv(b * 0.85, { color: pal.ink2 });
         const aSt = ar(b * 0.85 * 1.15, { color: pal.ink2, font: FONTS.ar });
         const pieces = langs === 'ar' ? [{ text: row.ar, style: aSt }] : langs === 'sv' ? [{ text: row.sv, style: sSt }]
@@ -330,13 +355,33 @@ function builder(o: PrintOptions, pal: Palette, W: number) {
           }];
         }
         const st = unitStyles(u.t, row.role);
+        if (u.t === 'f' && !row.role) {
+          // A formula stands centred in a tinted box with a gold bar each side, as on the printed reading sheets.
+          const padX = 10, padY = 5;
+          const lines = stack(unitText(u, 'ar').text, unitText(u, 'sv').text, st.r, st.s, W - 2 * padX);
+          const h = linesH(lines) + 2 * padY;
+          return [{
+            h, top: 8, bottom: 8,
+            draw: (c, y) => {
+              c.fillStyle = pal.goldbg;
+              c.fillRect(0, y * S, W * S, h * S);
+              rule(c, 0.8, y, 0.8, y + h, pal.gold, 1.6);
+              rule(c, W - 0.8, y, W - 0.8, y + h, pal.gold, 1.6);
+              drawLines(c, lines, padX, y + padY, W - 2 * padX, 'center');
+            },
+          }];
+        }
         const bar = row.role === 'deacon' ? pal.gold : row.role === 'people' ? pal.rule : null;
         const make = (l: 'ar' | 'sv', w: number) => {
           const s = l === 'ar' ? st.r : st.s;
           const tx = unitText(u, l, row.showC);
           if (!tx.text) return [];
-          const prefix = tx.num ? { text: tx.num, style: { ...s, font: FONTS.svSemi, size: s.size * 0.62, color: pal.rule } } : undefined;
-          return wrap(tx.text, s, w - (bar ? 6 : 0), prefix);
+          if (!tx.num) return wrap(tx.text, s, w - (bar ? 6 : 0));
+          // The verse number hangs in the margin, bold, as on the printed reading sheets.
+          const numSt = { ...s, font: l === 'ar' ? FONTS.arBold : FONTS.svSemi, size: s.size * (l === 'ar' ? 0.8 : 0.85), color: pal.ink2 };
+          const num = l === 'ar' ? tx.num : `${tx.num}.`;
+          const hang = Math.max(width(num, numSt) + 4, s.size * 1.7);
+          return wrap(tx.text, s, w - (bar ? 6 : 0), { text: num, style: numSt }, hang);
         };
         if (langs === 'both') {
           const gap = 7 * MM;
@@ -358,8 +403,8 @@ export async function renderPdf(parts: PrintPart[], o: PrintOptions, onProgress?
   const fonts = [FONTS.sv, FONTS.svItalic, FONTS.svSemi, FONTS.ar, FONTS.arBold];
   await Promise.all(fonts.map((f) => document.fonts.load(`16px "${f}"`, 'Aa ع').catch(() => [])));
   const pal: Palette = o.color
-    ? { ink: '#1B1517', ink2: '#3A3134', rule: '#9E1B32', rule2: '#E09AA5', gold: '#A8751A', formula: '#7E1D30' }
-    : { ink: '#1B1517', ink2: '#3A3134', rule: '#111111', rule2: '#999999', gold: '#555555', formula: '#1B1517' };
+    ? { ink: '#1B1517', ink2: '#3A3134', rule: '#9E1B32', rule2: '#E09AA5', gold: '#A8751A', goldbg: 'rgba(168,117,26,0.09)', formula: '#7E1D30' }
+    : { ink: '#1B1517', ink2: '#3A3134', rule: '#111111', rule2: '#999999', gold: '#555555', goldbg: '#F1F1F1', formula: '#1B1517' };
   const { width: PW, height: PH } = PAGE_POINTS[o.paper];
   const g = GEO[o.paper];
   const left = g.edge + g.pad;

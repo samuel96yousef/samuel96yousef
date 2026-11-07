@@ -89,6 +89,15 @@ guldlinje, folkets svar fetstil med röd linje så att församlingen hittar
 sina delar. Instruktioner (rubriker) står i rött och kursivt, tysta böner
 i grått.
 
+### Textens utseende
+
+Alla texter är satta som kyrkans tryckta läsblad, i appen och i utskriften:
+
+- **Sidhuvud:** boken texten kommer från står till vänster (Dagens läsning, Agpeya, Kholagy, Påskveckan, Bibeln, Hymner) och vad texten är till höger, med ett streck under.
+- **Rubriker:** en läsning namnges före sin hänvisning, till exempel ”Psalm – Psaltaren 45:3–4”, ”Evangelium – Matteus 12:9–23” och ”Profetia – Jesaja 5:1–9”.
+- **Formler:** de fasta formlerna (”Stå med gudsfruktan …”, ”Förhärligad är Gud i alltid”) står centrerade i en tonad ruta med ett guldstreck på var sida. Formler som hör till en roll i liturgin behåller rollens färg.
+- **Versnummer:** de står fetstilta i marginalen, och texten hänger bredvid.
+
 ## Kom igång
 
 ```sh

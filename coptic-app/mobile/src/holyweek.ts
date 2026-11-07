@@ -115,7 +115,7 @@ export async function holyWeekRows(day: HolyWeekDay, week: HolyWeek, books: Bibl
   const loaded = new Map<number, BookData>();
   await Promise.all([...needed].map(async (bid) => loaded.set(bid, await book(bid))));
 
-  const rows: Row[] = [{ k: 'top' }, { k: 'run', ar: 'أسبوع الآلام', sv: 'Påskveckan' }, { k: 'cart', ar: day.ar, sv: day.sv }];
+  const rows: Row[] = [{ k: 'top' }, { k: 'run', lead: { ar: 'أسبوع الآلام', sv: 'Påskveckan' }, ar: day.ar, sv: day.sv }, { k: 'cart', ar: day.ar, sv: day.sv }];
   const items: OutlineItem[] = [];
   const list = serviceList(day, books);
   const u = (unit: Unit, showC?: boolean) => rows.push({ k: 'u', u: unit, showC });
@@ -150,7 +150,7 @@ export async function holyWeekRows(day: HolyWeekDay, week: HolyWeek, books: Bibl
 
   function reading(r: HolyWeekReading) {
     if (r.psalm != null) {
-      u({ t: 'ref', ar: `${r.kindAr}: مز ${toArDigits(r.psalm)}`, sv: `${r.kindSv} ${r.psalm}` });
+      u({ t: 'ref', ar: `${r.kindAr} – مز ${toArDigits(r.psalm)}`, sv: `${r.kindSv} – Ps ${r.psalm}` });
       u({ t: 'note', ar: 'يُقرأ المزمور بترقيم الكنيسة من كتاب المزامير.', sv: 'Psalmen anges med kyrkans numrering, som skiljer sig från bibelns, så texten visas inte här.' });
       return;
     }
@@ -159,7 +159,7 @@ export async function holyWeekRows(day: HolyWeekDay, week: HolyWeek, books: Bibl
     const parts = r.ref.split('/');
     for (const [pi, p] of parseRef(r.ref).entries()) {
       const label = readingLabel({ ...r, ref: parts[pi] }, books);
-      u({ t: 'ref', ar: pi ? label.ar : `${r.kindAr}: ${label.ar}`, sv: pi ? label.sv : `${r.kindSv}: ${label.sv}` });
+      u({ t: 'ref', ar: pi ? label.ar : `${r.kindAr} – ${label.ar}`, sv: pi ? label.sv : `${r.kindSv} – ${label.sv}` });
       if (r.wholeChapter && !pi && r.kind !== 'reading') u({ t: 'note', ar: 'يذكر المصدر الأصحاح كاملاً دون تحديد الآيات.', sv: 'Källan anger hela kapitlet, utan verser.' });
       let prevC: number | null = null;
       for (const { c, v } of versesOf(loaded.get(p.bid)!, p)) {

@@ -71,7 +71,7 @@ export function bibleScopes(b: BibleBook, chapter: number, t: Strings, lang: Lan
       key: 'book', label: t.printBook(name), sub: b.chapters > 20 ? t.printBig : undefined, title: name,
       // The whole book runs on, chapter after chapter, rather than a page each.
       load: async () => {
-        const rows: Row[] = [{ k: 'run', ar: b.ar, sv: b.sv }, { k: 'cart', ar: b.ar, sv: b.sv }];
+        const rows: Row[] = [{ k: 'run', lead: { ar: 'الكتاب المقدس', sv: 'Bibeln' }, ar: b.ar, sv: b.sv }, { k: 'cart', ar: b.ar, sv: b.sv }];
         for (const [c, verses] of await loadBook(b.bid)) {
           rows.push({ k: 'title', id: String(c), ar: `${psalter ? 'المزمور' : 'الأصحاح'} ${toArDigits(c)}`, sv: `${psalter ? 'Psalm' : 'Kapitel'} ${c}` });
           for (const [n, ar, sv] of verses) rows.push({ k: 'u', u: { t: 'v', c, n, ar, sv } });

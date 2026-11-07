@@ -18,8 +18,8 @@ describe('printHtml', () => {
     const html = printHtml([{ rows }], DEFAULT_PRINT, 'Agpeya – Morgon');
     expect(html).toContain('<title>Agpeya – Morgon</title>');
     expect(html).toContain('<div class="sv">Stå upp &lt;nu&gt; &amp; be</div><div class="ar">قوموا</div>');
-    expect(html).toContain('<span class="n">3:16</span> Ty så älskade');
-    expect(html).toContain('<span class="n">٣:١٦</span> لأنه هكذا');
+    expect(html).toContain('<span class="n">3:16.</span>Ty så älskade');
+    expect(html).toContain('<span class="n">٣:١٦</span>لأنه هكذا');
     expect(html).toContain('class="u t-p r-deacon pair"');
     expect(html).toContain('size: A4');
   });

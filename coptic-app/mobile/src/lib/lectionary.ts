@@ -126,6 +126,12 @@ export function plannedSections(sel: Selection): { key: SectionKey; psalmId?: nu
 
 type Planned = ReturnType<typeof plannedSections>[number];
 
+/** What each reading is called before its reference. */
+const KIND: Partial<Record<SectionKey, { ar: string; sv: string }>> = {
+  prophecy: { ar: 'نبوة', sv: 'Profetia' }, pauline: { ar: 'البولس', sv: 'Paulus brev' },
+  catholic: { ar: 'الكاثوليكون', sv: 'Katholikon' }, praxis: { ar: 'الإبركسيس', sv: 'Apostlagärningarna' },
+};
+
 /** A section's titles and references, and its psalm, worked out without loading any text. */
 function sectionHead(p: Planned, kat: KatamerosData, books: BibleBook[]) {
   const [ar, sv, captionAr, captionSv] = TITLES[p.key];
@@ -158,12 +164,12 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
   const loaded = new Map<number, BookData>();
   await Promise.all([...needed].map(async (bid) => loaded.set(bid, await source.book(bid))));
 
-  const passageUnits = (ref: string, withRefLines: boolean): Unit[] => {
+  const passageUnits = (ref: string, withRefLines: boolean, kind?: { ar: string; sv: string }): Unit[] => {
     const units: Unit[] = [];
     for (const [i, p] of parseRef(ref).entries()) {
       if (withRefLines) {
         const label = refLabel(ref.split('/')[i], books);
-        units.push({ t: 'ref', ar: label.ar, sv: label.sv });
+        units.push(kind && !i ? { t: 'ref', ar: `${kind.ar} – ${label.ar}`, sv: `${kind.sv} – ${label.sv}` } : { t: 'ref', ar: label.ar, sv: label.sv });
       }
       const verses = versesOf(loaded.get(p.bid)!, p);
       for (const { c, v } of verses) units.push({ t: 'v', c, n: v[0], ar: v[1], sv: v[2] });
@@ -193,8 +199,9 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
     } else {
       const group = kat.formulas[p.key === 'prophecy' ? 'prophecy' : p.key] ?? [];
       for (const [fa, fs] of group) {
-        if (fa === 'shahed') { if (p.key !== 'prophecy') units.push({ t: 'ref', ...label }); }
-        else if (fa === 'text') units.push(...passageUnits(p.ref, p.key === 'prophecy'));
+        // The reading named before its reference, as on the printed sheets: "Paulus brev – Hebreerbrevet 7:18–8:13".
+        if (fa === 'shahed') { if (p.key !== 'prophecy') units.push({ t: 'ref', ar: `${KIND[p.key]?.ar ?? ''} – ${label.ar}`, sv: `${KIND[p.key]?.sv ?? ''} – ${label.sv}` }); }
+        else if (fa === 'text') units.push(...passageUnits(p.ref, p.key === 'prophecy', p.key === 'prophecy' ? KIND.prophecy : undefined));
         else units.push({ t: 'f', ar: fill(fa, book[2] ?? book[1]), sv: fill(fs ?? '', book[3] ?? '') });
       }
     }

@@ -102,7 +102,8 @@ function unitText(u: Unit, l: 'ar' | 'sv', showC?: boolean) {
   if (!s) return '';
   if (u.t === 'ref' && l === 'ar') s = arRef(s);
   const num = u.t === 'v' && u.n != null ? (showC ? `${u.c}:${u.n}` : String(u.n)) : '';
-  return `${num ? `<span class="n">${l === 'ar' ? toArDigits(num) : num}</span> ` : ''}${esc(s)}`;
+  // The verse number hangs in the margin, bold, as on the printed reading sheets.
+  return `${num ? `<span class="n">${l === 'ar' ? toArDigits(num) : `${num}.`}</span>` : ''}${esc(s)}`;
 }
 
 /** Both languages stacked and centred, the reading language first. */
@@ -121,6 +122,11 @@ function rowHtml(row: Row, langs: PrintLangs): string {
       return '';
     case 'run': {
       const text = langs === 'ar' ? esc(row.ar) : langs === 'sv' ? esc(row.sv) : `${esc(row.sv)} <span class="ar">· ${esc(row.ar)}</span>`;
+      // The book at the start, what the text is at the end, as on the printed reading sheets.
+      if (row.lead) {
+        const lead = langs === 'ar' ? `<span class="ar">${esc(row.lead.ar)}</span>` : esc(row.lead.sv);
+        return `<header class="run run2${langs === 'ar' ? ' rtl' : ''}"><span class="lead">${lead}</span><span class="end">${text}</span></header>`;
+      }
       return `<header class="run">${text}</header>`;
     }
     case 'cart':
@@ -161,7 +167,7 @@ function css(o: PrintOptions): string {
   const f = FRAME[o.paper];
   return `
 @page { size: ${o.paper}; margin: ${f.margin}; @bottom-center { content: counter(page); font: ${b * 0.8}pt Literata, Georgia, serif; color: #777; } }
-:root { --ink: #1B1517; --ink2: #3A3134; --rule: ${rule}; --rule2: ${o.color ? '#E09AA5' : '#999'}; --gold: ${gold}; --formula: ${o.color ? '#7E1D30' : '#1B1517'}; }
+:root { --ink: #1B1517; --ink2: #3A3134; --rule: ${rule}; --rule2: ${o.color ? '#E09AA5' : '#999'}; --gold: ${gold}; --goldbg: ${o.color ? 'rgba(168,117,26,.09)' : '#F1F1F1'}; --formula: ${o.color ? '#7E1D30' : '#1B1517'}; }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-text-size-adjust: 100%; }
 body { margin: 0; color: var(--ink); font: ${b}pt/1.5 Literata, Georgia, 'Noto Sans Coptic', serif; }
@@ -180,6 +186,11 @@ body { padding: 0 ${f.inset + f.pad}mm; }
 .part + .part { break-before: page; }
 .run { text-align: center; color: var(--ink2); font-size: .85em; padding-bottom: 3pt; border-bottom: 1.6pt solid var(--ink); margin-bottom: 10pt; }
 .run .ar { font-size: 1.1em; line-height: 1.3; display: inline; }
+.run2 { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; color: var(--ink); }
+.run2.rtl { flex-direction: row-reverse; }
+.run2 .lead { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: .9em; }
+.run2 .lead .ar { letter-spacing: 0; font-weight: 700; }
+.run2 .end { font-weight: 600; }
 .cart { border: 1.4pt solid var(--rule); padding: 2.5pt; margin: 4pt auto 12pt; width: 78%; break-inside: avoid; }
 .cart-in { border: .6pt solid var(--rule); padding: 5pt 10pt; text-align: center; }
 .cart-in > div, .fi > div, .title > div, .c > div { text-align: center; }
@@ -203,7 +214,9 @@ body { padding: 0 ${f.inset + f.pad}mm; }
 .langs-ar .role { direction: rtl; text-align: right; }
 .u { margin: 0 0 4pt; white-space: pre-line; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7mm; break-inside: avoid; }
-.n { color: var(--rule); font-size: .62em; font-weight: 600; vertical-align: .25em; }
+.n { color: var(--ink2); font-weight: 700; font-size: .85em; display: inline-block; width: 1.8em; text-indent: 0; }
+.t-v > div { padding-inline-start: 1.8em; text-indent: -1.8em; }
+.t-v .ar .n { font-size: .8em; }
 .c { margin: 10pt 0 4pt; break-after: avoid; break-inside: avoid; }
 .t-H { margin-top: 16pt; }
 .t-H .sv { font-weight: 600; letter-spacing: .06em; }
@@ -217,6 +230,9 @@ body { padding: 0 ${f.inset + f.pad}mm; }
 /* Formulas ("Välsignad är han som kommer …") in a deep wine red, as in a printed Katameros:
    set apart from the text, and darker and larger than the crimson rubrics. */
 .t-f > div { color: var(--formula); }
+/* Outside the liturgy's parts a formula stands centred in a tinted box with a gold bar each side, as on the printed reading sheets. */
+.t-f:not(.r-priest):not(.r-deacon):not(.r-people) { background: var(--goldbg); border-left: 1.6pt solid var(--gold); border-right: 1.6pt solid var(--gold); padding: 4pt 10pt; margin: 8pt 0; break-inside: avoid; }
+.t-f:not(.r-priest):not(.r-deacon):not(.r-people) > div { text-align: center; }
 .t-secret > div { color: var(--ink2); }
 .t-f .sv, .t-secret .sv, .langs-sv .cap, .langs-both .cap { font-style: italic; }
 .t-rubric > div, .t-note > div { color: var(--rule); font-size: .88em; }
