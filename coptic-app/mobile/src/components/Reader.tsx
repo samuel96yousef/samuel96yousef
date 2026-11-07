@@ -43,7 +43,8 @@ import { ContextPill, createWayStore, useWay, Wayfinder, type WayStore } from '.
 export type Row =
   | { k: 'top' }
   | { k: 'bottom' }
-  | { k: 'run'; ar: string; sv: string }
+  /** The running head; `lead`, where given, stands at its start and the text at its end, as on a printed sheet */
+  | { k: 'run'; ar: string; sv: string; lead?: { ar: string; sv: string } }
   | { k: 'cart'; ar: string; sv: string }
   | { k: 'feast'; items: { ar: string; sv: string }[] }
   | { k: 'title'; id: string; ar: string; sv: string; capAr?: string; capSv?: string }
@@ -64,6 +65,9 @@ const LIST_WINDOW = Platform.OS === 'web'
   ? { windowSize: 10001, maxToRenderPerBatch: 40, updateCellsBatchingPeriod: 16 }
   : { windowSize: 11 };
 
+/** The formula box: its padding, and how far its first line sits below the unit's top. */
+const FORMULA_PAD = 7;
+const FORMULA_TOP = 11;
 const PEEKABLE = new Set<Unit['t']>(['v', 'psalm', 'f', 'p', 'secret']);
 const EMPTY: ReadonlySet<number> = new Set();
 const ALWAYS_BOTH = new Set<Unit['t']>(['ref', 'h', 'H', 'note', 'rubric']);
@@ -96,8 +100,9 @@ function textStyle(lang: Lang, kind: Unit['t'] | 'title' | 'run' | 'cart', { pag
           ? { ...dir, ...center, fontSize: base * 0.68, fontWeight: '700', letterSpacing: 2.2, textTransform: 'uppercase', color: page.rule, lineHeight: base * 1.4 }
           : { ...dir, ...center, fontFamily: FONTS.svSemi, fontSize: base * 1.05, letterSpacing: 1.2, color: page.ink, lineHeight: base * 1.6 };
     case 'f':
-      return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.1), lineHeight: base * 1.9, color: page.formula }
-        : { ...dir, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.9), lineHeight: base * 1.5, color: page.formula };
+      // A formula stands centred in its box, as on the printed reading sheets.
+      return ar ? { ...dir, ...center, fontFamily: FONTS.ar, fontSize: base * (secondary ? 1 : 1.1), lineHeight: base * 1.9, color: page.formula }
+        : { ...dir, ...center, fontFamily: FONTS.svItalic, fontSize: base * (secondary ? 0.85 : 0.9), lineHeight: base * 1.5, color: page.formula };
     case 'rubric':
     case 'note':
       return ar ? { ...dir, fontFamily: FONTS.ar, fontSize: base * 1, lineHeight: base * 1.8, color: page.rule }
@@ -124,14 +129,28 @@ function lineGrid(row: Row, lang: Lang, ctx: Ctx): Grid | null {
   const t = row.u.t;
   const lh = textStyle(lang, t, ctx, false, row.role).lineHeight;
   // The first line starts below the unit's top padding (styles.unit, unitCenter, unitH, unith).
-  return lh ? { top: t === 'H' ? 26 : t === 'h' ? 16 : t === 'ref' ? 14 : 5, lh } : null;
+  return lh ? { top: t === 'H' ? 26 : t === 'h' ? 16 : t === 'ref' ? 14 : t === 'f' && !row.role ? 5 + FORMULA_TOP : 5, lh } : null;
 }
 
-function UnitText({ u, lang, ctx, secondary, showC, role }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role }) {
+/** A verse's number, set apart in the margin: bold, the text hanging beside it. */
+function VerseNum({ u, lang, ctx, showC }: { u: Unit; lang: Lang; ctx: Ctx; showC?: boolean }) {
+  const n = showC ? `${u.c}:${u.n}` : String(u.n);
+  const ar = lang === 'ar';
+  const lh = textStyle(lang, 'v', ctx, false).lineHeight ?? ctx.base * 1.6;
+  return (
+    <Text style={[styles.vnum, { width: ctx.base * (showC ? 3 : 1.9), lineHeight: lh, color: ctx.page.ink2, textAlign: ar ? 'left' : 'right' },
+      ar ? { fontFamily: FONTS.arBold, fontSize: ctx.base * 0.95 } : { fontFamily: FONTS.svSemi, fontSize: ctx.base * 0.8 }]}>
+      {ar ? toArDigits(n) : `${n}.`}
+    </Text>
+  );
+}
+
+function UnitText({ u, lang, ctx, secondary, showC, role, hang }: { u: Unit; lang: Lang; ctx: Ctx; secondary: boolean; showC?: boolean; role?: Role; hang?: boolean }) {
   let s = lang === 'ar' ? u.ar : u.sv;
   if (!s) return null;
   if (u.t === 'ref' && lang === 'ar') s = toArDigits(s.replace(/\s*:\s*/g, ' : ').replace(/\s*–\s*/g, ' – '));
-  const num = u.t === 'v' ? (showC ? `${u.c}:${u.n}` : String(u.n)) : null;
+  // A verse's own number hangs in the margin (VerseNum); under it, the other language carries its number inline.
+  const num = u.t === 'v' && !hang ? (showC ? `${u.c}:${u.n}` : String(u.n)) : null;
   const style = textStyle(lang, u.t, ctx, secondary, role);
   const alt: TextStyle | null = secondary && !ALWAYS_BOTH.has(u.t)
     ? lang === 'ar'
@@ -190,9 +209,20 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
     case 'run':
       return (
         <View style={styles.run}>
+          {row.lead ? (
+            <View style={[styles.runPair, { flexDirection: P === 'ar' ? 'row-reverse' : 'row' }]}>
+              <Text numberOfLines={1} style={[styles.runLead, P === 'ar' ? { fontFamily: FONTS.arBold, fontSize: base * 0.95, color: page.ink } : { fontFamily: FONTS.svSemi, fontSize: base * 0.74, letterSpacing: 1.4, textTransform: 'uppercase', color: page.ink }]}>
+                {P === 'ar' ? row.lead.ar : row.lead.sv}
+              </Text>
+              <Text numberOfLines={1} style={[styles.runEnd, P === 'ar' ? { fontFamily: FONTS.arBold, fontSize: base * 0.95, color: page.ink, textAlign: 'left' } : { fontFamily: FONTS.svSemi, fontSize: base * 0.8, color: page.ink, textAlign: 'right' }]}>
+                {P === 'ar' ? row.ar : row.sv}
+              </Text>
+            </View>
+          ) : (
           <Text style={P === 'ar' ? { fontFamily: FONTS.arBold, fontSize: base, color: page.ink, textAlign: 'center' } : { fontFamily: FONTS.sv, fontSize: base * 0.78, color: page.ink2, textAlign: 'center' }}>
             {P === 'ar' ? row.ar : row.sv}
           </Text>
+          )}
           <View style={[styles.runRule, { backgroundColor: page.ink }, P === 'ar' ? styles.runRuleRtl : null]} />
         </View>
       );
@@ -271,14 +301,27 @@ function RowContent({ row, langs, ctx, peeked, both }: { row: Row; langs: Lang[]
       const showAlt = !!O && (both || peeked || ALWAYS_BOTH.has(u.t));
       const bar = roleBar(row.role, P, page);
       const center = u.t === 'ref' || u.t === 'h' || u.t === 'H';
-      return (
-        <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>
-          <UnitText u={u} lang={P} ctx={ctx} secondary={false} showC={row.showC} role={row.role} />
+      // A formula outside the liturgy's parts stands in a tinted box with a gold bar each side, as on the printed sheets.
+      const box = u.t === 'f' && !row.role ? [styles.formula, { backgroundColor: `${page.gold}17`, borderColor: page.gold }] : null;
+      const verse = u.t === 'v' && u.n != null;
+      const body = (
+        <>
+          <UnitText u={u} lang={P} ctx={ctx} secondary={false} showC={row.showC} role={row.role} hang={verse} />
           {showAlt && O && (
             <Animated.View entering={ALWAYS_BOTH.has(u.t) ? undefined : FadeIn.duration(220)} exiting={FadeOut.duration(120)}>
               <UnitText u={u} lang={O} ctx={ctx} secondary showC={row.showC} role={row.role} />
             </Animated.View>
           )}
+        </>
+      );
+      return (
+        <View style={[styles.unit, center && styles.unitCenter, u.t === 'H' && styles.unitH, u.t === 'h' && styles.unith, bar]}>
+          {verse ? (
+            <View style={[styles.verse, { flexDirection: P === 'ar' ? 'row-reverse' : 'row' }]}>
+              <VerseNum u={u} lang={P} ctx={ctx} showC={row.showC} />
+              <View style={styles.verseText}>{body}</View>
+            </View>
+          ) : box ? <View style={box}>{body}</View> : body}
           {u.t === 'ref' && <Dots color={page.ink} />}
         </View>
       );
@@ -943,6 +986,13 @@ const styles = StyleSheet.create({
   sepLine: { flex: 1, height: StyleSheet.hairlineWidth * 2 },
   sepCross: { width: 18, height: 18 },
   unit: { paddingVertical: 5 },
+  formula: { borderLeftWidth: 2.5, borderRightWidth: 2.5, paddingHorizontal: 14, paddingVertical: FORMULA_PAD, marginVertical: FORMULA_TOP - FORMULA_PAD },
+  verse: { alignItems: 'flex-start', gap: 6 },
+  verseText: { flex: 1, minWidth: 0 },
+  vnum: { flexShrink: 0 },
+  runPair: { alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
+  runEnd: { flexShrink: 1 },
+  runLead: { flexShrink: 0 },
   unitCenter: { alignItems: 'center', paddingTop: 14 },
   unitH: { paddingTop: 26 },
   unith: { paddingTop: 16 },

@@ -183,9 +183,10 @@ export async function readingsFor(d: Date, kat: KatamerosData, books: BibleBook[
 
     if (withPsalm) {
       for (const [fa, fs] of kat.formulas.gospel) {
-        if (fa === 'psalmShahed') { if (pRef) units.push({ t: 'ref', ...pLabel }); }
+        // The reading's kind before its reference, as on the printed sheets: "Psalm – Psaltaren 45:3–4".
+        if (fa === 'psalmShahed') { if (pRef) units.push({ t: 'ref', ar: pLabel.ar, sv: `Psalm – ${pLabel.sv}` }); }
         else if (fa === 'psalm') { if (psalm) units.push({ t: 'psalm', ar: psalm[1], sv: psalm[2] }); }
-        else if (fa === 'gospelShahed') units.push({ t: 'ref', ...label });
+        else if (fa === 'gospelShahed') units.push({ t: 'ref', ar: `إنجيل ${label.ar}`, sv: `Evangelium – ${label.sv}` });
         else if (fa === 'gospel') units.push(...passageUnits(p.ref, false));
         else units.push({ t: 'f', ar: fill(fa, book[2] ?? book[1]), sv: fill(fs, book[3] ?? '') });
       }

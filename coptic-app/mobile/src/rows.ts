@@ -1,6 +1,6 @@
 /** Turns readings, prayers and Bible chapters into reader rows. */
 import type { Row } from './components/Reader';
-import { copticText, dayTitle, gregorianText, observances, toArDigits } from './lib/coptic';
+import { copticText, dayMonthText, dayTitle, observances, toArDigits } from './lib/coptic';
 import type { BibleBook, DayReadings, Hymn, Prayer, Role, Unit, Verse } from './lib/types';
 
 function unitRows(units: Unit[]): Row[] {
@@ -17,7 +17,8 @@ export function dayRows(r: DayReadings, d: Date, holyWeek: { ar: string; sv: str
   const c = r.coptic;
   const rows: Row[] = [
     { k: 'top' },
-    { k: 'run', ar: copticText(c, 'ar'), sv: `${copticText(c, 'sv')} · ${gregorianText(d, 'sv', false).toLowerCase()}` },
+    // As on the printed reading sheets: the label at the start, the day at the end.
+    { k: 'run', lead: { ar: 'قراءات اليوم', sv: 'Dagens läsning' }, ar: copticText(c, 'ar'), sv: `${copticText(c, 'sv')} · ${dayMonthText(d, 'sv')}` },
     { k: 'cart', ar: dayTitle(c, 'ar'), sv: dayTitle(c, 'sv') },
   ];
   const obs = observances(d);
