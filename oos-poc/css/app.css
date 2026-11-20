@@ -1068,6 +1068,17 @@ table.tbl {
   cursor: pointer;
 }
 
+/* Raden tonar in i stället för att byta färg tvärt. Kort nog att kännas direkt. */
+.tbl tbody tr.clickable td {
+  transition: background 0.1s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tbl tbody tr.clickable td {
+    transition: none;
+  }
+}
+
 .tbl tbody tr.clickable:hover td,
 .tbl tbody tr.clickable:focus-visible td {
   background: var(--hover);
