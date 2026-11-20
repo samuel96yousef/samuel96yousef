@@ -55,7 +55,7 @@
 
     var reds = S.db.teamReductions.slice().sort(function (a, b) { return a.from.localeCompare(b.from); });
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Särskilda avdrag per team</div><p class="card-sub">Tid som inte finns i ett team under en period, till exempel föräldraledighet eller långtidsfrånvaro. Arbete läggs som epik: utbildning och underhåll i teamets förvaltning, systembyten och annat i egna epiker. Då räknas inget två gånger. Avdraget räknas om per arbetsdag som överlappar perioden.</p></div>' +
-      UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-primary' }) + '</div>';
+      UI.btn('Lägg till avdrag', 'reduction-add', { cls: 'btn-sm' }) + '</div>';
     h += UI.table({
       id: 'tbl-reductions',
       rows: reds,
