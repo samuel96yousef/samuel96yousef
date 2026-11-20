@@ -120,7 +120,7 @@
     var p = OOS.period();
     /* Fokus i menyn ska ligga kvar när menyn ritas om, till exempel efter byte av period. */
     var focusId = document.activeElement && nav.contains(document.activeElement) ? document.activeElement.id : null;
-    var h = '<div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><div class="brand-name">Fabriken</div><div class="brand-sub">' + esc(S.db.settings.orgName) + ' · Prototyp 1</div></div></div>';
+    var h = '<div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><div class="brand-name">Fabriken</div><div class="brand-sub">Prototyp 1</div></div></div>';
     h += '<button type="button" class="nav-search" id="nav-search" data-action="global-search" aria-keyshortcuts="Control+K Meta+K">' + UI.icon('search') + '<span>Sök</span><kbd>' + (IS_MAC ? '⌘K' : 'Ctrl K') + '</kbd></button>';
     h += '<div class="nav-groups">';
     NAV.forEach(function (g, gi) {

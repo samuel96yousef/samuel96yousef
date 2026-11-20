@@ -15,10 +15,24 @@
       sub: 'Här styrs hur verklig kapacitet räknas: standardarbetstid, rapporteringsperiod, grundavdrag för alla och särskilda avdrag per team.'
     });
 
-    h += '<div class="grid-3">';
+    /*
+     * Arbetstiden och grundavdragen hör ihop: 40 h minus 9 h är det som formelkortet räknar.
+     * De står i en egen kolumn, så att avdragstabellen får bredd nog att vara en tabell.
+     * Rapporteringsperioden är en annan fråga och står för sig.
+     */
+    h += '<div class="split"><div class="stack-lg">';
     h += '<section class="card"><div class="card-head"><div class="card-title">Standardarbetstid</div>' + UI.btn('Redigera', 'std-edit', { cls: 'btn-sm' }) + '</div><div class="card-body stack">' +
       '<p class="muted small">Standardarbetstid per arbetare och vecka, före avdrag. Grundavdragen skalas mot den.</p>' +
       '<div><span class="kpi-value">' + U.fmtNum(st.standardWeekHours) + ' h</span> <span class="muted">/ vecka</span></div></div></section>';
+
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Grundavdrag</div><div class="card-sub">Gäller alla team och arbetare</div></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
+    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
+    S.db.overheadReductions.forEach(function (r) {
+      h += '<tr><td>' + esc(r.name) + (r.id === 'oh_kompetens' || /kompetensutveckling/i.test(r.name) ? '<div class="muted small">Personlig utveckling. Teamets utbildning och kompetensspridning ligger i förvaltningen.</div>' : '') + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
+    });
+    h += '<tr class="total"><td>Summa</td><td class="num">' + U.fmtNum(ohTotal) + ' h/v</td><td colspan="2" class="muted small">' + U.fmtPct((ohTotal / st.standardWeekHours) * 100) + ' av arbetstiden</td></tr>';
+    h += '</tbody></table></div></section>';
+    h += '</div>';
 
     h += '<section class="card"><div class="card-head"><div class="card-title">Rapporteringsperiod</div></div><div class="card-body stack">' +
       '<p class="muted small">Styr vilken period som används för planering och uppföljning i hela OOS.</p>' +
@@ -35,14 +49,6 @@
       ]) +
       (st.periodAnchor ? UI.btn('Gå till dagens period', 'period-today', { cls: 'btn-sm' }) : '') +
       '</div></section>';
-
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Grundavdrag</div><div class="card-sub">Gäller alla team och arbetare</div></div>' + UI.btn('Lägg till', 'overhead-add', { cls: 'btn-sm' }) + '</div>';
-    h += '<div class="table-wrap"><table class="tbl"><thead><tr><th>Avdragstyp</th><th class="num">Värde</th><th>AI</th><th class="actions"><span class="sr-only">Åtgärder</span></th></tr></thead><tbody>';
-    S.db.overheadReductions.forEach(function (r) {
-      h += '<tr><td>' + esc(r.name) + (r.id === 'oh_kompetens' || /kompetensutveckling/i.test(r.name) ? '<div class="muted small">Personlig utveckling. Teamets utbildning och kompetensspridning ligger i förvaltningen.</div>' : '') + '</td><td class="num">' + U.fmtNum(r.hoursPerWeek) + ' h/v</td><td>' + (r.appliesToAI ? 'Ja' : '<span class="muted">Nej</span>') + '</td><td class="actions">' + UI.iconBtn('edit', 'overhead-edit', { id: r.id }, 'Ändra') + '</td></tr>';
-    });
-    h += '<tr class="total"><td>Summa</td><td class="num">' + U.fmtNum(ohTotal) + ' h/v</td><td colspan="2" class="muted small">' + U.fmtPct((ohTotal / st.standardWeekHours) * 100) + ' av arbetstiden</td></tr>';
-    h += '</tbody></table></div></section>';
     h += '</div>';
 
     h += piCalendar(ctx);
