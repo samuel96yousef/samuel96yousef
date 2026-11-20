@@ -29,6 +29,8 @@
   --accent-ink: #ffffff;
   --accent-soft: #eef3fe;
   --accent-line: #c7d6f5;
+  /* Knappkant: mörkare än --accent-line, så att den klarar 3:1 mot kortet och syns som en kant. */
+  --accent-edge: #6b93e4;
   --focus: rgba(31, 79, 209, 0.28);
   --track: #e6ebf3;
   --bar: #1f4fd1;
@@ -69,6 +71,7 @@
     --accent-ink: #0b1220;
     --accent-soft: #162238;
     --accent-line: #2c4170;
+    --accent-edge: #4769ad;
     --focus: rgba(134, 168, 255, 0.3);
     --track: #222b38;
     --bar: #86a8ff;
@@ -101,6 +104,7 @@
   --accent-ink: #0b1220;
   --accent-soft: #162238;
   --accent-line: #2c4170;
+  --accent-edge: #4769ad;
   --focus: rgba(134, 168, 255, 0.3);
   --track: #222b38;
   --bar: #86a8ff;
@@ -647,8 +651,33 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   transition: background 0.12s, border-color 0.12s, opacity 0.12s;
 }
 
+/*
+ * En knapp ska synas som en knapp utan att man pekar på den: blå kant och blå text.
+ * Den fyllda blå är reserverad för sidans enda huvudhandling, så de två går att skilja åt.
+ * Ta bort behåller neutral kant, eftersom rött betyder avvikelse och inte handling.
+ */
+.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid) {
+  border-color: var(--accent-edge);
+  color: var(--accent);
+}
+
+.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid):hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.btn-danger {
+  border-color: var(--line-strong);
+}
+
 .btn:hover {
   background: var(--hover);
+}
+
+/* Knappen ger efter när man trycker. Ingen animation, bara ett läge. */
+.btn:active,
+.btn-icon:active {
+  transform: translateY(1px);
 }
 
 .btn svg {
@@ -704,9 +733,10 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   flex: none;
 }
 
+/* Ikonknappar är lugna i vila och blå när man pekar, samma språk som knapparna. */
 .btn-icon:hover {
-  background: var(--hover);
-  color: var(--fg);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .btn-icon svg {

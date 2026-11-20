@@ -32,8 +32,8 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Uppgifter | Etikett och värde på en rad med hårfin linje emellan. I smala spalter står etiketten ovanför värdet. |
 | Avvikelser | Ljust tonad ruta med gul eller röd kant, överst på sidan. Texten säger vad som är fel och vad man kan göra. |
 | Färger | Nästan svart text på vitt, svala skiffergrå toner i tre nivåer för sekundär text och linjer. Blått (`--accent`) för val, aktiv flik, vald sida, fokus och staplar. Ljusblått (`--accent-soft`, `--accent-line`) för ytor och ramar som hör till ett val. Gult och rött bara för avvikelser. All text klarar 4,5:1 i båda lägena. |
-| Primär knapp | Blå, en per vy, och den står i sidhuvudet. Knappar inne i ett kort är alltid neutrala, även när de lägger till något. |
-| Val och knapp skiljs åt | Ett val bär färgen, en knapp gör det inte. Valt segment, aktiv flik och vald sida är blå; knappar är neutrala. Då går det att se på färgen om något är valt eller om det är något man kan trycka på. Färgen är aldrig ensam skillnad: det valda är också fetare. |
+| Knappar i tre vikter | **Fylld blå** är sidans enda huvudhandling och står i sidhuvudet. **Blå kant och blå text** är alla andra knappar: de ska synas som knappar utan att man pekar på dem, så kanten är mörk nog att klara 3:1 mot kortet (`--accent-edge`). **Röd text med neutral kant** är Ta bort, som alltid frågar först. En knapp ger efter ett snäpp när man trycker. |
+| Val och knapp skiljs åt | Blått betyder både "det här är valt" och "det här går att trycka på". Formen skiljer dem: ett val är fyllt och ligger i en grupp (valt segment, aktiv flik, vald sida), en knapp är en ensam ruta med kant. Färgen är aldrig ensam skillnad: det valda är också fetare. |
 | Ytor | Ljusgrå botten. Varje sektion är ett vitt kort med 1 px kant och rundade hörn, 24 px luft inuti. I mörkt läge är botten mörkare än korten. |
 | Nyckeltal | Egna små kort i ett rutnät som bryts efter bredden. Etikett, tal och förklaring hör synligt ihop. |
 | Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
