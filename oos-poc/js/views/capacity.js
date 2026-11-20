@@ -113,10 +113,12 @@
     }
     var h = '<section class="card" id="pi-calendar"><div class="card-head"><div><div class="card-title">PI-kalender</div>' +
       '<p class="card-sub">PI är standardperioden i hela Fabriken. Ändra datumen så att de följer er planering. Ett uppehåll mellan två PI:er, till exempel på sommaren, räknas inte till någon PI.</p></div>' +
-      '<div class="page-actions">' + UI.seg('pi-range', [{ key: 'ahead', label: 'Från i år' }, { key: 'all', label: 'Alla' }], range) + UI.btn('Lägg till PI', 'pi-add', { cls: 'btn-sm' }) + '</div></div>';
+      UI.btn('Lägg till PI', 'pi-add', { cls: 'btn-sm' }) + '</div>';
     h += UI.table({
       id: 'tbl-pis',
       rows: rows,
+      /* Urvalet filtrerar tabellen och står därför vid den, som på Arbetare, inte uppe i korthuvudet. */
+      title: UI.seg('pi-range', [{ key: 'ahead', label: 'Från i år' }, { key: 'all', label: 'Alla' }], range),
       defaultSort: 'start',
       noun: 'PI',
       pageSize: 0,
