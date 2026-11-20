@@ -368,26 +368,19 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   color: var(--fg-2);
 }
 
-/* Vald sida: grå bakgrund, fet text och ett streck till vänster. */
+/*
+ * Vald sida: ljusblå ruta, blå text och fet stil, som valt segment och aktiv flik.
+ * Markeringen ligger i rutan. Tidigare satt ett blått streck utanför den, klistrat mot
+ * fönsterkanten, med en vit lucka emellan. Det såg ut som en lös flisa, inte som ett val.
+ */
 .nav-item.active {
   background: var(--nav-active);
-  color: var(--fg);
+  color: var(--accent);
   font-weight: 600;
 }
 
 .nav-item.active .nav-icon {
-  color: var(--fg);
-}
-
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 7px;
-  bottom: 7px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  color: var(--accent);
 }
 
 .nav-count {
