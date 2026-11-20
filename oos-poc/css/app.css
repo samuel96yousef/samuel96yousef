@@ -22,7 +22,7 @@
   --fg-3: #586579;
   --line: #e5e9f0;
   --line-strong: #cfd7e3;
-  --hover: #f1f5fb;
+  --hover: #f2f3f5;
   --selected: #e8effc;
   --nav-active: #e7eefc;
   --accent: #1f4fd1;
@@ -71,7 +71,7 @@
     --fg-3: #8f9bb0;
     --line: #222b38;
     --line-strong: #303b4b;
-    --hover: #18202d;
+    --hover: #1b1e24;
     --selected: #1b2840;
     --nav-active: #1f2d48;
     --accent: #86a8ff;
@@ -104,7 +104,7 @@
   --fg-3: #8f9bb0;
   --line: #222b38;
   --line-strong: #303b4b;
-  --hover: #18202d;
+  --hover: #1b1e24;
   --selected: #1b2840;
   --nav-active: #1f2d48;
   --accent: #86a8ff;
@@ -656,12 +656,12 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
  * Den fyllda blå är reserverad för sidans enda huvudhandling, så de två går att skilja åt.
  * Ta bort behåller neutral kant, eftersom rött betyder avvikelse och inte handling.
  */
-.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid) {
+.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid):not(.btn-quiet-danger) {
   border-color: var(--accent-edge);
   color: var(--accent);
 }
 
-.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid):hover {
+.btn:not(.btn-primary):not(.btn-danger):not(.btn-danger-solid):not(.btn-quiet-danger):hover {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
