@@ -111,15 +111,22 @@
       var n = e.deliveryDomainCapacity(d.id, ctx.next);
       return { d: d, cap: c, next: n.capacity };
     }).sort(function (a, b) { return b.cap.capacity - a.cap.capacity; });
+    /*
+     * Två rader per domän: namn och kapacitet, sedan beläggningen som stapel med procenten
+     * före, enligt stapelstandarden, och ledig tid i högerkanten. Förändringen till nästa
+     * period står i nyckeltalen ovanför och på domänens egen sida, så den upprepas inte
+     * en gång per rad med periodens namn utskrivet.
+     */
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag. Stapeln visar hur stor del av kapaciteten som är belastad.</div></div></div><div class="hbars">';
     dds.forEach(function (x) {
       var free = x.cap.capacity - x.cap.loaded;
-      var change = x.next - x.cap.capacity;
-      var line = U.fmtPct(x.cap.loadPct) + ' belagt · ' + (free < -0.5 ? '<span class="crit-text">' + U.fmtH(-free) + ' över</span>' : U.fmtH(free) + ' ledigt') + ' · ' + U.fmtSigned(change, ' h') + ' i ' + esc(ctx.next.inText);
+      var freeText = free < -0.5
+        ? '<span class="crit-text">' + U.fmtH(-free) + ' över</span>'
+        : U.fmtH(free) + ' ledigt';
       h += '<div class="hbar dd-bar" role="link" tabindex="0" aria-label="' + esc(x.d.name + ', ' + U.fmtH(x.cap.capacity) + ', ' + U.fmtPct(x.cap.loadPct) + ' belagt, ' + U.fmtH(Math.max(0, free)) + ' ledigt') + '" data-go="deliveryDomains:' + esc(x.d.id) + '">' +
         '<span class="hbar-name">' + esc(x.d.name) + '</span><span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span>' +
-        '<div class="dd-bar-track">' + C.capBar({ capacity: x.cap.capacity, loaded: x.cap.loaded }, { noValue: true }) + '</div>' +
-        '<span class="dd-bar-note">' + line + '</span></div>';
+        '<div class="dd-bar-row">' + UI.bar(x.cap.loadPct, { title: '' }) +
+        '<span class="dd-bar-free">' + freeText + '</span></div></div>';
     });
     h += UI.barLegend(dds.some(function (x) { return x.cap.loaded > x.cap.capacity + 0.5; }));
     h += '</div></section></div>';

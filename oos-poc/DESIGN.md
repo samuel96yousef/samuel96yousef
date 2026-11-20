@@ -128,7 +128,7 @@ Den utfällda raden och detaljerna under den (lådan, `C.drawer`) har samma mall
 
 Uträkningar visas inte hela tiden. De ligger bakom en rad som "Så räknas den tillgängliga tiden" och fälls ut när någon vill veta.
 
-Översikten visar läget, inte strukturen: beläggning, ledigt, tid som inte är fördelad och det som behöver lösas. Signaler av samma slag samlas till en rad med antal och en länk till sidan där de löses ("5 kompetenser bärs av en person"), i stället för fem rader som säger samma sak. Hur organisationen är uppbyggd står på leveransdomänen och i organisationskartan.
+Översikten visar läget, inte strukturen: beläggning, ledigt, tid som inte är fördelad och det som behöver lösas. Signaler av samma slag samlas till en rad med antal och en länk till sidan där de löses ("5 kompetenser bärs av en person"), i stället för fem rader som säger samma sak. Hur organisationen är uppbyggd står på leveransdomänen och i organisationskartan. Kortet per leveransdomän har två rader: namn och kapacitet, sedan beläggningen som stapel med procenten före och ledig tid i högerkanten. Förändringen till nästa period står i nyckeltalen ovanför, inte en gång per rad.
 
 Varje uppgift visas en gång. Det finns ingen sammanfattning som upprepar det som redan står på sidan. En bild står inte en gång till som lista: kopplingskartan visar själv vad en vald ruta hänger ihop med, och under den står bara luckorna, det man kan göra något åt. Vill man veta mer går Öppna till delens egen sida.
 

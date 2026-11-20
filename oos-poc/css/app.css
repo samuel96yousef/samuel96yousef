@@ -4238,18 +4238,28 @@ p,
 /* Översiktens staplar per leveransdomän: namn och kapacitet, stapel, sedan talen i klartext. */
 .hbar.dd-bar {
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px 12px;
+  gap: 4px 12px;
 }
 
-.dd-bar-track,
-.dd-bar-note {
+/* Stapeln tar bredden, ledig tid står kvar i högerkanten. */
+.dd-bar-row {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.dd-bar-note {
+.dd-bar-row .bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-bar-free {
+  flex: none;
   font-size: 13px;
   color: var(--fg-3);
-  margin-top: -2px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Kompetensbehov och beroenden i formuläret ---------- */
