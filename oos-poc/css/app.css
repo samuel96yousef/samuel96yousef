@@ -42,6 +42,7 @@
   --crit-soft: #fcebea;
   --shadow-lg: 0 24px 60px rgba(17, 19, 22, 0.16), 0 2px 8px rgba(17, 19, 22, 0.06);
   --overlay: rgba(17, 19, 22, 0.28);
+  --glass: rgba(238, 242, 250, 0.58);
 
   --font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
 
@@ -90,6 +91,7 @@
     --crit-soft: #331817;
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
     --overlay: rgba(0, 0, 0, 0.55);
+    --glass: rgba(8, 12, 20, 0.62);
     color-scheme: dark;
   }
 }
@@ -123,6 +125,7 @@
   --crit-soft: #331817;
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
   --overlay: rgba(0, 0, 0, 0.55);
+  --glass: rgba(8, 12, 20, 0.62);
   color-scheme: dark;
 }
 
@@ -227,10 +230,72 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 
 /* ---------- Skal ---------- */
 
+/*
+ * Ytan bakom innehållet. Se DESIGN.md: effekter ligger bakom innehållet, aldrig på
+ * det. Canvasen visas först när js/surface.js har fått igång WebGL; utan den står
+ * bottenfärgen kvar precis som förut.
+ */
+#surface-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+  pointer-events: none;
+}
+
+#surface-bg.on {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #surface-bg {
+    transition: none;
+  }
+}
+
+/*
+ * Gradientsvepet vid sidbyte. Ett ljusband som drar över innehållsytan medan den nya
+ * sidan tonas in. Det rör inget som bär siffror och är borta efter en halv sekund.
+ */
+.main {
+  position: relative;
+}
+
+.sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  --sweep-x: -30%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 7%, transparent) 38%,
+    color-mix(in srgb, var(--accent) 16%, transparent) 50%,
+    color-mix(in srgb, var(--accent) 7%, transparent) 62%,
+    transparent 100%
+  );
+  background-size: 60% 100%;
+  background-repeat: no-repeat;
+  background-position-x: var(--sweep-x);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sweep {
+    display: none;
+  }
+}
+
 .app {
   display: grid;
   grid-template-columns: var(--nav-w) minmax(0, 1fr);
   min-height: 100%;
+  position: relative;
 }
 
 .nav {
@@ -265,6 +330,24 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   font-weight: 700;
   font-size: 15px;
   flex: none;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Flytande metall i märket. Bokstaven ligger ovanpå och behåller sin kontrast. */
+.mark-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  display: block;
+}
+
+.brand-mark.has-surface {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(10, 20, 45, 0.45);
 }
 
 .brand-name {
@@ -2437,6 +2520,10 @@ mark {
 
 /* ---------- Dialog ---------- */
 
+/*
+ * Glaset. Bara bakgrunden bakom en dialog, aldrig dialogen själv: innehållet i den
+ * bär siffror och ska stå på en solid yta med oförändrad kontrast.
+ */
 .modal-back {
   position: fixed;
   inset: 0;
@@ -2446,6 +2533,14 @@ mark {
   z-index: 50;
   padding: 16px;
   animation: fade 0.14s ease-out;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .modal-back {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
+  }
 }
 
 @keyframes fade {

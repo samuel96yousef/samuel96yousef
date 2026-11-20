@@ -269,10 +269,31 @@ var OOSMotion = (function () {
    * hint: 'nav' (ny sida), 'tab' (ny flik, fliklistan anges), 'detail' (ny post i en lista med detaljvy),
    * 'update' (data ändrades) eller 'quiet' (ingen rörelse, till exempel vid sökning och bläddring).
    */
+  /*
+   * Gradientsvep vid sidbyte. Ett mjukt ljusband sveper över innehållsytan medan den
+   * nya sidan tonas in, så att bytet läses som ett byte och inte som ett hopp.
+   * Svepet ligger över ytan men under inget som ska läsas: det är borta på 480 ms.
+   */
+  function sweep(scope) {
+    if (!enabled()) return;
+    var host = scope.closest ? scope.closest('.main') : null;
+    if (!host) return;
+    var el = document.createElement('div');
+    el.className = 'sweep';
+    host.appendChild(el);
+    A.animate(el, {
+      opacity: [{ to: 1, duration: 120 }, { to: 0, duration: 260, delay: 100 }],
+      '--sweep-x': ['-30%', '130%'],
+      duration: 480,
+      ease: EASE,
+      onComplete: function () { el.remove(); }
+    });
+  }
+
   function play(scope, snap, hint, tablist) {
     if (!enabled() || hint === 'quiet') return;
     try {
-      if (hint === 'nav') enter(scope, Array.prototype.slice.call(scope.children));
+      if (hint === 'nav') { sweep(scope); enter(scope, Array.prototype.slice.call(scope.children)); }
       else if (hint === 'tab' && tablist) enter(tablist.parentNode, panelItems(tablist));
       else {
         if (snap) update(scope, snap);
