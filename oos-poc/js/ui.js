@@ -475,6 +475,25 @@ var OOSUI = (function () {
       ev.preventDefault();
       submitForm(form);
     });
+    /*
+     * Ett fel försvinner så snart det är rättat, inte först när man sparar igen. Felet räknas om
+     * mot hela formuläret, eftersom det kan rättas i ett annat fält än det som visar det: en PI
+     * som överlappar en annan visas på Från men kan rättas genom att ändra Till. Nya fel visas
+     * aldrig medan man skriver, bara när man sparar.
+     */
+    var dropFixedErrors = function () {
+      /* Datumväljaren kan skicka en sista händelse när dialogen just stängts. Då finns inget formulär att räkna på. */
+      if (activeForm !== cfg) return;
+      var bad = collectErrors(form);
+      form.querySelectorAll('.fld.invalid').forEach(function (fld) {
+        if (bad[fld.getAttribute('data-field')]) return;
+        fld.classList.remove('invalid');
+        var msg = fld.querySelector('.err');
+        if (msg) { msg.hidden = true; msg.textContent = ''; }
+      });
+    };
+    form.addEventListener('input', dropFixedErrors);
+    form.addEventListener('change', dropFixedErrors);
     cfg.fields.forEach(function (f) {
       if (f.type === 'custom' && f.bind) f.bind(form.querySelector('[data-field="' + f.key + '"] .custom-body'), form);
     });
@@ -520,6 +539,8 @@ var OOSUI = (function () {
 
   function readForm(form) {
     var out = {};
+    /* Datumväljaren kan skicka en sista händelse när dialogen just stängts. Då finns inga fält att läsa. */
+    if (!activeForm) return out;
     activeForm.fields.forEach(function (f) {
       if (f.type === 'custom') {
         var box = form.querySelector('[data-field="' + f.key + '"] .custom-body');
@@ -554,7 +575,8 @@ var OOSUI = (function () {
     if (firstBad) firstBad.focus();
   }
 
-  function submitForm(form) {
+  /* Fälten var för sig, och sedan formulärets egen kontroll. Samma regler vid spara som när ett fel rättas. */
+  function collectErrors(form) {
     var vals = readForm(form);
     var errors = {};
     activeForm.fields.forEach(function (f) {
@@ -568,10 +590,16 @@ var OOSUI = (function () {
     if (!Object.keys(errors).length && activeForm.validate) {
       Object.assign(errors, activeForm.validate(vals) || {});
     }
+    return errors;
+  }
+
+  function submitForm(form) {
+    var errors = collectErrors(form);
     if (Object.keys(errors).length) {
       showErrors(form, errors);
       return;
     }
+    var vals = readForm(form);
     var cfg = activeForm;
     closeModal();
     cfg.onSubmit(vals);
