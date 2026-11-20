@@ -34,7 +34,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Färger | Nästan svart text på vitt, svala skiffergrå toner i tre nivåer för sekundär text och linjer. Blått (`--accent`) för val, aktiv flik, vald sida, fokus och staplar. Ljusblått (`--accent-soft`, `--accent-line`) för ytor och ramar som hör till ett val. Gult och rött bara för avvikelser. All text klarar 4,5:1 i båda lägena. |
 | Knappar i tre vikter | **Fylld blå** är sidans enda huvudhandling och står i sidhuvudet. **Blå kant och blå text** är alla andra knappar: de ska synas som knappar utan att man pekar på dem, så kanten är mörk nog att klara 3:1 mot kortet (`--accent-edge`). **Röd text med neutral kant** är Ta bort, som alltid frågar först. En knapp ger efter ett snäpp när man trycker. |
 | Val och knapp skiljs åt | Blått betyder både "det här är valt" och "det här går att trycka på". Formen skiljer dem: ett val är fyllt och ligger i en grupp (valt segment, aktiv flik, vald sida), en knapp är en ensam ruta med kant. Färgen är aldrig ensam skillnad: det valda är också fetare. |
-| Ytor | Ljusgrå botten. Varje sektion är ett vitt kort med 1 px kant och rundade hörn, 24 px luft inuti. I mörkt läge är botten mörkare än korten. |
+| Ytor | Ljusgrå botten. Varje sektion är ett vitt kort med 1 px kant och rundade hörn, 24 px luft inuti. Underkanten är 2 px, så att kortet får tyngd mot ytan utan skugga. I mörkt läge är botten mörkare än korten. |
 | Nyckeltal | Egna små kort i ett rutnät som bryts efter bredden. Etikett, tal och förklaring hör synligt ihop. |
 | Högerspalt | Ett eget kort. Grupperna i den skiljs av en linje. |
 | Tabeller | Går kant i kant i kortet. Hårfina linjer mellan raderna, ingen bakgrund i rubrikraden. Texten linjerar med kortets rubrik. |
@@ -195,6 +195,7 @@ Rörelsen ska få appen att kännas levande när man gör något, inte när man 
 
 Regler:
 
+- Gränssnittets egen kurva är `--ease`, `cubic-bezier(0.23, 1, 0.32, 1)`: snabbt ur startblocket, lång mjuk inbromsning. Knappar, rader och fält ligger på 150 ms. Längre tid används bara när rörelsen skildrar något som faktiskt tar tid.
 - Inget enskilt längre än 0,8 sekunder. En bild får byggas upp i steg, i den ordning man läser den. Inga loopar. Ingen studs utöver fjädern i kartan.
 - Rörelse visar varifrån något kommer: ett tal räknas från sitt gamla värde, en ruta glider från sin gamla plats.
 - Den som valt minskad rörelse i operativsystemet får inga animationer alls.

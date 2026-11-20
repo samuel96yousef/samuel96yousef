@@ -47,6 +47,13 @@
 
   --radius-sm: 8px;
 
+  /*
+   * Rörelsekurva för gränssnittet: snabbt ur startblocket, lång mjuk inbromsning.
+   * Tiderna ligger mellan 120 och 260 ms. Längre tid används bara när rörelsen
+   * skildrar något som faktiskt tar tid.
+   */
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+
   /* Layouten är flytande. Måtten växer med fönstret mellan ett golv och ett tak. */
   --nav-w: clamp(250px, 17.5vw, 268px);
   --gutter: clamp(16px, 4vw - 4px, 56px);
@@ -648,7 +655,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   font-size: 13.5px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), opacity 0.15s var(--ease);
 }
 
 /*
@@ -778,9 +785,11 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   min-width: 0;
   --card-pad: clamp(16px, 2.2vw, 24px);
   background: var(--bg);
+  /* Tyngre underkant ger kortet tyngd mot ytan, utan skugga. */
   border: 1px solid var(--line);
+  border-bottom-width: 2px;
   border-radius: 14px;
-  padding: calc(var(--card-pad) - 4px) var(--card-pad) var(--card-pad);
+  padding: calc(var(--card-pad) - 4px) var(--card-pad) calc(var(--card-pad) - 1px);
 }
 
 /* Tabeller går kant i kant i kortet, så att raderna tydligt hör till kortet. */
@@ -1070,7 +1079,7 @@ table.tbl {
 
 /* Raden tonar in i stället för att byta färg tvärt. Kort nog att kännas direkt. */
 .tbl tbody tr.clickable td {
-  transition: background 0.1s ease-out;
+  transition: background 0.15s var(--ease);
 }
 
 @media (prefers-reduced-motion: reduce) {

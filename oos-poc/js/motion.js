@@ -12,7 +12,7 @@
  */
 var OOSMotion = (function () {
   var A = typeof anime !== 'undefined' ? anime : null;
-  var EASE = 'out(3)';
+  var EASE = 'out(5)';
   var BARS = '.lbar, .stack100-seg, .depth-seg';
   var NUMS = '.kpi-value, .lede strong, .big, .donut text';
   var COUNT_ON_ENTER = '.kpi-value, .lede strong';
