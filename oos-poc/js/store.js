@@ -219,9 +219,49 @@ var OOSStore = (function () {
     return obj.id;
   }
 
-  function log(action, what, name) {
+  /*
+   * Fältnamn på svenska i loggen. Formulären har sina egna etiketter, men
+   * de når inte hit, och "hours: 6000 → 6500" är obegripligt för den som
+   * läser loggen i efterhand.
+   */
+  var FIELDS = {
+    hours: 'timmar', investment: 'investering', effort: 'omfattning',
+    allocation: 'allokering', percent: 'andel', level: 'nivå', weight: 'vikt',
+    capacity: 'kapacitet', status: 'status', name: 'namn', start: 'start', end: 'slut',
+    from: 'från', to: 'till', hoursPerWeek: 'timmar per vecka', type: 'typ',
+    standardWeekHours: 'standardarbetstid', costPerHour: 'kostnad per timme',
+    category: 'kategori', description: 'beskrivning', purpose: 'uppdrag',
+    leadId: 'teamledare', note: 'kommentar', title: 'titel'
+  };
+
+  /*
+   * Vad som faktiskt ändrades, inte bara att något gjorde det. Bara fält
+   * vars värde skiljer sig tas med — en sparning utan ändring ska inte se
+   * ut som en ändring. Tal sparas som tal så att riktningen går att räkna
+   * ut vid visning i stället för att frysas som text här.
+   */
+  function diffOf(before, patch) {
+    var out = [];
+    Object.keys(patch || {}).forEach(function (k) {
+      if (k === 'updated') return;
+      var from = before[k];
+      var to = patch[k];
+      if (from === to) return;
+      if (from === undefined && (to === '' || to === null)) return;
+      out.push({ key: k, label: FIELDS[k] || k, from: from === undefined ? null : from, to: to });
+    });
+    return out;
+  }
+
+  function log(action, what, name, extra) {
     db.changeLog = db.changeLog || [];
-    db.changeLog.unshift({ ts: new Date().toISOString(), action: action, what: what, name: name });
+    var entry = { ts: new Date().toISOString(), action: action, what: what, name: name };
+    if (extra) {
+      if (extra.changes && extra.changes.length) entry.changes = extra.changes;
+      if (extra.coll) entry.coll = extra.coll;
+      if (extra.id) entry.id = extra.id;
+    }
+    db.changeLog.unshift(entry);
     if (db.changeLog.length > 300) db.changeLog.length = 300;
   }
 
@@ -237,10 +277,12 @@ var OOSStore = (function () {
   function update(coll, id, patch) {
     var rec = db[coll].filter(function (x) { return x.id === id; })[0];
     if (!rec) return null;
+    /* Skillnaden måste tas före Object.assign — efter den finns inget före. */
+    var changes = diffOf(rec, patch);
     Object.assign(rec, patch);
     if ('updated' in rec) rec.updated = U.todayISO();
     touch();
-    log('Ändrade', LABELS[coll] || coll, nameOf(coll, rec));
+    log('Ändrade', LABELS[coll] || coll, nameOf(coll, rec), { changes: changes, coll: coll, id: id });
     writeStorage();
     return rec;
   }
@@ -280,9 +322,10 @@ var OOSStore = (function () {
   }
 
   function updateSettings(patch) {
+    var changes = diffOf(db.settings, patch);
     Object.assign(db.settings, patch);
     touch();
-    log('Ändrade', 'inställningar', Object.keys(patch).join(', '));
+    log('Ändrade', 'inställningar', '', { changes: changes });
     writeStorage();
   }
 

@@ -206,6 +206,8 @@
     if (!tc.members.length) main += '<tr><td colspan="7"><div class="empty">Teamet har inga medlemmar ännu.</div></td></tr>';
     main += '</tbody></table></div></section>';
 
+    main += C.historyCard('teams', t.id);
+
     /* Högerspalten */
     /* Syftet står som uppdrag under rubriken, så det upprepas inte här. */
     var aside = t.purpose ? '' : UI.asideBlock('Uppdrag', '<p class="aside-text">Inget uppdrag angivet.</p>');

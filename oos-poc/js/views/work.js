@@ -310,6 +310,9 @@
 
     var main = whoDoesTheWork(ep, team, tc, mine, hrs, ctx) + dependencyCard(ep, ctx);
 
+    /* Epikens egen historik: timmarna är det som oftast ändras här. */
+    main += C.historyCard('epics', ep.id);
+
     /* Period för period: epikens timmar och teamets beläggning. */
     main += '<section class="card"><div class="card-head"><div><div class="card-title">Period för period</div>' +
       '<div class="card-sub">Epikens timmar och vad de betyder för ' + (team ? esc(team.name) : 'teamet') + '.</div></div></div>';
@@ -700,6 +703,9 @@
     });
     if (!sum.epics.length) main += '<tr><td colspan="4"><div class="empty">Initiativet har inga epiker ännu.</div></td></tr>';
     main += '</tbody></table></div></section>';
+
+    /* Initiativets egen historik: vad som ändrats här, och åt vilket håll. */
+    main += C.historyCard('initiatives', x.id);
 
     /* Beroenden mellan initiativets epiker och till annat arbete. */
     var links = [];

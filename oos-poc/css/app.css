@@ -2258,6 +2258,71 @@ mark {
   font-size: 0.875rem;
 }
 
+/*
+ * En ändring som rad: fältet, före, pil, efter, och riktningen som bricka.
+ * Värdena står i tabellsiffror så att två rader under varandra går att
+ * jämföra med ögat utan att siffrorna hoppar i sidled.
+ */
+.chg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 3px;
+}
+
+.chg-one {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.chg-field {
+  color: var(--fg-3);
+}
+
+.chg-from {
+  color: var(--fg-3);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+
+.chg-arrow {
+  color: var(--fg-3);
+}
+
+.chg-to {
+  color: var(--fg);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.hist-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hist-row:last-child {
+  border-bottom: 0;
+}
+
+.hist-ts {
+  flex: none;
+  color: var(--fg-3);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
 .badge-ok {
   background: var(--ok-soft);

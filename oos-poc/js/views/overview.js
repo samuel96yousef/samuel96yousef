@@ -261,7 +261,9 @@
     if (!log.length) return h + '<p class="muted">Inga ändringar ännu. Allt du lägger till, ändrar eller tar bort loggas här, så att beslut går att följa upp.</p></div></section>';
     h += '<div class="list">';
     log.forEach(function (l) {
-      h += '<div class="list-item"><span class="muted small num" style="width:120px;flex:none;text-align:left">' + fmtTs(l.ts) + '</span><span class="grow">' + esc(l.action) + ' ' + esc(l.what) + (l.name ? ' <span class="muted">·</span> ' + esc(l.name) : '') + '</span></div>';
+      h += '<div class="list-item"><span class="muted small num" style="width:120px;flex:none;text-align:left">' + fmtTs(l.ts) + '</span>' +
+        '<span class="grow">' + esc(l.action) + ' ' + esc(l.what) + (l.name ? ' <span class="muted">·</span> ' + esc(l.name) : '') +
+        C.changeBits(l.changes) + '</span></div>';
     });
     return h + '</div></div></section>';
   }

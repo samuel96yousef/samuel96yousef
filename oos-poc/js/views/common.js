@@ -407,6 +407,66 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * ordningen man läser dem i: namnet och läget, vad saken är till för,
    * mätaren, talen, och vad som händer härnäst. Hela kortet är knappen.
    */
+  /*
+   * En ändring som rad: fältet, värdet före, pilen, värdet efter, och för
+   * tal en bricka med riktningen. Riktningen är ofta det enda man vill
+   * veta — gick det upp eller ned — och den ska inte behöva räknas i huvudet.
+   */
+  /*
+   * Råa värden ur databasen är engelska nycklar. I loggen ska de stå som
+   * appen annars skriver dem — "active" är inte svenska för någon.
+   */
+  function readable(key, v) {
+    if (v === null || v === undefined || v === '') return '–';
+    if (typeof v === 'boolean') return v ? 'ja' : 'nej';
+    if (typeof v !== 'string') return String(v);
+    if (C.EPIC_STATUS[v]) return C.EPIC_STATUS[v];
+    var other = { active: 'Aktiv', inactive: 'Inaktiv', production: 'I drift', development: 'Under utveckling',
+      decided: 'Beslutat', proposed: 'Förslag', done: 'Klart', primary: 'Primär', secondary: 'Sekundär',
+      monthly: 'per månad', total: 'totalt', owner: 'Ansvarar', contributor: 'Bidrar', supporting: 'Stödjande' };
+    return other[v] || v;
+  }
+
+  C.changeBits = function (changes) {
+    if (!changes || !changes.length) return '';
+    return '<span class="chg">' + changes.map(function (c) {
+      var numeric = typeof c.to === 'number' && (typeof c.from === 'number' || c.from === null);
+      var from = readable(c.key, c.from);
+      var to = readable(c.key, c.to);
+      var badge = '';
+      if (numeric && typeof c.from === 'number') {
+        var d = c.to - c.from;
+        if (Math.abs(d) > 0.0001) badge = ' ' + UI.delta(d, '');
+      }
+      return '<span class="chg-one"><span class="chg-field">' + U.esc(c.label) + '</span>' +
+        '<span class="chg-from">' + U.esc(from) + '</span>' +
+        '<span class="chg-arrow" aria-hidden="true">→</span>' +
+        '<span class="chg-to">' + U.esc(to) + '</span>' + badge + '</span>';
+    }).join('') + '</span>';
+  };
+
+  /*
+   * En saks egen historik. Loggen är gemensam, men den som står på ett
+   * initiativ vill se just det initiativets ändringar — inte allas.
+   */
+  C.historyCard = function (coll, id, opts) {
+    opts = opts || {};
+    var rows = (S.db.changeLog || []).filter(function (l) {
+      return l.coll === coll && l.id === id && l.changes && l.changes.length;
+    }).slice(0, opts.limit || 8);
+    var h = '<section class="card"><div class="card-head"><div><div class="card-title">Ändringar</div>' +
+      '<p class="card-sub">Vad som ändrats här, och åt vilket håll.</p></div></div>';
+    if (!rows.length) {
+      return h + '<div class="empty">Inget har ändrats ännu. Ändringar du gör syns här med värdet före och efter.</div></section>';
+    }
+    h += '<div class="hist">';
+    rows.forEach(function (l) {
+      h += '<div class="hist-row"><span class="hist-ts">' + U.esc(C.fmtTs ? C.fmtTs(l.ts) : l.ts.slice(0, 16).replace('T', ' ')) + '</span>' +
+        C.changeBits(l.changes) + '</div>';
+    });
+    return h + '</div></section>';
+  };
+
   C.objectCard = function (o) {
     var st = o.state || { label: '', tone: '' };
     return '<button type="button" class="ocard" data-go="' + U.esc(o.go) + '">' +
