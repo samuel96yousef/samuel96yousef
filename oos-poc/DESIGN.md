@@ -27,6 +27,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
+| Två plan | Appen har bara två ytor. Sidan är grå och bär ramen: sidomenyn, perioden, bakgrunden. Innehåll ligger på vita ytor som lyfter från den — kort, nyckeltal, sökfältet, periodknappen. En vit yta betyder "här finns något att läsa eller göra". Kortens kant kommer av ljus, inte av en linje: en hårfin ring plus två mjuka skuggor. I mörkt läge faller skuggor bort, så djupet kommer där från en ljusare yta och en ljus linje längs överkanten. Inga gradienter, ingen glöd, inget glas — effekter ligger aldrig ovanpå innehållet. |
 | Typsnitt | Geist, med systemets typsnitt som reserv. Brödtext 15 px med radavstånd 1,55, tabeller 14,5 px, etiketter minst 13 px. Tabellsiffror överallt där siffror står i kolumner. |
 | Datum | Alltid skrivna som "1 sep 2026", aldrig som 2026-09-01. Perioder som "oktober 2026". |
 | Uppgifter | Etikett och värde på en rad med hårfin linje emellan. I smala spalter står etiketten ovanför värdet. |
