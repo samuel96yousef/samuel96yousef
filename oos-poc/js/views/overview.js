@@ -129,10 +129,11 @@
       var free = x.cap.capacity - x.cap.loaded;
       h += C.objectCard({
         go: 'deliveryDomains:' + x.d.id,
+        icon: 'layers',
         name: x.d.name,
         state: C.loadState(x.cap),
         mission: x.d.purpose || '',
-        meter: { label: 'Beläggning', bar: UI.bar(x.cap.loadPct, { title: '' }) },
+        meter: { label: 'Beläggning', right: 'av ' + U.fmtH(x.cap.capacity), bar: UI.bar(x.cap.loadPct, { title: '' }) },
         stats: [
           { value: U.fmtH(x.cap.capacity), label: 'kapacitet' },
           { value: U.fmtH(x.cap.loaded), label: 'belastat' },
@@ -163,7 +164,36 @@
     if (groups.length > 8) h += '<div class="pager"><span>' + shown.length + ' av ' + groups.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
     h += '</section>';
 
+    /*
+     * Bottenraden: tre kort av olika slag, inte tre av samma. En andel som
+     * ring, en rangordning som lista, och loggen som rader. Olika former
+     * för olika frågor — ögat hittar snabbare när korten inte ser lika ut.
+     */
+    var tops = S.db.teams.map(function (t) {
+      return { t: t, cap: e.teamCapacity(t.id, ctx.period) };
+    }).filter(function (x) { return x.cap.capacity > 0.5; })
+      .sort(function (a2, b2) { return b2.cap.loadPct - a2.cap.loadPct; }).slice(0, 6);
+
+    h += '<div class="grid-3">';
+
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Beläggning</div>' +
+      '<p class="card-sub">Hela organisationen i ' + esc(month) + '.</p></div></div>' +
+      '<div class="donut-wrap">' + UI.donut(org.loadPct) + '<div class="donut-legend">' +
+      '<div><span class="dot-sq bar"></span>' + U.fmtH(org.loaded) + ' belastat</div>' +
+      '<div><span class="dot-sq track"></span>' + U.fmtH(org.free) + ' ledigt</div>' +
+      '</div></div></section>';
+
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Närmast taket</div>' +
+      '<p class="card-sub">Teamen med högst beläggning.</p></div></div><div class="ranked">';
+    tops.forEach(function (x) {
+      h += '<button type="button" class="ranked-row" data-go="teams:' + esc(x.t.id) + '">' +
+        '<span class="ranked-name">' + esc(x.t.name) + '</span>' +
+        '<span class="ranked-bar">' + UI.bar(x.cap.loadPct, { title: '' }) + '</span></button>';
+    });
+    h += '</div></section>';
+
     h += recentChanges();
+    h += '</div>';
     return h;
   };
 

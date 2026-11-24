@@ -49,10 +49,11 @@
         var nx = ctx.e.teamCapacity(r.id, ctx.next);
         h += C.objectCard({
           go: 'teams:' + r.id,
+          icon: 'users',
           name: r.team.name,
           state: C.loadState(r.cap),
           mission: r.team.purpose || 'Inget uppdrag angivet.',
-          meter: { label: 'Beläggning', bar: UI.bar(r.cap.loadPct, { title: '' }) },
+          meter: { label: 'Beläggning', right: 'av ' + U.fmtH(r.cap.capacity), bar: UI.bar(r.cap.loadPct, { title: '' }) },
           stats: [
             { value: r.cap.headcount, label: r.cap.headcount === 1 ? 'medlem' : 'medlemmar' },
             { value: U.fmtH(r.cap.capacity), label: 'kapacitet' },

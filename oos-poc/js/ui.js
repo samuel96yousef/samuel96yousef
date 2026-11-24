@@ -14,7 +14,10 @@ var OOSUI = (function () {
     arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
     chevronRight: '<path d="M9 6l6 6-6 6"/>',
-    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    layers: '<path d="M12 4l8.5 4.25L12 12.5 3.5 8.25z"/><path d="M3.5 12.25L12 16.5l8.5-4.25"/><path d="M3.5 16.25L12 20.5l8.5-4.25"/>',
+    users: '<circle cx="9" cy="8.5" r="3.25"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5.6a3.25 3.25 0 0 1 0 5.8M21 19.5a6 6 0 0 0-3.5-5.45"/>',
+    box: '<path d="M12 3.5l8 4.25v8.5L12 20.5l-8-4.25v-8.5z"/><path d="M4 7.75l8 4.25 8-4.25M12 12v8.5"/>'
   };
 
   function icon(name, cls) {

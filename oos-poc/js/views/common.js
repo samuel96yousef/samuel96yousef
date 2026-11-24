@@ -410,7 +410,15 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
   C.objectCard = function (o) {
     var st = o.state || { label: '', tone: '' };
     return '<button type="button" class="ocard" data-go="' + U.esc(o.go) + '">' +
-      '<span class="ocard-head"><span class="ocard-name">' + U.esc(o.name) + '</span>' +
+      '<span class="ocard-head">' +
+      /*
+       * Ikonen säger vilken sorts sak kortet är, i en tonad ruta. Den är
+       * neutral för alla kort av samma slag — inte en färg per domän.
+       * Färgkodade klossar att lära sig utantill är just vad princip 4
+       * säger nej till; ikonen hjälper ögat att se slaget, inte saken.
+       */
+      (o.icon ? '<span class="ocard-icon">' + UI.icon(o.icon) + '</span>' : '') +
+      '<span class="ocard-name">' + U.esc(o.name) + '</span>' +
       (st.label ? UI.state(st.label, st.tone) : '') + '</span>' +
       (o.mission ? '<span class="ocard-mission"><span class="ocard-lead">Uppdrag</span>' + U.esc(o.mission) + '</span>' : '') +
       (o.meter ? UI.meter(o.meter) : '') +

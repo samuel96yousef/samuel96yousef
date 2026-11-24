@@ -2180,6 +2180,84 @@ mark {
   background: var(--crit);
 }
 
+/*
+ * Bottenradens tre kort. Ringen för andelen, rangordningen som lista,
+ * loggen som rader: olika former för olika frågor.
+ */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.donut-wrap .donut {
+  width: 104px;
+  height: 104px;
+  flex: none;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  color: var(--fg-2);
+  font-size: 0.8125rem;
+}
+
+.donut-legend div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot-sq {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.dot-sq.bar { background: var(--bar); }
+.dot-sq.track { background: var(--track); }
+
+.ranked {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.ranked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 46%);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  margin-inline: -10px;
+  width: calc(100% + 20px);
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.ranked-row:hover {
+  background: var(--hover);
+}
+
+.ranked-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
 /* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
 .badge-ok {
   background: var(--ok-soft);
@@ -2318,14 +2396,35 @@ mark {
 
 .ocard-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 9px;
+}
+
+/* Ikonen i tonad ruta: säger vilket slag kortet är, inte vilken sak. */
+.ocard-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ocard-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ocard-head .state {
+  margin-left: auto;
 }
 
 .ocard-name {
   font-weight: 600;
   min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
