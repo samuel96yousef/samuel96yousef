@@ -104,6 +104,7 @@ Texten ska få plats och läsas lätt, oavsett hur lång den är eller hur smal 
 | Metaraden | Punkterna mellan delarna syns aldrig först på en rad. |
 | Ord efter antal | "1 medlem", "3 medlemmar". Använd `OOSUtil.plural`. |
 | Perioder | "oktober 2026" och "Q4 2026". Inte "2026-Q4". |
+| Storlek i rem, aldrig px | Varje teckenstorlek står i rem, även golv och tak i `clamp()`. Den som höjt webbläsarens grundstorlek ska få större text, inte bara kunna zooma. Sidomenyns bredd står också i rem, annars klipps "Verksamhetsdomäner" till "Verksamhets…" för just de användarna. |
 
 Kontroll: inget element med text får bli bredare än sin ruta, på någon sida, i någon bredd från 320 till 1920 px, även med mycket långa namn.
 

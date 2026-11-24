@@ -64,7 +64,13 @@
   --dur-2: 0.22s;
 
   /* Layouten är flytande. Måtten växer med fönstret mellan ett golv och ett tak. */
-  --nav-w: clamp(250px, 17.5vw, 268px);
+  /*
+   * Bredden står i rem så att menyn växer med användarens grundstorlek.
+   * Står den i px klipps "Leveransdomäner" och "Verksamhetsdomäner" till
+   * "Leveransdom…" för den som har höjt textstorleken i webbläsaren.
+   * Vid 16 px grundstorlek är måtten identiska med de gamla.
+   */
+  --nav-w: clamp(15.625rem, 17.5vw, 16.75rem);
   --gutter: clamp(16px, 4vw - 4px, 56px);
   --content-max: 1360px;
 }
@@ -155,7 +161,7 @@ body {
   background: var(--canvas);
   color: var(--fg);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -272,19 +278,19 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 0.9375rem;
   flex: none;
 }
 
 .brand-name {
   font-weight: 650;
-  font-size: 15.5px;
+  font-size: 0.96875rem;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .brand-sub {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
   line-height: 1.3;
 }
@@ -334,7 +340,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
  * texten svårare att läsa: små versaler tar bort ordens form.
  */
 .nav-label {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   color: var(--fg-3);
   padding: 2px 10px 4px;
@@ -353,7 +359,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   cursor: pointer;
   text-align: left;
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   width: 100%;
   position: relative;
 }
@@ -398,7 +404,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 
 .nav-count {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
   font-weight: 400;
@@ -447,7 +453,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   color: var(--fg);
   font: inherit;
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
@@ -484,12 +490,12 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 .period-menu-label {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
 .period-menu-dates {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
   line-height: 1.45;
 }
@@ -537,7 +543,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
   flex-wrap: wrap;
 }
@@ -571,7 +577,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 .page-meta {
   margin: 0 0 0 -20px;
   color: var(--fg-2);
-  font-size: 15px;
+  font-size: 0.9375rem;
   display: flex;
   flex-wrap: wrap;
   row-gap: 2px;
@@ -597,8 +603,8 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 .page-title {
-  font-size: clamp(26px, 1.4vw + 16px, 32px);
-  font-size: clamp(26px, 1.6cqi + 14px, 34px);
+  font-size: clamp(1.625rem, 1.4vw + 1rem, 2rem);
+  font-size: clamp(1.625rem, 1.6cqi + 0.875rem, 2.125rem);
   line-height: 1.12;
   font-weight: 650;
   letter-spacing: -0.025em;
@@ -609,14 +615,14 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 .page-title .badge {
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0;
   transform: translateY(-4px);
 }
 
 .page-sub {
   color: var(--fg-2);
-  font-size: 15px;
+  font-size: 0.9375rem;
   max-width: 68ch;
 }
 
@@ -627,8 +633,8 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 .lede {
-  font-size: clamp(19px, 0.6vw + 14px, 22px);
-  font-size: clamp(18px, 0.8cqi + 12px, 22px);
+  font-size: clamp(1.1875rem, 0.6vw + 0.875rem, 1.375rem);
+  font-size: clamp(1.125rem, 0.8cqi + 0.75rem, 1.375rem);
   line-height: 1.45;
   letter-spacing: -0.015em;
   max-width: 44ch;
@@ -658,7 +664,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   color: var(--fg);
   padding: 0 14px;
   font-weight: 500;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease);
@@ -729,7 +735,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 .btn-sm {
   height: 28px;
   padding: 0 10px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .btn-icon {
@@ -854,7 +860,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 .card-title {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   display: flex;
@@ -865,7 +871,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 /* Beskrivningen bryter innan den når knapparna till höger. */
 .card-sub {
   color: var(--fg-3);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 400;
   letter-spacing: 0;
   max-width: 68ch;
@@ -937,12 +943,12 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 
 .kpi-label {
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .kpi-value {
-  font-size: 30px;
-  font-size: clamp(22px, 12cqi + 4px, 30px);
+  font-size: 1.875rem;
+  font-size: clamp(1.375rem, 12cqi + 0.25rem, 1.875rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -955,7 +961,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 
 .kpi-note {
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .grid-2 {
@@ -1023,7 +1029,7 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 table.tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1031,7 +1037,7 @@ table.tbl {
   text-align: left;
   font-weight: 450;
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
   padding: 0 12px 10px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
@@ -1059,7 +1065,7 @@ table.tbl {
 
 .tbl .sub {
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .tbl th.sortable:hover {
@@ -1214,7 +1220,7 @@ table.tbl {
   flex: none;
   max-width: 45%;
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 400;
 }
 
@@ -1343,7 +1349,7 @@ table.tbl {
 
 .name-cell .sub {
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .tbl .name-cell {
@@ -1362,7 +1368,7 @@ table.tbl {
   gap: 12px;
   padding-top: 12px;
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
   flex-wrap: wrap;
 }
 
@@ -1488,7 +1494,7 @@ mark {
   border-radius: 50%;
   display: inline-grid;
   place-items: center;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   color: var(--fg-2);
   background: var(--avatar);
@@ -1504,13 +1510,13 @@ mark {
 .avatar.sm {
   width: 22px;
   height: 22px;
-  font-size: 9.5px;
+  font-size: 0.59375rem;
 }
 
 .avatar.lg {
   width: 40px;
   height: 40px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .badge {
@@ -1519,7 +1525,7 @@ mark {
   gap: 5px;
   padding: 1px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
   line-height: 1.6;
@@ -1566,7 +1572,7 @@ mark {
   background: none;
   border-radius: 7px;
   padding: 3px 4px 3px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg);
 }
 
@@ -1581,7 +1587,7 @@ mark {
 
 .chip .owner {
   color: var(--fg-3);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .chip .x {
@@ -1620,7 +1626,7 @@ mark {
   width: 44px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -1659,7 +1665,7 @@ mark {
   display: grid;
   grid-template-columns: fit-content(12em) minmax(0, 1fr);
   margin: 0;
-  font-size: 14.5px;
+  font-size: 0.90625rem;
 }
 
 .kv dt,
@@ -1693,7 +1699,7 @@ mark {
   .kv dt {
     border-bottom: 0;
     padding-bottom: 0;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .kv dd {
     padding-top: 2px;
@@ -1701,7 +1707,7 @@ mark {
 }
 
 .label {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -1716,7 +1722,7 @@ mark {
 }
 
 .big {
-  font-size: 26px;
+  font-size: 1.625rem;
   font-weight: 600;
   letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
@@ -1728,7 +1734,7 @@ mark {
 }
 
 .small {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .row {
@@ -1747,7 +1753,7 @@ mark {
 }
 
 .period-now {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   min-width: 140px;
   text-align: center;
@@ -1782,7 +1788,7 @@ mark {
 
 .note {
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-left: 2px solid var(--line-strong);
   padding: 2px 0 2px 12px;
 }
@@ -1790,7 +1796,7 @@ mark {
 .note.warn,
 .note.crit {
   color: var(--fg);
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   padding: 12px 16px;
   border-radius: 0 8px 8px 0;
 }
@@ -1809,7 +1815,7 @@ mark {
   font-variant-numeric: tabular-nums;
   display: flex;
   flex-direction: column;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .formula .step {
@@ -1895,7 +1901,7 @@ mark {
   padding: 4px 12px;
   cursor: pointer;
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-radius: 7px;
   white-space: nowrap;
 }
@@ -1942,7 +1948,7 @@ mark {
 
 .signal-detail {
   color: var(--fg-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* ---------- Fabrikskarta ---------- */
@@ -1960,7 +1966,7 @@ mark {
 }
 
 .fcol-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
   margin-top: 16px;
 }
@@ -1974,7 +1980,7 @@ mark {
   background: none;
   padding: 0;
   text-align: left;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -1988,7 +1994,7 @@ mark {
 }
 
 .fdomain.it {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
@@ -2014,7 +2020,7 @@ mark {
 .fteam .meta,
 .fcol .meta {
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 /* ---------- Ring och staplar ---------- */
@@ -2051,7 +2057,7 @@ mark {
 .donut text {
   fill: var(--fg);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-family: var(--font);
   letter-spacing: -0.02em;
 }
@@ -2060,7 +2066,7 @@ mark {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 14px;
+  font-size: 0.875rem;
   min-width: 180px;
 }
 
@@ -2102,7 +2108,7 @@ mark {
   grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) 140px;
   gap: 16px;
   align-items: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .hbar[data-go] {
@@ -2132,7 +2138,7 @@ mark {
   display: flex;
   gap: 18px;
   flex-wrap: wrap;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -2150,7 +2156,7 @@ mark {
   color: var(--bg);
   padding: 8px 11px;
   border-radius: 8px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.55;
   box-shadow: var(--shadow-lg);
   max-width: 280px;
@@ -2174,7 +2180,7 @@ mark {
 }
 
 .fld > span {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -2207,7 +2213,7 @@ mark {
 }
 
 .fld .help {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -2231,7 +2237,7 @@ mark {
 
 .fld .err {
   color: var(--crit);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 /* ---------- Rullistor och förslag ---------- */
@@ -2249,7 +2255,7 @@ mark {
   border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--fg);
-  font-size: 14px;
+  font-size: 0.875rem;
   text-align: left;
   cursor: pointer;
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
@@ -2372,7 +2378,7 @@ mark {
   background: var(--hover);
   color: var(--fg);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .sel-search input:focus {
@@ -2389,7 +2395,7 @@ mark {
 
 .sel-group {
   padding: 10px 10px 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
 }
 
@@ -2403,7 +2409,7 @@ mark {
   gap: 10px;
   padding: 7px 10px;
   border-radius: 7px;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
   min-width: 0;
 }
@@ -2430,7 +2436,7 @@ mark {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 400;
   color: var(--fg-3);
 }
@@ -2444,7 +2450,7 @@ mark {
 
 .sel-empty {
   padding: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -2495,7 +2501,7 @@ mark {
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 .modal-body {
@@ -2583,7 +2589,7 @@ mark {
   padding: 14px 16px;
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -2632,7 +2638,7 @@ mark {
 }
 
 .form-mid .need-cat {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .form-mid .fld .need-in input,
@@ -2642,7 +2648,7 @@ mark {
 }
 
 .form-mid .need-free {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .form-mid .need-foot {
@@ -2659,17 +2665,17 @@ mark {
 }
 
 .form-side .note.warn.inv-impact {
-  font-size: 13px;
+  font-size: 0.8125rem;
   padding: 10px 12px;
 }
 
 .form-side .impact-head {
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: 6px;
 }
 
 .form-side .impact-tbl {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .form-side .impact-tbl th,
@@ -2682,7 +2688,7 @@ mark {
   padding: 14px 16px;
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -2740,7 +2746,7 @@ mark {
   padding: 10px 16px;
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   max-width: 420px;
 }
 
@@ -2790,12 +2796,12 @@ mark {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
 .kpi-def {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -2854,7 +2860,7 @@ mark {
 .bullet-scale {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
 }
@@ -2879,7 +2885,7 @@ mark {
 }
 
 .col-val {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
 }
@@ -2916,7 +2922,7 @@ mark {
 }
 
 .col-label {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
   line-height: 1.25;
 }
@@ -2942,7 +2948,7 @@ mark {
 }
 
 .heat td.heat-cell {
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-left: 2px solid var(--bg);
 }
 
@@ -2992,7 +2998,7 @@ mark {
 
 .loadbar .bar-val {
   width: 48px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 /* Sammansättning och kompetensdjup: gråskala med direkta etiketter */
@@ -3023,7 +3029,7 @@ mark {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 18px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -3054,7 +3060,7 @@ mark {
   grid-template-columns: minmax(110px, 160px) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .depth-name {
@@ -3075,7 +3081,7 @@ mark {
 
 .depth-val {
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   white-space: nowrap;
 }
 
@@ -3092,7 +3098,7 @@ mark {
 }
 
 .graph-head {
-  font-size: 12px;
+  font-size: 0.75rem;
   fill: var(--fg-3);
 }
 
@@ -3130,7 +3136,7 @@ mark {
 }
 
 .gnode text {
-  font-size: 12px;
+  font-size: 0.75rem;
   fill: var(--fg);
 }
 
@@ -3205,7 +3211,7 @@ mark {
 }
 
 .tier-head {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-2);
   margin-bottom: 8px;
 }
@@ -3227,7 +3233,7 @@ mark {
   background: var(--bg);
   color: var(--fg);
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
 }
@@ -3287,7 +3293,7 @@ kbd {
   background: var(--canvas);
   color: var(--fg-3);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
   text-align: left;
 }
@@ -3351,7 +3357,7 @@ kbd {
   outline: none;
   background: none;
   font: inherit;
-  font-size: 17px;
+  font-size: 1.0625rem;
   color: var(--fg);
 }
 
@@ -3367,7 +3373,7 @@ kbd {
 }
 
 .gs-group {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   color: var(--fg-2);
   padding: 12px 10px 4px;
@@ -3393,7 +3399,7 @@ kbd {
 }
 
 .gs-sub {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--fg-3);
   min-width: 0;
 }
@@ -3410,7 +3416,7 @@ kbd {
   gap: 4px 16px;
   padding: 10px 18px;
   border-top: 1px solid var(--line);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -3526,13 +3532,13 @@ kbd {
   flex-direction: column;
   gap: 2px;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .impact-tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -3540,7 +3546,7 @@ kbd {
   text-align: left;
   font-weight: 450;
   color: var(--fg-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   padding: 4px 6px 4px 0;
 }
 
@@ -3666,7 +3672,7 @@ p,
 }
 
 .aside-title {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--fg-2);
   letter-spacing: 0.01em;
@@ -3708,7 +3714,7 @@ p,
 .explain summary {
   cursor: pointer;
   color: var(--fg-2);
-  font-size: 14px;
+  font-size: 0.875rem;
   list-style: none;
   display: inline-flex;
   align-items: center;
@@ -3815,7 +3821,7 @@ p,
 .budget-axis {
   position: relative;
   height: 18px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
   font-variant-numeric: tabular-nums;
 }
@@ -3862,7 +3868,7 @@ p,
   align-items: center;
   gap: 10px;
   color: var(--fg-2);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   white-space: nowrap;
 }
 
@@ -3882,7 +3888,7 @@ p,
 
 .commit-sub {
   color: var(--fg-3);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .commit-hours {
@@ -3978,7 +3984,7 @@ p,
     gap: 6px;
   }
   .col-val {
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
   .page-actions {
     width: 100%;
@@ -4026,7 +4032,7 @@ p,
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     padding: calc(8px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .topbar #topbar-title {
     color: var(--fg-3);
@@ -4180,13 +4186,13 @@ p,
 }
 
 .rc-title {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--fg-2);
 }
 
 .rc-active {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--fg-3);
 }
 
@@ -4212,7 +4218,7 @@ p,
 
 .card-note {
   margin: 16px 0 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
   max-width: 72ch;
 }
@@ -4268,7 +4274,7 @@ p,
 
 .dd-bar-free {
   flex: none;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
 }
@@ -4280,7 +4286,7 @@ p,
 }
 
 .fld.custom > span:first-child {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -4299,7 +4305,7 @@ p,
 }
 
 .need-cat {
-  font-size: 14px;
+  font-size: 0.875rem;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -4320,7 +4326,7 @@ p,
 }
 
 .need-free {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -4336,7 +4342,7 @@ p,
 }
 
 .need-sum {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -4385,7 +4391,7 @@ p,
 .impact-cats caption {
   caption-side: top;
   text-align: left;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
   padding-bottom: 4px;
 }
@@ -4470,7 +4476,7 @@ p,
 .risk-list {
   margin: 6px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--warn);
 }
 
@@ -4505,12 +4511,12 @@ p,
 
 .need-area-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .need-area-sum {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--fg-2);
   font-variant-numeric: tabular-nums;
 }
@@ -4527,7 +4533,7 @@ p,
 
 .na-col-label {
   margin-bottom: 4px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -4562,7 +4568,7 @@ p,
 }
 
 .na-kind {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -4574,7 +4580,7 @@ p,
 
 .na-sub {
   margin-top: 3px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-2);
 }
 
@@ -4584,7 +4590,7 @@ p,
 }
 
 .na-more {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -4601,7 +4607,7 @@ p,
 }
 
 .period-menu-foot .link {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
@@ -4654,7 +4660,7 @@ p,
 }
 
 .lmx-val {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1;
   text-align: center;
   color: var(--fg-3);
@@ -4838,7 +4844,7 @@ p,
   }
   .nav-item {
     padding-block: 3px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
   .nav-icon {
     width: 16px;
@@ -4930,7 +4936,7 @@ p,
 }
 
 .chain-head {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--fg-3);
   margin-bottom: 8px;
@@ -4981,7 +4987,7 @@ p,
 }
 
 .chain-name {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 600;
   color: var(--fg);
   line-height: 1.35;
@@ -4989,7 +4995,7 @@ p,
 }
 
 .chain-sub {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
   line-height: 1.4;
 }
@@ -5011,7 +5017,7 @@ p,
   list-style: none;
   margin: 4px 0 0;
   padding: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -5037,7 +5043,7 @@ p,
 }
 
 .chain-none {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
   padding: 10px 12px;
   border: 1px dashed var(--line-strong);
@@ -5266,7 +5272,7 @@ p,
   top: 0;
   line-height: 26px;
   text-align: center;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
   white-space: nowrap;
   overflow: hidden;
@@ -5320,7 +5326,7 @@ p,
   position: absolute;
   top: 6px;
   transform: translateX(-50%);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -5365,7 +5371,7 @@ p,
 }
 
 .tl-gname {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 650;
   min-width: 0;
 }
@@ -5378,7 +5384,7 @@ p,
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
   background: var(--bg);
   padding-left: 6px;
@@ -5418,7 +5424,7 @@ p,
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--fg-2);
   text-align: left;
   cursor: pointer;
@@ -5577,13 +5583,13 @@ p,
 }
 
 .tl-panel-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 650;
 }
 
 .tl-panel-sub {
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--fg-3);
 }
 
@@ -5596,7 +5602,7 @@ p,
 
 .tl-ph {
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--fg-3);
 }
@@ -5616,7 +5622,7 @@ p,
   gap: 1px;
   padding-left: 10px;
   border-left: 2px solid var(--line-strong);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .tl-dep.risk {
@@ -5628,12 +5634,12 @@ p,
 }
 
 .tl-dep-sub {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
 .tl-risk {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--warn);
 }
 
@@ -5687,7 +5693,7 @@ p,
   padding: 8px 8px 8px 14px;
   border-radius: 10px;
   background: var(--canvas);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .lk-focus.idle {
@@ -5726,12 +5732,12 @@ p,
 }
 
 .lk-title {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 650;
 }
 
 .lk-sub {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--fg-3);
 }
 
@@ -5781,14 +5787,14 @@ p,
   grid-area: name;
   display: block;
   min-width: 0;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 
 .lk-val {
   grid-area: val;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -5827,7 +5833,7 @@ p,
 
 .lk-more {
   padding: 6px 10px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg-3);
 }
 
@@ -5928,7 +5934,7 @@ p,
 .drawer-text {
   margin: 0;
   max-width: 68ch;
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.6;
   color: var(--fg);
 }
@@ -6000,7 +6006,7 @@ p,
 
 .drawer-sec-title {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--fg-2);
@@ -6022,7 +6028,7 @@ p,
   border-radius: 7px;
   background: none;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 500;
   color: var(--fg-2);
   cursor: pointer;
@@ -6041,7 +6047,7 @@ p,
 
 .drawer-empty {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--fg-3);
 }
 
@@ -6077,7 +6083,7 @@ p,
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: var(--bg);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--fg-2);
   white-space: nowrap;
@@ -6206,7 +6212,7 @@ p,
   border-radius: 7px;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 650;
   color: var(--fg);
   cursor: pointer;
@@ -6248,7 +6254,7 @@ p,
 
 .dp-grid th {
   height: 22px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   color: var(--fg-3);
   text-align: center;
@@ -6260,7 +6266,7 @@ p,
 
 .dp-grid .dp-wk {
   width: 20px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 500;
   color: var(--fg-3);
   font-variant-numeric: tabular-nums;
@@ -6304,7 +6310,7 @@ p,
   border-radius: 999px;
   background: none;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-variant-numeric: tabular-nums;
   color: var(--fg);
   cursor: pointer;
@@ -6379,7 +6385,7 @@ p,
   border-radius: 8px;
   background: none;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--fg);
   cursor: pointer;
 }
@@ -6415,7 +6421,7 @@ p,
   border-radius: 999px;
   background: var(--accent-soft);
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--accent);
   cursor: pointer;
