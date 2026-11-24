@@ -11,8 +11,21 @@ Innehållet ligger i vita kort med hårfin kant på en ljus, sval botten. Då sy
 
 *Ändrat efter användartest:* den första versionen hade inga rutor alls. Det blev svårt att se var informationen började och slutade, särskilt på detaljsidorna.
 
-**2. Färg betyder avvikelse.**
-Ytan är vit med svala skiffergrå toner och en blå accentfärg för det man har valt, det som är aktivt och staplar som visar mängd. Gult betyder nära gränsen och rött betyder över gränsen. Allt som är som det ska vara är lugnt. Om allt har varningsfärg sticker ingenting ut.
+**2. Färg betyder vilken sorts följd.**
+Appen har tre ytor: sidan är ljust grå, sidomenyn ett steg mörkare, och innehållet ligger på vita kort ovanpå båda. Färgen på det som står där säger vad som följer av det.
+
+| Ton | Betyder |
+|---|---|
+| Grått | Sker av sig självt. Inget väntar på dig. |
+| Blått | Valt, aktivt, eller en mängd i en stapel. |
+| Gult | Frågar dig. Nära en gräns, eller väntar på ett beslut. |
+| Rött | Stoppat eller över gränsen. |
+| Grönt | Klart eller bekräftat. Ett avklarat steg, en koppling som finns. |
+| Lila | Härlett av systemet, inte angivet av en människa. |
+
+Varje ton är mätt mot sin egen botten och klarar 4,5:1 i båda lägena. Regeln bakom dem är fortfarande sparsamhet: har allt en ton sticker ingenting ut, och det mesta i appen ska vara grått.
+
+*Ändrat i november 2026:* principen hette tidigare "Färg betyder avvikelse" och tillät bara blått, gult och rött. Den räckte inte när gränssnittet började säga vad som händer härnäst och vad som kräver ett beslut — det är inte avvikelser, men det är följder, och de behövde kunna synas.
 
 **3. Siffror i klartext.**
 Timmar är den gemensamma valutan. Varje vy börjar med det viktigaste. Översikten sammanfattar läget i en mening som går att säga högt på ett möte — en bedömning, inte en uppräkning: den säger vad läget betyder, medan nyckeltalen bär talen och Att titta på bär problemen. Ingenting på en sida står två gånger. Siffror står alltid med enhet och period.

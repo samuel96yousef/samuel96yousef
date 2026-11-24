@@ -14,9 +14,9 @@
  */
 :root {
   --bg: #ffffff;
-  --canvas: #f3f5f9;
+  --canvas: #f2f3f7;
   --mark: #fbe9a6;
-  --side: #f7f8fb;
+  --side: #eceef3;
   --fg: #111827;
   --fg-2: #374357;
   --fg-3: #586579;
@@ -25,21 +25,32 @@
   --hover: #f2f3f5;
   --selected: #e8effc;
   --nav-active: #e7eefc;
-  --accent: #1f4fd1;
+  --accent: #2f5ae8;
   --accent-ink: #ffffff;
   --accent-soft: #eef3fe;
   --accent-line: #c7d6f5;
   /* Knappkant: mörkare än --accent-line, så att den klarar 3:1 mot kortet och syns som en kant. */
   --accent-edge: #6b93e4;
-  --focus: rgba(31, 79, 209, 0.28);
+  --focus: rgba(47, 90, 232, 0.3);
   --track: #e6ebf3;
-  --bar: #1f4fd1;
+  --bar: #2f5ae8;
   --avatar: #e7eefc;
   --warn: #9a5400;
   --warn-mark: #e8a023;
   --warn-soft: #fdf3e2;
   --crit: #c8322e;
   --crit-soft: #fcebea;
+
+  /*
+   * Följdfärger. Färg säger vilken sorts följd något har, inte bara att
+   * något avviker: grått sker av sig självt, gult frågar dig, rött är
+   * stoppat, grönt är klart eller kopplat, lila är härlett av systemet.
+   * Varje par är mätt mot sin egen botten och klarar 4,5:1.
+   */
+  --ok: #1a7a4e;
+  --ok-soft: #e8f6ee;
+  --info: #6b3fc4;
+  --info-soft: #f1ecfc;
   --shadow-lg: 0 24px 60px rgba(17, 19, 22, 0.16), 0 2px 8px rgba(17, 19, 22, 0.06);
   --overlay: rgba(17, 19, 22, 0.28);
 
@@ -120,6 +131,10 @@
     --warn-soft: #2c2310;
     --crit: #ff6d66;
     --crit-soft: #331817;
+    --ok: #4fcf8b;
+    --ok-soft: #10291d;
+    --info: #b79cff;
+    --info-soft: #211a33;
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
     --overlay: rgba(0, 0, 0, 0.55);
     --shadow-card:
@@ -158,6 +173,10 @@
   --warn-soft: #2c2310;
   --crit: #ff6d66;
   --crit-soft: #331817;
+  --ok: #4fcf8b;
+  --ok-soft: #10291d;
+  --info: #b79cff;
+  --info-soft: #211a33;
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
   --overlay: rgba(0, 0, 0, 0.55);
   --shadow-card:
@@ -276,13 +295,13 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 /*
- * Menyn ligger på samma yta som sidan, inte på en egen. Då finns bara två
- * plan i appen: den grå sidan, och de vita ytorna som bär innehåll. Menyn
- * är ram, korten är innehåll, och skuggan säger vilket som är vilket.
- * Någon skiljelinje behövs inte när kortens egna kanter gör arbetet.
+ * Tre ytor, som i förebilden: menyn ligger ett steg mörkare än sidan, och
+ * korten vita ovanpå båda. Menyn är ram, korten är innehåll, och skuggan
+ * säger vilket som är vilket. Skillnaden mellan meny och sida är liten med
+ * flit — den ska kännas, inte synas som en gräns.
  */
 .nav {
-  background: var(--canvas);
+  background: var(--side);
   border-right: 0;
   display: flex;
   flex-direction: column;
@@ -345,8 +364,8 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   scrollbar-width: thin;
   /* Skugga i kanten bara när listan rullar, så att det syns att det finns mer. */
   background:
-    linear-gradient(var(--canvas) 30%, transparent) top / 100% 20px no-repeat local,
-    linear-gradient(transparent, var(--canvas) 70%) bottom / 100% 20px no-repeat local,
+    linear-gradient(var(--side) 30%, transparent) top / 100% 20px no-repeat local,
+    linear-gradient(transparent, var(--side) 70%) bottom / 100% 20px no-repeat local,
     radial-gradient(farthest-side at 50% 0, var(--line-strong), transparent) top / 100% 8px no-repeat scroll,
     radial-gradient(farthest-side at 50% 100%, var(--line-strong), transparent) bottom / 100% 8px no-repeat scroll;
 }
