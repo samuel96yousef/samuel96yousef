@@ -401,6 +401,24 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return v > 100 ? 'crit' : v >= 90 ? 'warn' : null;
   };
 
+  /*
+   * Objektkortet: appens kort för en sak man kan klicka sig in i — ett
+   * team, en leveransdomän, ett system. Alltid samma ordning, för det är
+   * ordningen man läser dem i: namnet och läget, vad saken är till för,
+   * mätaren, talen, och vad som händer härnäst. Hela kortet är knappen.
+   */
+  C.objectCard = function (o) {
+    var st = o.state || { label: '', tone: '' };
+    return '<button type="button" class="ocard" data-go="' + U.esc(o.go) + '">' +
+      '<span class="ocard-head"><span class="ocard-name">' + U.esc(o.name) + '</span>' +
+      (st.label ? UI.state(st.label, st.tone) : '') + '</span>' +
+      (o.mission ? '<span class="ocard-mission"><span class="ocard-lead">Uppdrag</span>' + U.esc(o.mission) + '</span>' : '') +
+      (o.meter ? UI.meter(o.meter) : '') +
+      (o.stats ? UI.statRow(o.stats) : '') +
+      (o.foot ? '<span class="ocard-foot">' + UI.icon('clock', 'card-foot-icon') + '<span>' + o.foot + '</span></span>' : '') +
+      '</button>';
+  };
+
   C.stateTag = function (x) {
     var s = C.loadState(x);
     return UI.state(s.label, s.tone);

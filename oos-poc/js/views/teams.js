@@ -44,23 +44,22 @@
       h += '<section class="card"><div class="card-head"><div><div class="card-title">Alla team</div>' +
         '<p class="card-sub">' + rows.length + ' team i ' + esc(ctx.period.inText) + '.</p></div>' +
         UI.seg('teams-view', [{ key: 'table', label: 'Tabell' }, { key: 'cards', label: 'Kort' }], view) + '</div>';
-      h += '<div class="tcards">';
+      h += '<div class="ocards">';
       rows.slice().sort(function (a, b) { return b.cap.loadPct - a.cap.loadPct; }).forEach(function (r) {
         var nx = ctx.e.teamCapacity(r.id, ctx.next);
-        var st = C.loadState(r.cap);
-        h += '<button type="button" class="tcard" data-go="teams:' + esc(r.id) + '">' +
-          '<span class="tcard-head"><span class="tcard-name">' + esc(r.team.name) + '</span>' + UI.state(st.label, st.tone) + '</span>' +
-          '<span class="tcard-mission"><span class="tcard-lead">Uppdrag</span>' + esc(r.team.purpose || 'Inget uppdrag angivet.') + '</span>' +
-          /* Lägesordet står i kortets huvud. Mätaren säger inte samma sak igen. */
-          UI.meter({ label: 'Beläggning', bar: UI.bar(r.cap.loadPct, { title: '' }) }) +
-          UI.statRow([
+        h += C.objectCard({
+          go: 'teams:' + r.id,
+          name: r.team.name,
+          state: C.loadState(r.cap),
+          mission: r.team.purpose || 'Inget uppdrag angivet.',
+          meter: { label: 'Beläggning', bar: UI.bar(r.cap.loadPct, { title: '' }) },
+          stats: [
             { value: r.cap.headcount, label: r.cap.headcount === 1 ? 'medlem' : 'medlemmar' },
             { value: U.fmtH(r.cap.capacity), label: 'kapacitet' },
             { value: U.fmtH(Math.max(0, r.cap.free)), label: 'ledigt' }
-          ]) +
-          '<span class="tcard-foot">' + UI.icon('clock', 'card-foot-icon') +
-          '<span>Nästa: ' + esc(ctx.next.inText) + ' · ' + UI.delta(nx.capacity - r.cap.capacity, 'h') + '</span></span>' +
-          '</button>';
+          ],
+          foot: 'Nästa: ' + esc(ctx.next.inText) + ' · ' + UI.delta(nx.capacity - r.cap.capacity, 'h')
+        });
       });
       h += '</div></section>';
       return h;

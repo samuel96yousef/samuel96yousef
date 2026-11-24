@@ -40,6 +40,8 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
+| Objektkort | En sak man kan gå in i — ett team, en leveransdomän, ett system — visas som ett kort i rutnät, alltid i samma ordning: namnet med läget bredvid, uppdraget, mätaren, talen med sina etiketter, och foten med vad som händer härnäst. Hela kortet är knappen. Rutnät före lista när sakerna är jämförbara och få; tabell när de är många och ska sorteras. |
+| Åtgärder före läge | På en sida som både visar ett läge och det som behöver lösas står åtgärdslistan först. Läget är bakgrund, åtgärderna är det man är där för. |
 | Tal med etikett | Ett tal står aldrig ensamt. Etiketten hör till talet och står liten och grå direkt under det, inte som en rubrik ovanför en kolumn. Tre tal ryms på en rad; blir ytan smal faller de till två. |
 | Mätarrad | En stapel får en etikett ovanför sig som säger vad den mäter. Står läget redan som ord någon annanstans i samma kort upprepas det inte här. |
 | Frågeremsa | Det som väntar på dig står i gul remsa med handlingen i samma remsa, i kortet där saken finns — inte i en egen kö. I ett kort går remsan ut till kanterna och lägger sig längs underkanten; fristående på en sida är den en egen rundad ruta. |

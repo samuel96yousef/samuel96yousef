@@ -107,73 +107,61 @@
     var groups = groupSignals(sigs);
     var showAll = OOS.state.allSignals;
     var shown = showAll ? groups : groups.slice(0, 8);
-    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
-    h += '<div class="signals">';
+    var groups = groupSignals(sigs);
+    var showAll = OOS.state.allSignals;
+    var shown = showAll ? groups : groups.slice(0, 8);
     /*
-     * Hela raden är knappen, inte en knapp i raden. Sex likadana Visa-knappar
-     * i en kolumn läste som en knapplista i stället för som en lista med
-     * saker att lösa. Pilen räcker för att säga att raden leder vidare.
-     * Det kritiska får tonad yta, så att listan har en ordning i stället för
-     * sex lika tunga rader.
+     * Leveransdomänerna som rutnät av kort i stället för en lista med
+     * staplar. Varje domän är en sak man kan gå in i, och kortet säger
+     * samma fyra ting om var och en: läget, uppdraget, beläggningen och
+     * vad som händer härnäst. Sorterade efter beläggning, så det som är
+     * närmast taket läses först.
      */
-    shown.forEach(function (s) {
-      var attrs = s.seg
-        ? 'data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '"'
-        : 'data-go="' + esc(s.go) + '"';
-      h += '<button type="button" class="signal sev-' + s.severity + '" ' + attrs + '>' +
-        '<span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
-        '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</span>' +
-        '<span class="signal-detail">' + esc(s.detail) + '</span></span>' +
+    var dds = S.db.deliveryDomains.map(function (d) {
+      var c = e.deliveryDomainCapacity(d.id, ctx.period);
+      var n = e.deliveryDomainCapacity(d.id, ctx.next);
+      return { d: d, cap: c, next: n.capacity };
+    }).sort(function (a, b) { return b.cap.loadPct - a.cap.loadPct; });
+
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div>' +
+      '<p class="card-sub">Timmar efter avdrag.</p></div></div><div class="ocards">';
+    dds.forEach(function (x) {
+      var free = x.cap.capacity - x.cap.loaded;
+      h += C.objectCard({
+        go: 'deliveryDomains:' + x.d.id,
+        name: x.d.name,
+        state: C.loadState(x.cap),
+        mission: x.d.purpose || '',
+        meter: { label: 'Beläggning', bar: UI.bar(x.cap.loadPct, { title: '' }) },
+        stats: [
+          { value: U.fmtH(x.cap.capacity), label: 'kapacitet' },
+          { value: U.fmtH(x.cap.loaded), label: 'belastat' },
+          { value: free < -0.5 ? U.fmtH(-free) : U.fmtH(free), label: free < -0.5 ? 'över' : 'ledigt', tone: free < -0.5 ? 'crit' : null }
+        ],
+        foot: 'Nästa: ' + esc(ctx.next.inText) + ' · ' + UI.delta(x.next - x.cap.capacity, 'h')
+      });
+    });
+    h += '</div></section>';
+
+    var groups = groupSignals(sigs);
+    var showAll = OOS.state.allSignals;
+    var shown = showAll ? groups : groups.slice(0, 8);
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
+    h += '<div class="signals">';
+    shown.forEach(function (s2) {
+      var attrs = s2.seg
+        ? 'data-action="go-filtered" data-to="' + esc(s2.go) + '" data-seg="' + esc(s2.seg[0]) + '" data-key="' + esc(s2.seg[1]) + '"'
+        : 'data-go="' + esc(s2.go) + '"';
+      h += '<button type="button" class="signal sev-' + s2.severity + '" ' + attrs + '>' +
+        '<span class="dot ' + s2.severity + '" title="' + SEVERITY[s2.severity] + '"></span>' +
+        '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s2.severity] + ': </span>' + esc(s2.title) + '</span>' +
+        '<span class="signal-detail">' + esc(s2.detail) + '</span></span>' +
         UI.icon('chevronRight', 'signal-go') + '</button>';
     });
     if (!sigs.length) h += '<div class="empty">Inget avviker. Modellen hänger ihop.</div>';
     h += '</div>';
     if (groups.length > 8) h += '<div class="pager"><span>' + shown.length + ' av ' + groups.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
     h += '</section>';
-
-    var dds = S.db.deliveryDomains.map(function (d) {
-      var c = e.deliveryDomainCapacity(d.id, ctx.period);
-      var n = e.deliveryDomainCapacity(d.id, ctx.next);
-      return { d: d, cap: c, next: n.capacity };
-    }).sort(function (a, b) { return b.cap.capacity - a.cap.capacity; });
-    /*
-     * Två rader per domän: namn och kapacitet, sedan beläggningen som stapel med procenten
-     * före, enligt stapelstandarden, och ledig tid i högerkanten. Förändringen till nästa
-     * period står i nyckeltalen ovanför och på domänens egen sida, så den upprepas inte
-     * en gång per rad med periodens namn utskrivet.
-     */
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar efter avdrag.</div></div></div><div class="hbars">';
-    dds.forEach(function (x) {
-      var free = x.cap.capacity - x.cap.loaded;
-      var freeText = free < -0.5
-        ? '<span class="crit-text">' + U.fmtH(-free) + ' över</span>'
-        : U.fmtH(free) + ' ledigt';
-      h += '<div class="hbar dd-bar" role="link" tabindex="0" aria-label="' + esc(x.d.name + ', ' + U.fmtH(x.cap.capacity) + ', ' + U.fmtPct(x.cap.loadPct) + ' belagt, ' + U.fmtH(Math.max(0, free)) + ' ledigt') + '" data-go="deliveryDomains:' + esc(x.d.id) + '">' +
-        '<span class="hbar-name">' + esc(x.d.name) + '</span><span class="hbar-val">' + U.fmtH(x.cap.capacity) + '</span>' +
-        '<div class="dd-bar-row">' + UI.bar(x.cap.loadPct, { title: '' }) +
-        '<span class="dd-bar-free">' + freeText + '</span></div></div>';
-    });
-    h += UI.barLegend(dds.some(function (x) { return x.cap.loaded > x.cap.capacity + 0.5; }));
-
-    /*
-     * Vad som händer härnäst, inte bara hur det ser ut nu. Raden säger hur
-     * mycket kapaciteten rör sig till nästa period och var den rör sig mest,
-     * så att förändringen har en adress och inte bara ett tecken.
-     */
-    var nextDelta = nxt.capacity - org.capacity;
-    var movers = dds.map(function (x) { return { name: x.d.name, delta: x.next - x.cap.capacity }; })
-      .sort(function (a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
-    var worst = movers[0];
-    var nextLine;
-    if (Math.abs(nextDelta) < 0.5) {
-      nextLine = ctx.next.inText + ' · kapaciteten står still';
-    } else {
-      nextLine = ctx.next.inText + ' · kapaciteten ' + (nextDelta < 0 ? 'faller ' : 'växer ') + U.fmtH(Math.abs(nextDelta));
-      if (worst && Math.abs(worst.delta) > 0.5) nextLine += ', mest i ' + worst.name;
-    }
-    h += '<div class="card-foot">' + UI.icon('clock', 'card-foot-icon') +
-      '<span><span class="card-foot-lead">Nästa:</span> ' + esc(nextLine) + '</span></div>';
-    h += '</div></section></div>';
 
     h += recentChanges();
     return h;
