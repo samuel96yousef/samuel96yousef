@@ -23,8 +23,9 @@
     return U.fmtDate(ep.from) + ' – ' + U.fmtDate(ep.to);
   }
 
+  /* Tonen är appens delade regel, på samma avrundade tal som stapeln visar. */
   function loadTone(pct) {
-    return pct > 100.5 ? 'crit' : pct >= 90 ? 'warn' : null;
+    return C.loadTone(pct);
   }
 
   /* Perioder från och med den aktuella som överlappar ett datumintervall, högst max stycken. */
@@ -203,7 +204,7 @@
           var m = tc.members.filter(function (mm) { return mm.worker.id === x.worker.id; })[0];
           var pct = m ? m.loadPct : 0;
           h += '<div class="need-person">' + C.workerRef(x.worker, x.tw.role || x.worker.title) +
-            '<span class="small"><span class="' + (pct > 100.5 ? 'crit-text' : pct >= 90 ? 'warn-text' : 'muted') + '">' + U.fmtPct(pct) + ' belagd</span></span></div>';
+            '<span class="small"><span class="' + (C.loadTone(pct) === 'crit' ? 'crit-text' : C.loadTone(pct) === 'warn' ? 'warn-text' : 'muted') + '">' + U.fmtPct(pct) + ' belagd</span></span></div>';
         });
         h += '</div>';
       }
@@ -304,7 +305,7 @@
       { label: 'I ' + p.inText, value: U.fmtH(hrs), note: tc && tc.capacity ? U.fmtPct((hrs / tc.capacity) * 100) + ' av teamets kapacitet' + (counts ? '' : ', räknas inte') : '' },
       { label: ep.status === 'proposed' ? 'Estimat' : 'Ram', value: ep.effort === 'monthly' ? U.fmtNum(ep.hours) + ' h/mån' : U.fmtH(ep.hours), note: (ep.effort === 'monthly' ? U.fmtH(frame) + ' under hela tiden' : 'Fördelas jämnt över tiden') + (ep.status === 'proposed' ? ', teamets estimat' : '') },
       { label: 'Tid', value: U.plural(months, 'period', 'perioder'), note: monthSpan(ep) },
-      tc ? { label: 'Teamets beläggning', value: U.fmtPct(tc.loadPct), note: 'I ' + p.inText + ', allt beslutat arbete', tone: loadTone(tc.loadPct) } : null
+      tc ? { label: 'Teamets beläggning', value: U.fmtPct(tc.loadPct), note: C.stateTag(tc), tone: loadTone(tc.loadPct) } : null
     ]);
 
     var main = whoDoesTheWork(ep, team, tc, mine, hrs, ctx) + dependencyCard(ep, ctx);
@@ -336,7 +337,7 @@
       rowsP.forEach(function (r) {
         var pctNow = r.t.capacity ? ((r.mine + r.other) / r.t.capacity) * 100 : 0;
         var shown = counts ? r.t.loadPct : (r.after !== undefined ? r.after : pctNow);
-        var tone = shown > 100.5 ? ' class="crit-text"' : '';
+        var tone = C.loadTone(shown) === 'crit' ? ' class="crit-text"' : '';
         var say = r.pp.label + ': epiken ' + U.fmtH(r.mine) + ', annat arbete ' + U.fmtH(r.other) + ', kapacitet ' + U.fmtH(r.t.capacity) + ', ' + U.fmtPct(shown) + (counts ? ' belagt' : ' belagt om den beslutas');
         main += '<tr' + (r.pp.start === p.start ? ' class="selected"' : '') + ' data-id="' + esc('pp-' + r.pp.start) + '"><td>' + esc(r.pp.label) + '</td>' +
           '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, null, !counts, 'pp-' + r.pp.start, say) + '</td>' +

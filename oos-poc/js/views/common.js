@@ -390,6 +390,17 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return { label: 'I balans', tone: '' };
   };
 
+  /*
+   * Tonen för en beläggning, på samma avrundade tal som stapeln visar.
+   * Den fanns förut kopierad i varje vy med det råa värdet, vilket gjorde
+   * att en rad kunde stå i "90 %" med gul stapel och ändå sakna gul text.
+   * Gäller bara utseende: om något ÄR en flaskhals avgör motorn på råa tal.
+   */
+  C.loadTone = function (pct) {
+    var v = Math.round(pct);
+    return v > 100 ? 'crit' : v >= 90 ? 'warn' : null;
+  };
+
   C.stateTag = function (x) {
     var s = C.loadState(x);
     return UI.state(s.label, s.tone);

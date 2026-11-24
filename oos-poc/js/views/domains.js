@@ -220,7 +220,8 @@
     rows.push(['Status', d.status === 'inactive' ? UI.statusBadge(d.status) : 'Aktiv']);
     rows.push(['Senast ändrad', d.updated ? U.fmtDate(d.updated) : '']);
     return '<div class="drawer-grid two">' +
-      '<div>' + C.drawerSection('Syfte', '<p class="drawer-text">' + esc(d.purpose || 'Inget syfte angivet.') + '</p>') +
+      /* Samma ord som på teamsidorna: uppdraget är vad saken är till för. */
+      '<div>' + C.drawerSection('Uppdrag', '<p class="drawer-text">' + esc(d.purpose || 'Inget uppdrag angivet.') + '</p>') +
       '<div class="dup-2">' + C.drawerSection('Beskrivning', '<p class="drawer-text">' + esc(d.description || '–') + '</p>') + '</div></div>' +
       C.drawerSection('Uppgifter', UI.props(rows)) + '</div>';
   }

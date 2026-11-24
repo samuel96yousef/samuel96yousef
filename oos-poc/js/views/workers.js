@@ -114,9 +114,9 @@
     var cost = wc.committed * (w.costPerHour || 0);
     h += UI.facts([
       { label: 'Tillgänglig tid i ' + ctx.period.inText, value: U.fmtH(wc.available), note: U.fmtNum(U.round(wc.availableWeek, 1)) + ' h i veckan efter grundavdrag' },
-      { label: 'Allokerat', value: U.fmtH(wc.committed), note: U.fmtPct(wc.allocationPct) + ' av tillgänglig tid', tone: over ? 'crit' : null },
+      { label: 'Allokerat', value: U.fmtH(wc.committed), note: C.stateTag({ capacity: wc.available, loaded: wc.committed }), tone: over ? 'crit' : null },
       wc.teams.length
-        ? { label: 'Beläggning i team', value: U.fmtPct(wc.loadPct), note: U.fmtH(wc.loaded) + ' belastat av ' + U.fmtH(wc.teamEffective) + ' i team', tone: wc.loadPct > 100.5 ? 'crit' : wc.loadPct >= 90 ? 'warn' : null }
+        ? { label: 'Beläggning i team', value: U.fmtPct(wc.loadPct), note: C.stateTag({ capacity: wc.teamEffective, loaded: wc.loaded }), tone: C.loadTone(wc.loadPct) }
         : { label: 'Beläggning i team', value: '–', note: 'Inte med i något team' },
       w.costPerHour ? { label: 'Kostnad i perioden', value: U.fmtNum(cost) + ' kr', note: U.fmtNum(w.costPerHour) + ' kr per timme' } : null
     ]);
