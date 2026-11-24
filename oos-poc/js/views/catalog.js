@@ -226,7 +226,7 @@
       /* Beskrivningen står i en kolumn på raden när det finns plats. Annars står den här. */
       lead: '<p class="drawer-text dup-2">' + esc(s.description || 'Ingen beskrivning.') + '</p>',
       actions: C.drawerActions({ action: 'system-edit', data: { id: s.id } }, { action: 'system-delete', data: { id: s.id } }),
-      note: owner ? '' : '<div class="note warn"><strong>Systemet saknar ansvarigt team.</strong> Koppla ett team och ange att det ansvarar.</div>',
+      note: owner ? '' : OOSUI.askStrip({ text: '<strong>Systemet saknar ansvarigt team.</strong> Koppla ett team och ange att det ansvarar.' }),
       body: body
     });
   }

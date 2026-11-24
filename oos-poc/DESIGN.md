@@ -40,6 +40,9 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
+| Tal med etikett | Ett tal står aldrig ensamt. Etiketten hör till talet och står liten och grå direkt under det, inte som en rubrik ovanför en kolumn. Tre tal ryms på en rad; blir ytan smal faller de till två. |
+| Mätarrad | En stapel får en etikett ovanför sig som säger vad den mäter. Står läget redan som ord någon annanstans i samma kort upprepas det inte här. |
+| Frågeremsa | Det som väntar på dig står i gul remsa med handlingen i samma remsa, i kortet där saken finns — inte i en egen kö. I ett kort går remsan ut till kanterna och lägger sig längs underkanten; fristående på en sida är den en egen rundad ruta. |
 | Graderat val | Där något väljs på en skala med namngivna steg står hela skalan framme: stegen som kolumner, spåret under, och det valda steget ifyllt. Inte en rullista, som döljer skalan och var valet ligger på den. Under ytan är det radioknappar, så piltangenter och uppläsning fungerar. |
 | Följd som bricka | Där en rad får en konsekvens står den som bricka i egen kolumn, inte inklämd i en annan. Tonerna är appens vanliga: neutral när följden är väntad, gul när den kräver något av en. Inget grönt — det som är bra bär ingen färg alls. |
 | Läget i ett ord | Där ett tal säger hur mycket står ett ord bredvid som säger vad man ska göra åt det: I balans, Nära taket, Över kapacitet, Inget planerat. Ordet har en liten prick i samma ton som avvikelser i övrigt. Gränserna gäller det avrundade talet som visas, så att siffra, färg och ord aldrig kan säga emot varandra. Tonen kommer från `C.loadTone`, en enda regel för hela appen — kopiera den inte in i en vy. Om något *är* en flaskhals avgör motorn på råa tal; det är en annan fråga än hur det ska se ut. |

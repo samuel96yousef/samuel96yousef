@@ -31,9 +31,45 @@ var OOSUI = (function () {
   }
 
   /* Färg används bara för avvikelser: warn och crit. Övriga varianter är neutrala. */
+  var BADGE_TONES = { warn: 1, crit: 1, ok: 1, info: 1 };
+
   function badge(text, kind) {
-    var cls = kind === 'warn' || kind === 'crit' ? ' badge-' + kind : '';
+    var cls = BADGE_TONES[kind] ? ' badge-' + kind : '';
     return '<span class="badge' + cls + '">' + esc(text) + '</span>';
+  }
+
+  /*
+   * Tal med sin etikett under. Formen kommer från förebilden: talet bär
+   * vikten, etiketten står liten och grå direkt under det, och tre ryms
+   * på en rad. Etiketten säger vad talet är — utan den är ett tal bara
+   * ett tal.
+   */
+  function statRow(items) {
+    return '<div class="statrow">' + items.filter(Boolean).map(function (x) {
+      return '<div class="stat"><b' + (x.tone ? ' class="' + esc(x.tone) + '-text"' : '') + '>' +
+        x.value + '</b><span>' + esc(x.label) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  /*
+   * Mätarrad: etikett till vänster, läget i klartext till höger, stapeln
+   * under båda. Den säger samma sak två gånger med flit — en gång som
+   * form och en gång som ord — för den som läser det ena missar det andra.
+   */
+  function meter(opts) {
+    return '<div class="meter"><div class="meter-head"><span>' + esc(opts.label) + '</span>' +
+      (opts.right ? '<span class="meter-right">' + opts.right + '</span>' : '') + '</div>' +
+      '<div class="meter-bar">' + opts.bar + '</div></div>';
+  }
+
+  /*
+   * Frågeremsan: det som väntar på dig, i gul ton, med handlingen i samma
+   * remsa. Den hör hemma i kortet där saken finns, inte i en egen kö — då
+   * behöver man inte leta efter vad raden syftar på.
+   */
+  function askStrip(opts) {
+    return '<div class="ask-strip"><span>' + opts.text + '</span>' +
+      (opts.action ? '<span class="ask-action">' + opts.action + '</span>' : '') + '</div>';
   }
 
   var STATUS = { active: 'Aktiv', production: 'I drift', development: 'Under utveckling', inactive: 'Inaktiv' };
@@ -794,6 +830,9 @@ var OOSUI = (function () {
     icon: icon,
     avatar: avatar,
     badge: badge,
+    statRow: statRow,
+    meter: meter,
+    askStrip: askStrip,
     state: state,
     delta: delta,
     statusBadge: statusBadge,

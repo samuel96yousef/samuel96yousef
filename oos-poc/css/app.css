@@ -2180,6 +2180,101 @@ mark {
   background: var(--crit);
 }
 
+/* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
+.badge-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.badge-info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+/*
+ * Tal med etikett under. Talet bär vikten, etiketten står liten och grå.
+ * Tre ryms på en rad; blir ytan smal faller de till två.
+ */
+.statrow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(84px, 100%), 1fr));
+  gap: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.stat b {
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stat span {
+  color: var(--fg-3);
+  font-size: 0.6875rem;
+}
+
+/* Mätarrad: etikett till vänster, läget i ord till höger, stapeln under. */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--fg-3);
+  font-size: 0.6875rem;
+}
+
+.meter-right {
+  color: var(--fg-2);
+  font-weight: 500;
+}
+
+/*
+ * Frågeremsan. Gul botten, handlingen i samma remsa. Den går utanför
+ * kortets padding så att den läser som en egen list längs kortets kant,
+ * precis som i förebilden.
+ */
+.ask-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.8125rem;
+}
+
+/*
+ * I ett kort går remsan ut till kortets kanter och lägger sig längs
+ * underkanten, som i förebilden. Fristående på en sida är den en egen
+ * rundad ruta: där finns ingen kant att följa.
+ */
+.card > .ask-strip {
+  margin: 14px calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding: 11px var(--card-pad);
+  border-radius: 0 0 13px 13px;
+}
+
+.ask-action {
+  flex: none;
+}
+
 /*
  * Teamkort: samma rader som tabellen, men ett team i taget. Varje kort
  * säger uppdrag, läge, tre tal och vad som händer härnäst — i den

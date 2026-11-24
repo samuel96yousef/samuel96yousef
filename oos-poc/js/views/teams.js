@@ -51,11 +51,13 @@
         h += '<button type="button" class="tcard" data-go="teams:' + esc(r.id) + '">' +
           '<span class="tcard-head"><span class="tcard-name">' + esc(r.team.name) + '</span>' + UI.state(st.label, st.tone) + '</span>' +
           '<span class="tcard-mission"><span class="tcard-lead">Uppdrag</span>' + esc(r.team.purpose || 'Inget uppdrag angivet.') + '</span>' +
-          '<span class="tcard-bar">' + UI.bar(r.cap.loadPct, { title: '' }) + '</span>' +
-          '<span class="tcard-nums">' +
-          '<span><b>' + r.cap.headcount + '</b>' + (r.cap.headcount === 1 ? 'medlem' : 'medlemmar') + '</span>' +
-          '<span><b>' + U.fmtH(r.cap.capacity) + '</b>kapacitet</span>' +
-          '<span><b>' + U.fmtH(Math.max(0, r.cap.free)) + '</b>ledigt</span></span>' +
+          /* Lägesordet står i kortets huvud. Mätaren säger inte samma sak igen. */
+          UI.meter({ label: 'Beläggning', bar: UI.bar(r.cap.loadPct, { title: '' }) }) +
+          UI.statRow([
+            { value: r.cap.headcount, label: r.cap.headcount === 1 ? 'medlem' : 'medlemmar' },
+            { value: U.fmtH(r.cap.capacity), label: 'kapacitet' },
+            { value: U.fmtH(Math.max(0, r.cap.free)), label: 'ledigt' }
+          ]) +
           '<span class="tcard-foot">' + UI.icon('clock', 'card-foot-icon') +
           '<span>Nästa: ' + esc(ctx.next.inText) + ' · ' + UI.delta(nx.capacity - r.cap.capacity, 'h') + '</span></span>' +
           '</button>';
@@ -134,7 +136,10 @@
       h += '<div class="note warn"><strong>' + (scaled.length === 1 ? esc(scaled[0].worker.name) + ' är överallokerad.' : scaled.length + ' medlemmar är överallokerade.') + '</strong> ' +
         'Deras tid i teamet räknas ned så att kapaciteten inte blir större än den tid som finns.</div>';
     }
-    if (!lead) h += '<div class="note warn"><strong>Teamet saknar teamledare.</strong> Välj en under Redigera.</div>';
+    if (!lead) h += UI.askStrip({
+      text: '<strong>Teamet saknar teamledare.</strong>',
+      action: UI.btn('Välj teamledare', 'team-edit', { cls: 'btn-sm', data: { id: t.id } })
+    });
     /* Flaskhals: ett kompetensområde är fullt, ofta medan andra i teamet har tid. */
     var tight = (tc.categories || []).filter(function (r) { return r.gap || r.loadPct > 100.5; });
     if (tight.length) {
