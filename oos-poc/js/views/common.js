@@ -45,11 +45,19 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * upprepar inte namnet synligt (bara för skärmläsare). Överst flikar eller en ingress till
    * vänster och handlingarna till höger, sedan innehållet. Ytan och kanten sätts i app.css.
    */
+  /*
+   * Lådan har ett eget huvud nu: namnet synligt, med handlingarna i linje
+   * med det — inte inklämda bland flikarna. Med åtta flikar fick de inte
+   * plats på samma rad och wrappade ned i ett eget band, vilket såg ut
+   * som ett fel. Flikarna står på egen rad under, där de har plats att
+   * vara åtta.
+   */
   C.drawer = function (o) {
     return '<section class="drawer" id="detail" aria-labelledby="detail-title">' +
-      '<h2 class="sr-only" id="detail-title">' + esc(o.title) + '</h2>' +
-      '<div class="drawer-bar' + (o.tabs ? ' has-tabs' : '') + '"><div class="drawer-lead">' + (o.tabs || o.lead || '') + '</div>' +
-      '<div class="drawer-actions">' + (o.actions || '') + '</div></div>' +
+      '<div class="drawer-head"><h2 class="drawer-title" id="detail-title">' + esc(o.title) + '</h2>' +
+      (o.actions ? '<div class="drawer-actions">' + o.actions + '</div>' : '') + '</div>' +
+      (o.tabs || o.lead ? '<div class="drawer-bar' + (o.tabs ? ' has-tabs' : '') + '">' +
+        '<div class="drawer-lead">' + (o.tabs || o.lead || '') + '</div></div>' : '') +
       (o.note || '') + '<div class="drawer-body">' + o.body + '</div></section>';
   };
 
