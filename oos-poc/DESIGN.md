@@ -15,7 +15,7 @@ Innehållet ligger i vita kort med hårfin kant på en ljus, sval botten. Då sy
 Ytan är vit med svala skiffergrå toner och en blå accentfärg för det man har valt, det som är aktivt och staplar som visar mängd. Gult betyder nära gränsen och rött betyder över gränsen. Allt som är som det ska vara är lugnt. Om allt har varningsfärg sticker ingenting ut.
 
 **3. Siffror i klartext.**
-Timmar är den gemensamma valutan. Varje vy börjar med det viktigaste. Översikten sammanfattar läget i en mening som går att säga högt på ett möte. Siffror står alltid med enhet och period.
+Timmar är den gemensamma valutan. Varje vy börjar med det viktigaste. Översikten sammanfattar läget i en mening som går att säga högt på ett möte — en bedömning, inte en uppräkning: den säger vad läget betyder, medan nyckeltalen bär talen och Att titta på bär problemen. Ingenting på en sida står två gånger. Siffror står alltid med enhet och period.
 
 **4. Människor och namn, inte symboler.**
 Bara personer har initialer. Domäner, team och system visas med sina namn. Det finns inga färgkodade klossar att lära sig.

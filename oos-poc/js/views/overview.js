@@ -53,10 +53,6 @@
     }).sort(function (a, b) { return RANK[a.severity] - RANK[b.severity] || (b.count || 1) - (a.count || 1); });
   }
 
-  /* "a, b och c" */
-  function joinSv(list) {
-    return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' och ' + list[list.length - 1];
-  }
 
   OOS.views.overview = function (ctx) {
     var e = ctx.e;
@@ -69,18 +65,36 @@
 
     var h = UI.pageHead({ title: 'Läget i ' + esc(month), actions: UI.btn('Öppna rapporter', 'go', { data: { to: 'reports' } }) });
 
-    /* Läget i en mening: det ska gå att säga högt på ett möte. Först det som är kritiskt. */
-    var crit = [];
+    /*
+     * Ingressen är en bedömning, inte en rapport. Varje tal den skulle kunna
+     * räkna upp står redan i nyckeltalen under den, och varje problem den
+     * skulle kunna lista står i Att titta på. Den säger därför det de två
+     * inte kan: vad läget betyder. En mening, så att den går att säga högt
+     * på ett möte, och ingen fet stil eller röd text inuti stycket.
+     *
+     * Den mest talande sanna meningen vinner. Ordningen är avsiktlig: att
+     * vara överbokad slår allt annat, och ledig tid som ändå inte hjälper
+     * är det som oftast förklarar varför siffrorna ser lugna ut.
+     */
     var nb = count('bottleneck');
     var ng = count('gap');
-    if (nb || ng) crit.push([nb ? plural(nb, 'flaskhals', 'flaskhalsar') : '', ng ? plural(ng, 'lucka', 'luckor') : ''].filter(Boolean).join(' och ') + ' i kompetens');
-    if (count('overallocated')) crit.push(plural(count('overallocated'), 'person är överallokerad', 'personer är överallokerade'));
-    if (count('investment')) crit.push(plural(count('investment'), 'initiativ går', 'initiativ går') + ' över investeringen');
-    var lede = 'Teamen har <strong>' + U.fmtH(org.capacity) + '</strong> i ' + esc(month) + '. ' +
-      '<strong>' + U.fmtPct(org.loadPct) + '</strong> är belagt och <strong>' + U.fmtH(org.free) + '</strong> är ledigt.' +
-      (crit.length ? ' <strong class="over">Att lösa: ' + joinSv(crit) + '.</strong>' : ' Inget kritiskt att lösa.') +
-      (unalloc.hours > 0.5 ? ' ' + U.fmtH(unalloc.hours) + ' hos ' + plural(unalloc.people.length, 'person', 'personer') + ' är inte fördelad på något team.' : '');
-    h += '<p class="lede">' + lede + '</p>';
+    var lede;
+    if (org.loadPct > 100.5) {
+      lede = 'Mer är planerat än det finns tid till.';
+    } else if ((nb || ng) && org.free > 0.5) {
+      lede = 'Det finns ledig kapacitet, men inte i de kompetenser som saknas.';
+    } else if (nb || ng) {
+      lede = 'Kompetens saknas där arbetet ligger.';
+    } else if (count('overallocated')) {
+      lede = 'Arbetet ligger på för få personer.';
+    } else if (count('investment')) {
+      lede = 'Initiativ kostar mer än de har fått.';
+    } else if (unalloc.hours > org.capacity * 0.1) {
+      lede = 'Mycket tid ligger hos personer utan team.';
+    } else {
+      lede = 'Inget avviker. Modellen hänger ihop.';
+    }
+    h += '<p class="lede">' + esc(lede) + '</p>';
 
     var lp = org.loadPct;
     h += '<div class="kpis">' +
@@ -93,7 +107,7 @@
     var groups = groupSignals(sigs);
     var showAll = OOS.state.allSignals;
     var shown = showAll ? groups : groups.slice(0, 8);
-    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag. Visa går till sidan där det löses.</div></div></div>';
+    h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
     h += '<div class="signals">';
     shown.forEach(function (s) {
       h += '<div class="signal"><span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
@@ -117,7 +131,7 @@
      * period står i nyckeltalen ovanför och på domänens egen sida, så den upprepas inte
      * en gång per rad med periodens namn utskrivet.
      */
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar i ' + esc(month) + ' efter avdrag. Stapeln visar hur stor del av kapaciteten som är belastad.</div></div></div><div class="hbars">';
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Per leveransdomän</div><div class="card-sub">Timmar efter avdrag.</div></div></div><div class="hbars">';
     dds.forEach(function (x) {
       var free = x.cap.capacity - x.cap.loaded;
       var freeText = free < -0.5
