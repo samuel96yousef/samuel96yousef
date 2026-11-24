@@ -374,6 +374,27 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * Belastning mot kapacitet i timmar, som appens standardstapel med beläggningen bredvid.
    * Utan kapacitet (kompetensen saknas) blir hela stapeln över kapaciteten och talet "Saknas".
    */
+  /*
+   * Läget i ett ord, härlett ur beläggningen. Samma gränser som staplarna
+   * använder, så att ordet och stapeln aldrig säger olika saker: över
+   * 100,5 % är det för mycket, från 90 % är det nära taket. Utan planerat
+   * arbete är det inte "i balans" — det är tomt, och det är något annat.
+   */
+  C.loadState = function (x) {
+    if (!(x.capacity > 0.5)) return { label: 'Ingen kapacitet', tone: 'crit' };
+    if (!(x.loaded > 0.5)) return { label: 'Inget planerat', tone: '' };
+    /* Samma avrundade tal som stapeln visar, annars kan de säga emot varandra. */
+    var pct = Math.round((x.loaded / x.capacity) * 100);
+    if (pct > 100) return { label: 'Över kapacitet', tone: 'crit' };
+    if (pct >= 90) return { label: 'Nära taket', tone: 'warn' };
+    return { label: 'I balans', tone: '' };
+  };
+
+  C.stateTag = function (x) {
+    var s = C.loadState(x);
+    return UI.state(s.label, s.tone);
+  };
+
   C.capBar = function (x, opts) {
     opts = opts || {};
     if (!(x.capacity > 0.5) && !(x.loaded > 0.5)) return '<span class="muted">–</span>';

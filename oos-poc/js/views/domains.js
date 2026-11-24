@@ -111,7 +111,7 @@
       UI.kpi(k.title, rows.length, isDd(kind) ? U.plural(S.db.domains.length, 'domän', 'domäner') + ' under dem' : U.plural(rows.filter(function (r) { return r.dd; }).length, 'med leveransdomän', 'med leveransdomän')) +
       UI.kpi('Team', totalTeams, isDd(kind) ? 'Alla team hör till en leveransdomän' : 'Med en av domänerna som primär') +
       UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Teamen, efter avdrag' + (totalReserved > 0.5 ? ' · ' + U.fmtH(totalReserved) + ' i domänroller' : '')) +
-      UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), U.fmtH(totalLoaded) + ' belastat, ' + U.fmtH(Math.max(0, totalCap - totalLoaded)) + ' ledigt') +
+      UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), C.stateTag({ capacity: totalCap, loaded: totalLoaded })) +
       '</div>';
     h += '<section class="card">' + UI.table({
       id: 'tbl-' + kind,

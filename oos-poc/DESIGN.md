@@ -27,6 +27,8 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
+| Läget i ett ord | Där ett tal säger hur mycket står ett ord bredvid som säger vad man ska göra åt det: I balans, Nära taket, Över kapacitet, Inget planerat. Ordet har en liten prick i samma ton som avvikelser i övrigt. Gränserna gäller det avrundade talet som visas, så att siffra, färg och ord aldrig kan säga emot varandra. |
+| Förändring som bricka | Skillnad mellan två perioder står som grå bricka med riktning: "↓ 444 h". Grå, inte grön eller röd: att kapaciteten rör sig mellan PI:n är ett faktum, och färg är reserverad för avvikelser. |
 | Uppdrag | Varje team och domän säger vad den är till för, under rubriken, med etiketten Uppdrag. Det är en annan sorts text än beskrivningen, som säger vad saken är. Står uppdraget där står det ingen annanstans på sidan. |
 | Nästa | Kort som beskriver ett läge slutar med vad som händer härnäst, med klocka: "Nästa: PI 1 2027 · kapaciteten faller 444 h, mest i Arbetsgivarstöd". Appen ska ha framtid, inte bara nuläge. |
 | Raden är knappen | I en lista med saker att lösa är hela raden knappen, med en pil i kanten. Inte en knapp per rad: en kolumn med likadana knappar läses som en knapplista i stället för som en lista med problem. Det kritiska bär tonad yta, så att listan har en ordning. |

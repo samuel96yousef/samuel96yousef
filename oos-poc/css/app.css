@@ -2123,6 +2123,57 @@ mark {
   color: var(--fg-2);
 }
 
+/*
+ * Lägesordet. Pricken är liten och ordet bär vikten — tvärtom mot en
+ * bricka, som ropar. Neutralt läge har grå prick och dov text, så att
+ * bara det som avviker får färg.
+ */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  color: var(--fg-2);
+  font-size: 0.8125rem;
+}
+
+.state-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--fg-3);
+}
+
+.state-warn {
+  color: var(--warn);
+}
+
+.state-warn .state-dot {
+  background: var(--warn-mark);
+}
+
+.state-crit {
+  color: var(--crit);
+}
+
+.state-crit .state-dot {
+  background: var(--crit);
+}
+
+/* Förändring mellan perioder. Grå med riktning: ett faktum, ingen avvikelse. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--hover);
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 .dryrun .step.total {
   margin-top: 2px;
   border-top: 2px solid var(--line-strong);

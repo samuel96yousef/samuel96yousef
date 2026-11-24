@@ -58,7 +58,9 @@
         { key: 'bd', label: 'Primär verksamhetsdomän', opt: 2, sort: function (r) { return r.bd ? r.bd.name : 'ö'; }, render: function (r) { return r.bd ? esc(r.bd.name) : UI.badge('Saknas', 'warn'); } },
         { key: 'n', label: 'Medlemmar', opt: 1, cls: 'num', sort: function (r) { return r.cap.headcount; }, render: function (r) { return r.cap.headcount; } },
         { key: 'cap', label: 'Kapacitet', cls: 'num', sort: function (r) { return r.cap.capacity; }, render: function (r) { return U.fmtH(r.cap.capacity); } },
-        { key: 'load', label: 'Beläggning', sort: function (r) { return r.cap.loadPct; }, render: function (r) { return UI.bar(r.cap.loadPct); } }
+        { key: 'load', label: 'Beläggning', sort: function (r) { return r.cap.loadPct; }, render: function (r) { return UI.bar(r.cap.loadPct); } },
+        /* Talet säger hur mycket, ordet säger vad man ska göra åt det. */
+        { key: 'state', label: 'Läge', opt: 1, sort: function (r) { return r.cap.loadPct; }, render: function (r) { return C.stateTag(r.cap); } }
       ]
     }) + '</section>';
     return h;
@@ -118,9 +120,9 @@
     var diff = nx.capacity - tc.capacity;
     h += UI.facts([
       { label: 'Kapacitet i ' + ctx.period.inText, value: U.fmtH(tc.capacity), note: U.plural(tc.headcount, 'medlem', 'medlemmar') + ', efter avdrag' },
-      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: U.fmtH(tc.loaded) + ' belastat', tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
+      { label: 'Beläggning', value: U.fmtPct(tc.loadPct), note: C.stateTag(tc), tone: tc.loadPct > 100.5 ? 'crit' : tc.loadPct >= 90 ? 'warn' : null },
       { label: 'Ledigt', value: U.fmtH(tc.free), note: 'Kan planeras i ' + ctx.period.inText },
-      { label: 'Kapacitet i ' + ctx.next.inText, value: U.fmtH(nx.capacity), note: U.fmtSigned(diff, ' h') + ' mot ' + ctx.period.inText }
+      { label: 'Kapacitet i ' + ctx.next.inText, value: U.fmtH(nx.capacity), note: UI.delta(diff, 'h') + ' mot ' + esc(ctx.period.inText) }
     ]);
 
     var epicMode = tc.loadSource === 'epics';

@@ -38,6 +38,27 @@ var OOSUI = (function () {
 
   var STATUS = { active: 'Aktiv', production: 'I drift', development: 'Under utveckling', inactive: 'Inaktiv' };
 
+  /*
+   * Läget som ord med en prick före: "I balans", "Nära taket", "Över
+   * kapacitet". Ett ord säger vad man ska göra åt det; en procentsats
+   * säger det inte. Pricken bär samma toner som avvikelser i övrigt, så
+   * ordet och färgen säger samma sak.
+   */
+  function state(label, tone) {
+    var cls = tone === 'warn' || tone === 'crit' ? ' state-' + tone : '';
+    return '<span class="state' + cls + '"><span class="state-dot" aria-hidden="true"></span>' + esc(label) + '</span>';
+  }
+
+  /*
+   * Förändring mellan två perioder, som bricka med riktning. Den är grå:
+   * att kapaciteten rör sig mellan PI:n är ett faktum, inte en avvikelse,
+   * och färg är reserverad för avvikelser.
+   */
+  function delta(n, unit) {
+    if (Math.abs(n) < 0.5) return '<span class="delta">oförändrat</span>';
+    return '<span class="delta">' + (n > 0 ? '↑ ' : '↓ ') + esc(U.fmtNum(Math.abs(n))) + (unit ? ' ' + esc(unit) : '') + '</span>';
+  }
+
   function statusBadge(status) {
     if (status === 'active' || status === 'production') return esc(STATUS[status]);
     return badge(STATUS[status] || status || '–', 'muted');
@@ -92,7 +113,14 @@ var OOSUI = (function () {
   function bar(pct, opts) {
     opts = opts || {};
     var v = isNaN(pct) ? 0 : pct;
-    var tone = opts.share ? '' : v > 100.5 ? ' crit' : v >= (opts.warnAt || 90) ? ' warn' : '';
+    /*
+     * Tonen döms på det tal som visas, inte på det råa. 89,6 % skrivs som
+     * "90 %", och stod gränsen på det råa värdet läste raden "90 %" i lugn
+     * ton bredvid ett lägesord som sa i balans — siffran och färgen sa
+     * emot varandra. Nu gäller gränsen det man ser.
+     */
+    var shown = Math.round(v);
+    var tone = opts.share ? '' : shown > 100 ? ' crit' : shown >= (opts.warnAt || 90) ? ' warn' : '';
     var label = opts.label !== undefined ? opts.label : U.fmtPct(v);
     return '<div class="bar"' + (opts.title === '' ? '' : ' title="' + esc(opts.title || label) + '"') + '>' +
       '<span class="bar-val' + tone + '">' + esc(label) + '</span>' + loadTrack(v, 0, 100, opts) + '</div>';
@@ -739,6 +767,8 @@ var OOSUI = (function () {
     icon: icon,
     avatar: avatar,
     badge: badge,
+    state: state,
+    delta: delta,
     statusBadge: statusBadge,
     statusFlag: statusFlag,
     bar: bar,
