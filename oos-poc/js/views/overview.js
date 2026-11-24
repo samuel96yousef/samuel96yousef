@@ -101,7 +101,7 @@
       UI.kpi('Beläggning', U.fmtPct(lp), U.fmtH(org.loaded) + ' belastat av ' + U.fmtH(org.capacity), { crit: lp > 100.5, warn: lp >= 90 && lp <= 100.5 }) +
       UI.kpi('Ledigt', U.fmtH(org.free), 'I teamen, kan planeras') +
       UI.kpi('Inte fördelad', U.fmtH(unalloc.hours), unalloc.people.length ? 'Hos ' + plural(unalloc.people.length, 'person', 'personer') + ', i inget team' : 'All tid är fördelad') +
-      UI.kpi('Kapacitet i ' + ctx.next.inText, U.fmtH(nxt.capacity), U.fmtSigned(nxt.capacity - org.capacity, ' h') + ' mot ' + esc(month)) +
+      UI.kpi('Kapacitet i ' + ctx.next.inText, U.fmtH(nxt.capacity), UI.delta(nxt.capacity - org.capacity, 'h') + ' mot ' + esc(month)) +
       '</div>';
 
     var groups = groupSignals(sigs);

@@ -32,10 +32,43 @@
       UI.kpi('Kapacitet i ' + ctx.period.inText, U.fmtH(totalCap), 'Teamen, efter avdrag') +
       UI.kpi('Beläggning', U.fmtPct(totalCap ? (totalLoaded / totalCap) * 100 : 0), U.fmtH(totalLoaded) + ' belastat, ' + U.fmtH(totalCap - totalLoaded) + ' ledigt') +
       '</div>';
+    /*
+     * Två vyer över samma rader. Tabellen är för att jämföra och sortera,
+     * korten för att läsa ett team i taget: uppdraget, läget, talen och
+     * vad som händer härnäst. Valet ligger i kortets huvud, inte som en
+     * egen inställning, för det är ett sätt att titta — inte en åsikt om
+     * appen.
+     */
+    var view = OOS.segVal('teams-view', 'table');
+    if (view === 'cards') {
+      h += '<section class="card"><div class="card-head"><div><div class="card-title">Alla team</div>' +
+        '<p class="card-sub">' + rows.length + ' team i ' + esc(ctx.period.inText) + '.</p></div>' +
+        UI.seg('teams-view', [{ key: 'table', label: 'Tabell' }, { key: 'cards', label: 'Kort' }], view) + '</div>';
+      h += '<div class="tcards">';
+      rows.slice().sort(function (a, b) { return b.cap.loadPct - a.cap.loadPct; }).forEach(function (r) {
+        var nx = ctx.e.teamCapacity(r.id, ctx.next);
+        var st = C.loadState(r.cap);
+        h += '<button type="button" class="tcard" data-go="teams:' + esc(r.id) + '">' +
+          '<span class="tcard-head"><span class="tcard-name">' + esc(r.team.name) + '</span>' + UI.state(st.label, st.tone) + '</span>' +
+          '<span class="tcard-mission"><span class="tcard-lead">Uppdrag</span>' + esc(r.team.purpose || 'Inget uppdrag angivet.') + '</span>' +
+          '<span class="tcard-bar">' + UI.bar(r.cap.loadPct, { title: '' }) + '</span>' +
+          '<span class="tcard-nums">' +
+          '<span><b>' + r.cap.headcount + '</b>' + (r.cap.headcount === 1 ? 'medlem' : 'medlemmar') + '</span>' +
+          '<span><b>' + U.fmtH(r.cap.capacity) + '</b>kapacitet</span>' +
+          '<span><b>' + U.fmtH(Math.max(0, r.cap.free)) + '</b>ledigt</span></span>' +
+          '<span class="tcard-foot">' + UI.icon('clock', 'card-foot-icon') +
+          '<span>Nästa: ' + esc(ctx.next.inText) + ' · ' + UI.delta(nx.capacity - r.cap.capacity, 'h') + '</span></span>' +
+          '</button>';
+      });
+      h += '</div></section>';
+      return h;
+    }
+
     h += '<section class="card">' + UI.table({
       id: 'tbl-teams',
       rows: rows,
       title: 'Alla team',
+      tools: UI.seg('teams-view', [{ key: 'table', label: 'Tabell' }, { key: 'cards', label: 'Kort' }], view),
       /* Utöver kolumnerna: beskrivning, syfte, teamledare, medlemmar och system. */
       search: {
         placeholder: 'Sök team, domän, person …',

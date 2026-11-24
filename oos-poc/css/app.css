@@ -2162,6 +2162,114 @@ mark {
 }
 
 /*
+ * Teamkort: samma rader som tabellen, men ett team i taget. Varje kort
+ * säger uppdrag, läge, tre tal och vad som händer härnäst — i den
+ * ordningen, för det är ordningen man läser dem i. Hela kortet är
+ * knappen, som raderna i Att titta på.
+ */
+.tcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.tcard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: var(--shadow-card);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+.tcard:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(16, 24, 40, 0.07),
+    0 2px 4px rgba(16, 24, 40, 0.05),
+    0 10px 20px -8px rgba(16, 24, 40, 0.10);
+}
+
+.tcard:active {
+  transform: none;
+}
+
+.tcard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tcard-name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tcard-mission {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--fg-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  min-height: 2.9em;
+}
+
+.tcard-lead {
+  display: block;
+  color: var(--fg-3);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.tcard-nums {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tcard-nums span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  color: var(--fg-3);
+  font-size: 0.6875rem;
+}
+
+.tcard-nums b {
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tcard-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px -16px 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 0.75rem;
+}
+
+/*
  * Graderat val. Hela skalan står framme med sina namn, och spåret visar
  * var valet ligger på den. Ifyllningen ritas med :has(): inget skript
  * behövs, och radioknapparna under ytan ger piltangenter och uppläsning.

@@ -128,7 +128,7 @@
       t.free < 0
         ? { label: 'Överplanerat', value: U.fmtH(-t.free), note: 'Mer än kapaciteten', tone: 'crit' }
         : { label: 'Ledigt', value: U.fmtH(t.free), note: 'Kan planeras i ' + ctx.period.inText },
-      { label: 'Kapacitet i ' + ctx.next.inText, value: U.fmtH(t.nextCapacity), note: U.fmtSigned(t.change, ' h') + ' mot ' + ctx.period.inText + ' (' + U.fmtSigned(t.changePct, ' %') + ')' }
+      { label: 'Kapacitet i ' + ctx.next.inText, value: U.fmtH(t.nextCapacity), note: UI.delta(t.change, 'h') + ' mot ' + esc(ctx.period.inText) }
     ]);
 
     var grouped = r.level !== 'competence';
