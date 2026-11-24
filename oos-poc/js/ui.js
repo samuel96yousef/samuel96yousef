@@ -13,7 +13,8 @@ var OOSUI = (function () {
     arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
-    chevronRight: '<path d="M9 6l6 6-6 6"/>'
+    chevronRight: '<path d="M9 6l6 6-6 6"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
   };
 
   function icon(name, cls) {
@@ -195,6 +196,12 @@ var OOSUI = (function () {
       '<header class="page-head"><div class="page-head-text"><h1 class="page-title">' + opts.title + '</h1>' +
       (opts.meta && opts.meta.length ? '<p class="page-meta">' + opts.meta.filter(Boolean).map(function (m) { return '<span><span>' + m + '</span></span>'; }).join('') + '</p>' : '') +
       (opts.sub ? '<p class="page-sub">' + opts.sub + '</p>' : '') +
+      /*
+       * Uppdraget: vad saken är till för, med egen etikett. Det är en annan
+       * sorts text än beskrivningen, som säger vad saken är. Står uppdraget
+       * här står det ingen annanstans på sidan.
+       */
+      (opts.mission ? '<p class="page-mission"><span class="page-mission-lead">Uppdrag</span>' + opts.mission + '</p>' : '') +
       '</div>' + (opts.actions ? '<div class="page-actions">' + opts.actions + '</div>' : '') + '</header></div>'
     );
   }

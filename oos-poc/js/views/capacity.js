@@ -77,6 +77,49 @@
       ]
     }) + '</section>';
 
+    /*
+     * Torrkörning: vad reglerna faktiskt kostar, mätt i stället för påstått.
+     * Varje rad räknas om med just den regeln borttagen, i en egen motor över
+     * en kopia av databasen. Ingenting sparas, och siffran är därför vad
+     * regeln tar bort ur den här perioden — inte vad den säger att den gör.
+     */
+    function capWithout(patch) {
+      var copy = Object.assign({}, S.db, patch);
+      return OOSEngine.create(copy).orgCapacity(ctx.period).capacity;
+    }
+    var net = ctx.e.orgCapacity(ctx.period).capacity;
+    var gross = capWithout({ overheadReductions: [], teamReductions: [] });
+
+    /*
+     * Reglerna läggs på en i taget, och varje rad är skillnaden mot raden
+     * ovanför. Räknade vi i stället varje regel för sig, med bara den
+     * borttagen, skulle raderna inte summera till slutsumman: avdragen
+     * verkar på varandra, och en nedskalad överallokering kan ta ut en del
+     * av effekten. Kedjan går alltid ihop.
+     */
+    var ohs = S.db.overheadReductions || [];
+    var rows = [];
+    var prev = gross;
+    ohs.forEach(function (r, i) {
+      var capHere = capWithout({ overheadReductions: ohs.slice(0, i + 1), teamReductions: [] });
+      rows.push({ name: r.name, cost: prev - capHere });
+      prev = capHere;
+    });
+    if (prev - net > 0.5) rows.push({ name: 'Särskilda avdrag per team', cost: prev - net });
+
+    h += '<section class="card"><div class="card-head"><div><div class="card-title">Vad reglerna kostar i ' + esc(ctx.period.inText) + '</div>' +
+      '<p class="card-sub">Reglerna läggs på en i taget och kapaciteten räknas om för varje. Siffrorna är alltså vad reglerna tar bort, inte vad de säger att de gör.</p></div></div>' +
+      '<div class="formula dryrun">' +
+      '<div class="step"><span>Utan några avdrag</span><span>' + U.fmtH(gross) + '</span></div>';
+    rows.forEach(function (r) {
+      h += '<div class="step"><span>− ' + esc(r.name) + '</span><span class="dryrun-cost">−' + U.fmtH(r.cost) + '</span></div>';
+    });
+    h += '<div class="step total"><span>= Kvar att planera</span><span>' + U.fmtH(net) + '</span></div></div>';
+    h += '<div class="card-foot">' + UI.icon('clock', 'card-foot-icon') +
+      '<span><span class="card-foot-lead">Nästa:</span> ' + esc(ctx.next.inText) + ' · ' +
+      U.fmtH(ctx.e.orgCapacity(ctx.next).capacity) + ' efter samma regler</span></div>';
+    h += '</section>';
+
     /* Förklaring av beräkningen med en standardarbetare som exempel. */
     var perWeek = st.standardWeekHours - ohTotal;
     h += '<section class="card"><div class="card-head"><div class="card-title">Så räknas verklig kapacitet</div></div><div class="card-body grid-2">' +

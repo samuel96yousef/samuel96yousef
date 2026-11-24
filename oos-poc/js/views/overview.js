@@ -109,11 +109,22 @@
     var shown = showAll ? groups : groups.slice(0, 8);
     h += '<div class="split"><section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
     h += '<div class="signals">';
+    /*
+     * Hela raden är knappen, inte en knapp i raden. Sex likadana Visa-knappar
+     * i en kolumn läste som en knapplista i stället för som en lista med
+     * saker att lösa. Pilen räcker för att säga att raden leder vidare.
+     * Det kritiska får tonad yta, så att listan har en ordning i stället för
+     * sex lika tunga rader.
+     */
     shown.forEach(function (s) {
-      h += '<div class="signal"><span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
-        '<div><div class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</div><div class="signal-detail">' + esc(s.detail) + '</div></div>' +
-        (s.seg ? '<button type="button" class="btn btn-sm" data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '">Visa</button>'
-          : '<button type="button" class="btn btn-sm" data-go="' + esc(s.go) + '">Visa</button>') + '</div>';
+      var attrs = s.seg
+        ? 'data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '"'
+        : 'data-go="' + esc(s.go) + '"';
+      h += '<button type="button" class="signal sev-' + s.severity + '" ' + attrs + '>' +
+        '<span class="dot ' + s.severity + '" title="' + SEVERITY[s.severity] + '"></span>' +
+        '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</span>' +
+        '<span class="signal-detail">' + esc(s.detail) + '</span></span>' +
+        UI.icon('chevronRight', 'signal-go') + '</button>';
     });
     if (!sigs.length) h += '<div class="empty">Inget avviker. Modellen hänger ihop.</div>';
     h += '</div>';
@@ -143,6 +154,25 @@
         '<span class="dd-bar-free">' + freeText + '</span></div></div>';
     });
     h += UI.barLegend(dds.some(function (x) { return x.cap.loaded > x.cap.capacity + 0.5; }));
+
+    /*
+     * Vad som händer härnäst, inte bara hur det ser ut nu. Raden säger hur
+     * mycket kapaciteten rör sig till nästa period och var den rör sig mest,
+     * så att förändringen har en adress och inte bara ett tecken.
+     */
+    var nextDelta = nxt.capacity - org.capacity;
+    var movers = dds.map(function (x) { return { name: x.d.name, delta: x.next - x.cap.capacity }; })
+      .sort(function (a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
+    var worst = movers[0];
+    var nextLine;
+    if (Math.abs(nextDelta) < 0.5) {
+      nextLine = ctx.next.inText + ' · kapaciteten står still';
+    } else {
+      nextLine = ctx.next.inText + ' · kapaciteten ' + (nextDelta < 0 ? 'faller ' : 'växer ') + U.fmtH(Math.abs(nextDelta));
+      if (worst && Math.abs(worst.delta) > 0.5) nextLine += ', mest i ' + worst.name;
+    }
+    h += '<div class="card-foot">' + UI.icon('clock', 'card-foot-icon') +
+      '<span><span class="card-foot-lead">Nästa:</span> ' + esc(nextLine) + '</span></div>';
     h += '</div></section></div>';
 
     h += recentChanges();

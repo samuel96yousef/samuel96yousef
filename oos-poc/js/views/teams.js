@@ -91,6 +91,7 @@
       title: esc(t.name) + ' ' + UI.statusFlag(t.status),
       meta: [C.categoryLabel(t.category) + ' team', dd ? esc(dd.name) : '', bd ? esc(bd.name) : ''],
       sub: esc(t.description || ''),
+      mission: t.purpose ? esc(t.purpose) : '',
       actions: UI.btn('Redigera', 'team-edit', { data: { id: t.id } }) + UI.btn('Ta bort', 'team-delete', { cls: 'btn-danger', data: { id: t.id } })
     });
 
@@ -166,7 +167,8 @@
     main += '</tbody></table></div></section>';
 
     /* Högerspalten */
-    var aside = UI.asideBlock('Syfte', '<p class="aside-text">' + esc(t.purpose || 'Inget syfte angivet.') + '</p>');
+    /* Syftet står som uppdrag under rubriken, så det upprepas inte här. */
+    var aside = t.purpose ? '' : UI.asideBlock('Uppdrag', '<p class="aside-text">Inget uppdrag angivet.</p>');
     aside += UI.asideBlock('Teamledare', lead ? C.workerRef(lead, lead.title) : '<div>' + UI.badge('Ej utsedd', 'warn') + '</div>');
     aside += UI.asideBlock('Tillhör', UI.props([
       ['Leveransdomän', C.ddRef(dd)],

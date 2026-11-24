@@ -586,9 +586,14 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   font-weight: 400;
 }
 
+/*
+ * Handlingarna står i linje med rubriken, inte med textblockets underkant.
+ * Med uppdragsraden kan textblocket bli fyra rader högt, och då hamnade
+ * knapparna långt ned och läste som om de hörde till uppdraget.
+ */
 .page-head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
   flex-wrap: wrap;
@@ -1992,15 +1997,55 @@ mark {
 
 .signal {
   display: grid;
-  grid-template-columns: 7px minmax(0, 1fr) auto;
+  grid-template-columns: 7px minmax(0, 1fr) 16px;
   gap: 14px;
   align-items: start;
-  padding: 13px 0;
+  /* Raden går utanför kortets padding, så hovringen täcker hela bredden. */
+  padding: 13px 10px 13px 12px;
+  margin-inline: -12px;
+  width: calc(100% + 24px);
+  border: 0;
   border-bottom: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.signal:hover {
+  background: var(--hover);
+}
+
+/*
+ * Det kritiska bär tonad yta, så listan har en ordning. Tonade rader får
+ * ingen skiljelinje — den syns ändå inte mot tonen — utan luft emellan,
+ * så att två kritiska rader läses som två saker och inte som ett block.
+ */
+.signal.sev-critical {
+  background: var(--crit-soft);
+  border-bottom-color: transparent;
+}
+
+.signal.sev-critical + .signal {
+  margin-top: 5px;
+}
+
+.signal.sev-critical:hover {
+  background: color-mix(in srgb, var(--crit-soft) 80%, var(--fg));
 }
 
 .signal .dot {
   margin-top: 8px;
+}
+
+.signal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .signal-title {
@@ -2010,6 +2055,79 @@ mark {
 .signal-detail {
   color: var(--fg-3);
   font-size: 0.8125rem;
+}
+
+.signal-go {
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  color: var(--fg-3);
+}
+
+/*
+ * Kortets fot: vad som händer härnäst. Den ligger utanför kortets padding
+ * med en linje över, så att den läses som en fotnot till hela kortet och
+ * inte som ännu en rad i innehållet.
+ */
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding: 12px var(--card-pad);
+  border-top: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 0.8125rem;
+}
+
+.card-foot-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.card-foot-lead {
+  color: var(--fg-2);
+  font-weight: 500;
+}
+
+/*
+ * Uppdraget under sidrubriken. Etiketten står före meningen som en liten
+ * bricka, så att det syns att det är en annan sorts text än ingressen.
+ */
+.page-mission {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 10px;
+  max-width: 68ch;
+  color: var(--fg-2);
+}
+
+.page-mission-lead {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/*
+ * Torrkörningen: kostnadskolumnen står i samma dova ton som annan
+ * sekundär text. Det som tas bort är inte en avvikelse, bara en summa,
+ * så den ska inte vara röd.
+ */
+.dryrun .step span:last-child.dryrun-cost {
+  color: var(--fg-2);
+}
+
+.dryrun .step.total {
+  margin-top: 2px;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 0;
+  font-weight: 600;
 }
 
 /* ---------- Fabrikskarta ---------- */
