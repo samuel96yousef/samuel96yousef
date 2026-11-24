@@ -42,7 +42,7 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 | Beläggningsstaplar | En sorts stapel i hela appen för belastning mot kapacitet, så att den går att läsa utan att tänka efter. Stapeln är alltid lika lång och betyder 0–120 % av radens egen kapacitet. Korta och långa staplar finns inte, och storleken i timmar står i egna kolumner. Ljus del fram till strecket är kapaciteten (100 %), blå del är belastat och randig röd del efter strecket det som går över. Procenten står före stapeln, gul från 90 % och röd över 100 %. Där en del hör till ett val är den mörk och resten ljusblå. Domänmoln, nyckelroller och allokering är grå, eftersom 100 % där är normalt. Ett mål visas som ett skuggat fält. En andel som inte kan gå över 100 %, som modellens täckning, fyller hela stapeln utan streck. |
 | Storleksstaplar | Bara där det inte finns någon kapacitet att jämföra med, som varifrån arbetet kommer: längden är timmar mot den största raden, utan ljus del och utan streck. |
 | Tidsbudget | En enda stapel mot det som finns: en persons tid, ett teams kapacitet eller ett initiativs investering. Delarna står i ordning, ett streck markerar det som finns och det som går över är randigt rött. |
-| Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i små versaler med en linje mellan grupperna, så att de inte förväxlas med menyval. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har ljusblå ruta, blå text och blå ikon, fet stil, precis som valt segment och aktiv flik. Markeringen ligger i rutan, inte vid fönsterkanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. Perioden är en PI som standard, annars ett år eller en månad. Perioden är en knapp: den öppnar ett litet fönster med Visa per (PI, År, Månad), datumen, Gå till i dag och en länk till PI-kalendern. Fönstret stängs med Esc eller ett klick utanför. Menyn får plats utan att rulla ned till 680 px skärmhöjd: på låga skärmar blir raderna tätare och undertexten vid logotypen döljs. Är skärmen ännu lägre rullar bara grupperna, med en skugga i kanten, medan sök, inställningar och period står kvar. |
+| Sidomeny | Vit yta mot den grå sidan. Fyra namngivna grupper: Uppföljning, Arbete, Organisation och Resurser. Grupprubriker i gemener, 11,5 px i ljus grå med en linje mellan grupperna, så att de inte förväxlas med menyval: skillnaden bärs av storleken, färgen och linjen, inte av versaler. Varje menyval har en enkel linjeikon för igenkänning, det enda stället med ikoner utan egen funktion. Vald sida har ljusblå ruta, blå text och blå ikon, fet stil, precis som valt segment och aktiv flik. Markeringen ligger i rutan, inte vid fönsterkanten. Inställningar och perioden ligger i foten, och perioden går att byta med pilarna. Perioden är en PI som standard, annars ett år eller en månad. Perioden är en knapp: den öppnar ett litet fönster med Visa per (PI, År, Månad), datumen, Gå till i dag och en länk till PI-kalendern. Fönstret stängs med Esc eller ett klick utanför. Menyn får plats utan att rulla ned till 680 px skärmhöjd: på låga skärmar blir raderna tätare och undertexten vid logotypen döljs. Är skärmen ännu lägre rullar bara grupperna, med en skugga i kanten, medan sök, inställningar och period står kvar. |
 | Arbetstyper | Utveckling, förvaltning och utredning skiljs åt med tre toner av blått, från mörkt till ljust, och står alltid med förklaring. Förvaltningen står först på teamets arbetskort. Saknas den visas en streckad rad med en knapp för att lägga till den. Färgen är reserverad för det som är över kapaciteten. |
 | Tidslinje | Rader i html med tunna staplar på en tolv månaders axel. Standard är att gruppera efter beroendekedja: det som hänger ihop står under varandra, det som måste bli klart först överst, och kedjan med störst risk först. Epiker utan beroenden är hopfällda sist. Ett beroende är en romb på den väntande epikens rad, där det den väntar på blir klart, med en lodrät linje upp till stapeln. Grå romb är i fas, gul har risk, röd blir klar för sent och då ritas glappet som en röd streckad linje. En röd prick efter namnet betyder att teamet är fullt i ett område som epiken behöver. Ett klick fäller ut epikens beroenden, risker och kompetensläge direkt under raden. Grupperat per team eller initiativ står det som hänger ihop långt isär, så där syns linjerna bara för den epik man pekar på eller har fällt ut. I en smal ruta står namnet ovanför stapeln. |
 | Kopplingar | Tre listor i stället för ett flödesdiagram: varifrån arbetet kommer (störst först), team och kompetensområden (mest belagt först, så att flaskhalsarna står överst). Varje rad har tal i klartext och en stapel mot kapaciteten. Ett val filtrerar de andra listorna till det som hänger ihop med valet och sorterar dem efter det de visar. Staplarna glider till valets del: blå del hör till valet, ljusblå del är annat arbete. Väljer man ett team visas dess kompetensområden med ledigt och för mycket, väljer man ett område visas varje teams läge i det, också team som har ledig tid där. Linjer ritas bara för valet, med tjocklek efter timmar och rött till ett område som är fullt. I en smal ruta staplas listorna och bara valet står kvar i sin lista. |
@@ -106,6 +106,26 @@ Texten ska få plats och läsas lätt, oavsett hur lång den är eller hur smal 
 | Perioder | "oktober 2026" och "Q4 2026". Inte "2026-Q4". |
 
 Kontroll: inget element med text får bli bredare än sin ruta, på någon sida, i någon bredd från 320 till 1920 px, även med mycket långa namn.
+
+## Ord i gränssnittet
+
+Appen ska låta som en kollega som redovisar ett läge, inte som en produkt som vill sälja sig själv.
+
+| Regel | Hur |
+|---|---|
+| Inga utropstecken | Varken i rubriker, knappar eller notiser. |
+| Punkt bara efter hela meningar | Rubriker, etiketter, knappar och kolumnrubriker slutar utan punkt. Kortens underrubriker och notisernas bekräftelser är hela meningar och behåller sin. |
+| Inga säljord | Inte "kraftfull", "sömlös", "smart" eller "AI-driven". Appen beskriver vad den visar. |
+| Ingen hälsningsrubrik | Sidans titel namnger sammanhanget: sidnamnet eller perioden, som "Läget i november 2026". Aldrig "Välkommen tillbaka". |
+| En förändring säger vad den jämförs med | "14 h mer än förra PI", aldrig bara "+14 h". |
+| Ingen kursiv för betoning | Betoning kommer från storlek, färg och placering. |
+| Ett talformat per sida | Står ett tal som "152 380 kr" står nästa inte som "152 380,50 kr". |
+| Inga påståenden som inte går att kontrollera | Varje tal i appen ska gå att följa tillbaka till sin källa. |
+
+Två ställen avviker medvetet från en vanlig regellista, så att de inte tas upp vid nästa granskning:
+
+- **Teckenvikter.** Appen använder sex steg i Geists variabla axel, inte två. Hierarkin bärs ändå av storlek och färg; vikten förstärker bara.
+- **Mellanrum.** Måtten är `clamp()`-steg som växer med ytan, inte ett fast 4 px-raster. Ett raster skulle platta till den responsiviteten.
 
 ## Detaljsidor
 
@@ -225,3 +245,7 @@ Ställ tre frågor innan något nytt läggs till:
 1. Behöver det en ruta, eller räcker luft och en rubrik?
 2. Betyder färgen en avvikelse? Om inte, gör det neutralt.
 3. Kan det sägas med ord och siffror i stället för med en symbol?
+
+## Källor
+
+Avsnittet "Ord i gränssnittet" bygger delvis på reglerna i [unslop](https://github.com/heydamir/unslop) av Damir Sokolovsky, CC BY 4.0.
