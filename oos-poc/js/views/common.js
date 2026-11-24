@@ -469,20 +469,27 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
 
   C.objectCard = function (o) {
     var st = o.state || { label: '', tone: '' };
+    /*
+     * Kortet är tre band, som i förebilden: ett huvud med ikonen och
+     * läget, en inramad kropp med uppdraget, mätaren och talen, och en fot
+     * med vad som händer härnäst. Ramen runt kroppen är det som skiljer
+     * innehållet från sitt eget huvud — utan den rinner korten ihop till
+     * en kolumn text.
+     *
+     * Ikonen är neutral för alla kort av samma slag, inte en färg per
+     * domän. Färgkodade klossar att lära sig utantill är just vad princip
+     * 4 säger nej till; ikonen hjälper ögat att se slaget, inte saken.
+     */
     return '<button type="button" class="ocard" data-go="' + U.esc(o.go) + '">' +
       '<span class="ocard-head">' +
-      /*
-       * Ikonen säger vilken sorts sak kortet är, i en tonad ruta. Den är
-       * neutral för alla kort av samma slag — inte en färg per domän.
-       * Färgkodade klossar att lära sig utantill är just vad princip 4
-       * säger nej till; ikonen hjälper ögat att se slaget, inte saken.
-       */
       (o.icon ? '<span class="ocard-icon">' + UI.icon(o.icon) + '</span>' : '') +
       '<span class="ocard-name">' + U.esc(o.name) + '</span>' +
       (st.label ? UI.state(st.label, st.tone) : '') + '</span>' +
+      '<span class="ocard-body">' +
       (o.mission ? '<span class="ocard-mission"><span class="ocard-lead">Uppdrag</span>' + U.esc(o.mission) + '</span>' : '') +
       (o.meter ? UI.meter(o.meter) : '') +
       (o.stats ? UI.statRow(o.stats) : '') +
+      '</span>' +
       (o.foot ? '<span class="ocard-foot">' + UI.icon('clock', 'card-foot-icon') + '<span>' + o.foot + '</span></span>' : '') +
       '</button>';
   };

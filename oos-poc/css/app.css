@@ -2434,8 +2434,8 @@ mark {
 .ocard {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 16px 0;
+  gap: 0;
+  padding: 0;
   border: 0;
   border-radius: 12px;
   background: var(--bg);
@@ -2463,6 +2463,23 @@ mark {
   display: flex;
   align-items: center;
   gap: 9px;
+  padding: 13px 14px;
+}
+
+/*
+ * Kroppen är en egen inramad yta inuti kortet. Ramen gör att uppdraget,
+ * mätaren och talen läses som kortets innehåll och inte som en fortsättning
+ * på huvudet.
+ */
+.ocard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 0 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
 /* Ikonen i tonad ruta: säger vilket slag kortet är, inte vilken sak. */
@@ -2540,8 +2557,8 @@ mark {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: 2px -16px 0;
-  padding: 10px 16px;
+  margin-top: 11px;
+  padding: 10px 14px 11px;
   border-top: 1px solid var(--line);
   color: var(--fg-3);
   font-size: 0.75rem;
