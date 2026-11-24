@@ -607,7 +607,7 @@
 
     var h = UI.pageHead({
       title: 'Initiativ',
-      sub: 'Leveransdomänerna beslutar initiativen och hur mycket tid de får kosta. Teamen bryter ned dem i epiker och estimerar dem.',
+      sub: 'Leveransdomänerna beslutar dem. Teamen bryter ned dem i epiker.',
       actions: UI.btn('Lägg till initiativ', 'initiative-add', { cls: 'btn-primary' })
     });
     h += UI.facts([

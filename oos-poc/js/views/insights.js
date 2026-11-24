@@ -16,7 +16,7 @@
     var tab = OOS.tab('insights', 'kpi');
     var h = UI.pageHead({
       title: 'Insikter',
-      sub: 'Nyckeltal, mätvärden och organisationskartan för ' + esc(ctx.period.inText) + '. Allt räknas fram ur samma modell som resten av Fabriken.',
+      sub: 'Nyckeltal, mätvärden och organisationskartan för ' + esc(ctx.period.inText) + '.',
       actions: tab === 'kpi' ? UI.btn('Ändra mål', 'kpi-targets') : ''
     });
     h += '<div>' + UI.tabs('insights', TABS, tab) + '<div class="stack-lg">';

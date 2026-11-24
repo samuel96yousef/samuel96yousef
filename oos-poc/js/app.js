@@ -131,6 +131,7 @@
     });
     h += '</div>';
     h += '<div class="nav-foot">';
+
     NAV.filter(function (g) { return g.foot; }).forEach(function (g) { g.items.forEach(function (i) { h += navItem(i); }); });
     /* Perioden styr alla siffror. Den står i foten, alltid synlig, utan egen rubrik för att spara höjd. */
     h += '<div class="nav-period" role="group" aria-label="Period"><div class="nav-period-row">' +

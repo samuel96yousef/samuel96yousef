@@ -5357,8 +5357,13 @@ p,
   .nav .brand-sub {
     display: none;
   }
+  /*
+   * 6 px här räckte inte hela vägen ned till nästa steg: mellan 721 och
+   * 860 px fattades några pixlar och grupperna började rulla, tvärtemot
+   * regeln om att menyn ska rymmas ned till 680. Mätt över hela bandet.
+   */
   .nav-group {
-    padding-block: 6px;
+    padding-block: 4px;
   }
   .nav-item {
     padding-block: 4px;
@@ -5368,7 +5373,11 @@ p,
   }
 }
 
-@media (max-height: 720px) {
+/*
+ * Steget låg på 720 px, men mellan 721 och 780 räckte det föregående inte
+ * och menyn rullade. Gränsen flyttad dit mätningen pekar.
+ */
+@media (max-height: 780px) {
   .nav {
     gap: 8px;
     padding-block: 10px 8px;

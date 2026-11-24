@@ -31,7 +31,7 @@
 
     var h = UI.pageHead({
       title: 'Kompetenser',
-      sub: 'Kompetenser beskriver vad arbetarna kan och på vilken nivå. De används för att räkna kapacitet per kompetens och för att hitta kunskap som bara finns hos en person.',
+      sub: 'Vad arbetarna kan och på vilken nivå.',
       actions: UI.btn('Lägg till kompetens', 'comp-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +

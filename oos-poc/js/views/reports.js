@@ -93,7 +93,7 @@
 
     var h = UI.pageHead({
       title: 'Rapporter',
-      sub: 'Kapacitet, belastning och ledig tid för den del av organisationen du väljer, jämfört med nästa period. Allt räknas fram ur samma datamodell.',
+      sub: 'Kapacitet, belastning och ledig tid, jämfört med nästa period.',
       actions: UI.btn('Kopiera som CSV', 'report-csv', {})
     });
 

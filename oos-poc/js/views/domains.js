@@ -12,7 +12,7 @@
       title: 'Leveransdomäner',
       singular: 'leveransdomän',
       addLabel: 'Lägg till leveransdomän',
-      sub: 'En leveransdomän är den högsta nivån. Den delar upp verksamheten i större avgränsade delar och agerar beställare av utveckling.'
+      sub: 'Högsta nivån. Delar upp verksamheten och beställer utveckling.'
     },
     businessDomains: {
       coll: 'domains',
@@ -20,7 +20,7 @@
       title: 'Verksamhetsdomäner',
       singular: 'verksamhetsdomän',
       addLabel: 'Lägg till verksamhetsdomän',
-      sub: 'En verksamhetsdomän är en sammanhängande del av verksamhetens processer och förmågor. Den bistår teamen med verksamhetskompetens för analys och kravställning.'
+      sub: 'En sammanhängande del av verksamhetens processer och förmågor.'
     },
     itDomains: {
       coll: 'domains',
@@ -28,7 +28,7 @@
       title: 'IT-domäner',
       singular: 'IT-domän',
       addLabel: 'Lägg till IT-domän',
-      sub: 'En IT-domän grupperar system och tekniska tjänster med gemensamt syfte. Den bistår teamen med IT-kompetens för teknisk analys, utveckling och test.'
+      sub: 'System och tekniska tjänster med gemensamt syfte.'
     }
   };
 

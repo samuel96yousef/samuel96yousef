@@ -38,7 +38,7 @@
     var ai = rows.filter(function (r) { return r.w.type === 'ai'; }).length;
     var h = UI.pageHead({
       title: 'Arbetare',
-      sub: 'Arbetare är de personer eller AI-resurser som bidrar med kompetens och kapacitet i ett eller flera team och domäner.',
+      sub: 'Personer och AI-resurser som bidrar med kompetens och kapacitet.',
       actions: UI.btn('Lägg till arbetare', 'worker-add', { cls: 'btn-primary' })
     });
     var notAllocated = ctx.e.unallocated(ctx.period);

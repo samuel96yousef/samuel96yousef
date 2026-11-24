@@ -23,7 +23,7 @@
     var totalLoaded = U.sum(rows, function (r) { return r.cap.loaded; });
     var h = UI.pageHead({
       title: 'Team',
-      sub: 'Team är tvärfunktionella grupper av arbetare som tillsammans levererar värde inom en eller flera domäner. Producerande team arbetar mot en primär verksamhetsdomän, stödjande team mot flera.',
+      sub: 'Tvärfunktionella grupper som levererar värde inom en eller flera domäner.',
       actions: UI.btn('Lägg till team', 'team-add', { cls: 'btn-primary' })
     });
     h += '<div class="kpis">' +
