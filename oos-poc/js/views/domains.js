@@ -210,20 +210,32 @@
      * inte visar: syfte, ägare och hur kapaciteten fördelar sig. Beskrivningen visas bara när
      * kolumnen är dold (klassen dup-2, se app.css).
      */
-    var rows = [[ownerLabel, owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn')]];
-    if (isDd(kind)) rows.push(['Primärt uppdrag', d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans']);
-    else {
-      var dd = e.deliveryDomainOfDomain(d.id);
-      rows.push(['Leveransdomän', dd ? C.ddRef(dd) : UI.badge('Saknas', 'warn')]);
+    var facts = [
+      { icon: 'users', label: ownerLabel, value: owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn') },
+      isDd(kind)
+        ? { icon: 'layers', label: 'Primärt uppdrag', value: esc(d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans') }
+        : { icon: 'layers', label: 'Leveransdomän', value: (function () { var dd = e.deliveryDomainOfDomain(d.id); return dd ? C.ddRef(dd) : UI.badge('Saknas', 'warn'); })() },
+      { icon: 'box', label: 'Status', value: d.status === 'inactive' ? UI.statusBadge(d.status) : esc('Aktiv') },
+      { icon: 'clock', label: 'Senast ändrad', value: esc(d.updated ? U.fmtDate(d.updated) : '–') }
+    ];
+    /*
+     * Ny disposition: uppdraget först som mening, sedan periodens tal som
+     * tre siffror med etiketter — de stod förut hopklämda i en enda rad
+     * text — och sist resten i en inramad faktapanel med två spalter.
+     */
+    var h = '<div class="dstack">';
+    h += '<div><span class="ocard-lead">Uppdrag</span><p class="drawer-text">' + esc(d.purpose || 'Inget uppdrag angivet.') + '</p></div>';
+    if (cap.capacity > 0.5) {
+      h += UI.meter({ label: 'Beläggning i ' + esc(ctx.period.inText), right: C.stateTag(cap), bar: UI.bar((cap.loaded / cap.capacity) * 100, { title: '' }) });
+      h += UI.statRow([
+        { value: U.fmtH(cap.capacity), label: 'kapacitet' },
+        { value: U.fmtH(cap.loaded), label: 'belastat' },
+        { value: U.fmtH(Math.max(0, cap.free)), label: 'ledigt' }
+      ]);
     }
-    rows.push(['Kapacitet i ' + ctx.period.inText, cap.capacity ? U.fmtH(cap.loaded) + ' belastat av ' + U.fmtH(cap.capacity) + (cap.free >= 0 ? ', ' + U.fmtH(cap.free) + ' ledigt' : '') : '–']);
-    rows.push(['Status', d.status === 'inactive' ? UI.statusBadge(d.status) : 'Aktiv']);
-    rows.push(['Senast ändrad', d.updated ? U.fmtDate(d.updated) : '']);
-    return '<div class="drawer-grid two">' +
-      /* Samma ord som på teamsidorna: uppdraget är vad saken är till för. */
-      '<div>' + C.drawerSection('Uppdrag', '<p class="drawer-text">' + esc(d.purpose || 'Inget uppdrag angivet.') + '</p>') +
-      '<div class="dup-2">' + C.drawerSection('Beskrivning', '<p class="drawer-text">' + esc(d.description || '–') + '</p>') + '</div></div>' +
-      C.drawerSection('Uppgifter', UI.props(rows)) + '</div>';
+    h += C.factPanel(facts);
+    if (d.description) h += '<div><span class="ocard-lead">Beskrivning</span><p class="drawer-text">' + esc(d.description) + '</p></div>';
+    return h + '</div>';
   }
 
   function links(kind, d, ctx) {

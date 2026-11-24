@@ -475,6 +475,20 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
     return h + '</div></section>';
   };
 
+  /*
+   * Faktapanel: en inramad ruta med etikett och värde i två spalter, som
+   * förebildens "understood"-panel. Etiketten står grå till vänster med
+   * sin ikon, värdet mörkt till höger. Den samlar det som annars blir en
+   * lång spalt av rubrik-och-text.
+   */
+  C.factPanel = function (items) {
+    return '<div class="fpanel">' + items.filter(Boolean).map(function (x) {
+      return '<div class="fpanel-row">' +
+        '<span class="fpanel-label">' + (x.icon ? UI.icon(x.icon, 'fpanel-icon') : '') + U.esc(x.label) + '</span>' +
+        '<span class="fpanel-value">' + x.value + '</span></div>';
+    }).join('') + '</div>';
+  };
+
   C.objectCard = function (o) {
     var st = o.state || { label: '', tone: '' };
     /*

@@ -2323,6 +2323,99 @@ mark {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Faktapanel: inramad ruta, etikett med ikon till vänster och värdet till
+ * höger. Den samlar det som annars blir en lång spalt av rubrik-och-text.
+ * Två spalter när ytan räcker, en när den inte gör det.
+ */
+.fpanel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 32px;
+  padding: 2px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+/*
+ * Högst två spalter. Med auto-fit blev det tre på en bred skärm, och då
+ * läser man inte längre etikett–värde utan en rad av sex saker.
+ */
+@container drawer (min-width: 620px) {
+  .fpanel {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.fpanel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 46px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+.fpanel-row:last-child {
+  border-bottom: 0;
+}
+
+/* I två spalter är näst sista raden sist i sin egen spalt. */
+@container drawer (min-width: 620px) {
+  .fpanel-row:nth-last-child(2) {
+    border-bottom: 0;
+  }
+}
+
+.fpanel-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: var(--fg-3);
+}
+
+.fpanel-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.fpanel-value {
+  min-width: 0;
+  text-align: right;
+  color: var(--fg);
+}
+
+/* Ett värde med avatar och två rader får plats utan att tränga grannen. */
+.fpanel-value .name-cell,
+.fpanel-value > * {
+  justify-content: flex-end;
+  text-align: left;
+}
+
+/* Lådans innehåll som en spalt med luft, inte ett tvåspaltsrutnät. */
+.dstack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dstack .drawer-text {
+  margin: 3px 0 0;
+}
+
+/*
+ * Talen hör ihop och ska läsas i ett svep. Utan tak sprids de över hela
+ * lådans bredd och "ledigt" hamnar en halv skärm från "kapacitet".
+ */
+.dstack .statrow,
+.dstack .meter {
+  max-width: 460px;
+}
+
 /* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
 .badge-ok {
   background: var(--ok-soft);
