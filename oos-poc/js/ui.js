@@ -441,6 +441,27 @@ var OOSUI = (function () {
         '<span id="' + id + '-label">' + esc(f.label) + '</span><div class="custom-body" id="' + id + '">' + f.render(value) + '</div>' +
         (f.help ? '<span class="help" data-help="' + esc(f.key) + '"' + (helpText(f, values) ? '' : ' hidden') + '>' + esc(helpText(f, values)) + '</span>' : '') + '<span class="err" hidden></span></div>';
     }
+    /*
+     * Graderat val: stegen står som kolumner med spåret under, i stället
+     * för i en rullista. Hela skalan syns, och var det här valet ligger på
+     * den. Radioknappar under ytan ger piltangenter och uppläsning gratis;
+     * ifyllt spår ritas med :has() så att inget skript behövs.
+     */
+    if (f.type === 'grade') {
+      var steps = f.options || [];
+      var g = '<div class="fld full grade" data-field="' + esc(f.key) + '" role="radiogroup" aria-labelledby="' + id + '-label">' +
+        '<span id="' + id + '-label">' + esc(f.label) + (f.required ? ' *' : '') + '</span>' +
+        '<div class="grade-head">' + steps.map(function (s) { return '<span>' + esc(s.label) + '</span>'; }).join('') + '</div>' +
+        '<div class="grade-track"><span class="grade-line" aria-hidden="true"></span><span class="grade-fill" aria-hidden="true"></span>';
+      steps.forEach(function (s) {
+        var on = String(s.value) === String(value);
+        g += '<label class="grade-opt"><input type="radio" name="' + esc(f.key) + '" value="' + esc(s.value) + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="grade-dot" aria-hidden="true"></span><span class="sr-only">' + esc(s.label) + '</span></label>';
+      });
+      g += '</div>';
+      if (f.help) g += '<span class="help" data-help="' + esc(f.key) + '"' + (helpText(f, values) ? '' : ' hidden') + '>' + esc(helpText(f, values)) + '</span>';
+      return g + '<span class="err" hidden></span></div>';
+    }
     var cls = 'fld' + (f.full || f.type === 'textarea' ? ' full' : '') + (f.type === 'checkbox' ? ' check' : '');
     var req = f.required ? ' required' : '';
     var h = '<label class="' + cls + '" data-field="' + esc(f.key) + '">';
@@ -580,6 +601,12 @@ var OOSUI = (function () {
       if (f.type === 'custom') {
         var box = form.querySelector('[data-field="' + f.key + '"] .custom-body');
         if (box) out[f.key] = f.read(box);
+        return;
+      }
+      /* Graderat val: det är den förkryssade knappen som bär värdet. */
+      if (f.type === 'grade') {
+        var on = form.querySelector('[name="' + f.key + '"]:checked');
+        out[f.key] = on ? Number(on.value) : null;
         return;
       }
       var el = form.querySelector('[name="' + f.key + '"]');

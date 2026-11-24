@@ -2161,6 +2161,91 @@ mark {
   background: var(--crit);
 }
 
+/*
+ * Graderat val. Hela skalan står framme med sina namn, och spåret visar
+ * var valet ligger på den. Ifyllningen ritas med :has(): inget skript
+ * behövs, och radioknapparna under ytan ger piltangenter och uppläsning.
+ */
+.grade .grade-head {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 6px;
+  color: var(--fg-3);
+  font-size: 0.75rem;
+}
+
+.grade .grade-head span {
+  text-align: center;
+}
+
+.grade-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  height: 34px;
+}
+
+.grade-line,
+.grade-fill {
+  position: absolute;
+  left: 12.5%;
+  right: 12.5%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+
+.grade-fill {
+  right: auto;
+  width: 0;
+  background: var(--accent);
+  transition: width var(--dur-1) var(--ease);
+}
+
+/* Spåret fylls fram till det valda steget. */
+.grade-track:has(.grade-opt:nth-child(4) input:checked) .grade-fill { width: 25%; }
+.grade-track:has(.grade-opt:nth-child(5) input:checked) .grade-fill { width: 50%; }
+.grade-track:has(.grade-opt:nth-child(6) input:checked) .grade-fill { width: 75%; }
+
+.grade-opt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  cursor: pointer;
+}
+
+.grade-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.grade-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+  transition: box-shadow var(--dur-1) var(--ease);
+}
+
+.grade-opt:hover .grade-dot {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.grade-opt input:checked ~ .grade-dot {
+  box-shadow: inset 0 0 0 6px var(--accent);
+}
+
+.grade-opt input:focus-visible ~ .grade-dot {
+  box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 3px var(--focus);
+}
+
 /* Förändring mellan perioder. Grå med riktning: ett faktum, ingen avvikelse. */
 .delta {
   display: inline-flex;

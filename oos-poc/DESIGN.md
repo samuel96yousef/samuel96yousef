@@ -27,6 +27,8 @@ Rörelse förklarar en förändring, aldrig något annat. Inget blinkar, loopar 
 
 | Element | Val |
 |---|---|
+| Graderat val | Där något väljs på en skala med namngivna steg står hela skalan framme: stegen som kolumner, spåret under, och det valda steget ifyllt. Inte en rullista, som döljer skalan och var valet ligger på den. Under ytan är det radioknappar, så piltangenter och uppläsning fungerar. |
+| Följd som bricka | Där en rad får en konsekvens står den som bricka i egen kolumn, inte inklämd i en annan. Tonerna är appens vanliga: neutral när följden är väntad, gul när den kräver något av en. Inget grönt — det som är bra bär ingen färg alls. |
 | Läget i ett ord | Där ett tal säger hur mycket står ett ord bredvid som säger vad man ska göra åt det: I balans, Nära taket, Över kapacitet, Inget planerat. Ordet har en liten prick i samma ton som avvikelser i övrigt. Gränserna gäller det avrundade talet som visas, så att siffra, färg och ord aldrig kan säga emot varandra. |
 | Förändring som bricka | Skillnad mellan två perioder står som grå bricka med riktning: "↓ 444 h". Grå, inte grön eller röd: att kapaciteten rör sig mellan PI:n är ett faktum, och färg är reserverad för avvikelser. |
 | Uppdrag | Varje team och domän säger vad den är till för, under rubriken, med etiketten Uppdrag. Det är en annan sorts text än beskrivningen, som säger vad saken är. Står uppdraget där står det ingen annanstans på sidan. |

@@ -952,7 +952,7 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
       values: wc || { level: 2, weight: 'secondary' },
       fields: [
         isNew ? { key: 'competenceId', label: 'Kompetens', type: 'select', required: true, placeholder: 'Välj kompetens …', options: C.opts.competences(existing), full: true } : null,
-        { key: 'level', label: 'Nivå', type: 'select', options: C.opts.levels },
+        { key: 'level', label: 'Nivå', type: 'grade', options: C.opts.levels },
         { key: 'weight', label: 'Vikt', type: 'select', options: [{ value: 'primary', label: 'Primär' }, { value: 'secondary', label: 'Sekundär' }], help: 'Kapaciteten räknas på primära kompetenser.' }
       ].filter(Boolean),
       onSubmit: function (v) {

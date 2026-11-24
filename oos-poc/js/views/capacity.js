@@ -64,7 +64,20 @@
       rowClass: function (r) { return r.to < ctx.period.start ? 'is-past' : ''; },
       columns: [
         { key: 'team', label: 'Teamnamn', sort: function (r) { var t = e.get('teams', r.teamId); return t ? t.name : ''; }, render: function (r) { return C.teamRef(e.get('teams', r.teamId)); } },
-        { key: 'type', label: 'Avdragstyp', opt: 1, sort: function (r) { return r.type; }, render: function (r) { return esc(r.type) + (OOSEngine.isWorkReduction(r.type) ? ' ' + UI.badge('Arbete', 'warn') + '<div><button type="button" class="link-btn small" data-action="reduction-to-epic" data-id="' + esc(r.id) + '">Gör om till epik</button></div>' : ''); } },
+        { key: 'type', label: 'Avdragstyp', opt: 1, sort: function (r) { return r.type; }, render: function (r) { return esc(r.type); } },
+        /*
+         * Följden av raden som bricka i kanten: räknas tiden bort, eller är
+         * det arbete som egentligen hör hemma i en epik? Klassningen fanns
+         * förut inklämd i typkolumnen och var lätt att missa.
+         */
+        {
+          key: 'conseq', label: 'Följd', sort: function (r) { return OOSEngine.isWorkReduction(r.type) ? 0 : 1; },
+          render: function (r) {
+            if (!OOSEngine.isWorkReduction(r.type)) return UI.badge('Räknas bort');
+            return UI.badge('Borde vara epik', 'warn') +
+              '<div><button type="button" class="link-btn small" data-action="reduction-to-epic" data-id="' + esc(r.id) + '">Gör om till epik</button></div>';
+          }
+        },
         { key: 'pct', label: 'Värde', cls: 'num', sort: function (r) { return r.percent; }, render: function (r) { return U.fmtPct(r.percent); } },
         { key: 'from', label: 'Gäller', sort: function (r) { return r.from; }, render: function (r) { return '<span class="nowrap">' + U.fmtDate(r.from) + ' –</span> <span class="nowrap">' + U.fmtDate(r.to) + '</span>'; } },
         { key: 'state', label: 'Läge', opt: 1, sort: function (r) { return r.from; }, render: function (r) { return OOS.teamReductionState(r, ctx.period); } },
