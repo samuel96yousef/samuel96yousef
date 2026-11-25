@@ -211,7 +211,12 @@
      * kolumnen är dold (klassen dup-2, se app.css).
      */
     var facts = [
-      { icon: 'users', label: ownerLabel, value: owner ? C.workerRef(owner, owner.title) : UI.badge('Ej utsedd', 'warn') },
+      /*
+       * Titeln under namnet utelämnas när den säger samma sak som
+       * etiketten till vänster. "Leveransdomänägare · Petra Wallin ·
+       * Leveransdomänägare" är inte två upplysningar, bara en i dubbel.
+       */
+      { icon: 'users', label: ownerLabel, value: owner ? C.workerRef(owner, owner.title === ownerLabel ? '' : owner.title) : UI.badge('Ej utsedd', 'warn') },
       isDd(kind)
         ? { icon: 'layers', label: 'Primärt uppdrag', value: esc(d.primaryObjective === 'it' ? 'IT-leverans' : 'Verksamhetsleverans') }
         : { icon: 'layers', label: 'Leveransdomän', value: (function () { var dd = e.deliveryDomainOfDomain(d.id); return dd ? C.ddRef(dd) : UI.badge('Saknas', 'warn'); })() },
@@ -223,18 +228,19 @@
      * tre siffror med etiketter — de stod förut hopklämda i en enda rad
      * text — och sist resten i en inramad faktapanel med två spalter.
      */
-    var h = '<div class="dstack">';
+    var h = '<div class="dsplit"><div class="dsplit-main">';
     h += '<div><span class="ocard-lead">Uppdrag</span><p class="drawer-text">' + esc(d.purpose || 'Inget uppdrag angivet.') + '</p></div>';
     if (cap.capacity > 0.5) {
-      h += UI.meter({ label: 'Beläggning i ' + esc(ctx.period.inText), right: C.stateTag(cap), bar: UI.bar((cap.loaded / cap.capacity) * 100, { title: '' }) });
-      h += UI.statRow([
-        { value: U.fmtH(cap.capacity), label: 'kapacitet' },
-        { value: U.fmtH(cap.loaded), label: 'belastat' },
-        { value: U.fmtH(Math.max(0, cap.free)), label: 'ledigt' }
-      ]);
+      h += '<div class="dblock">' +
+        UI.meter({ label: 'Beläggning i ' + esc(ctx.period.inText), right: C.stateTag(cap), bar: UI.bar((cap.loaded / cap.capacity) * 100, { title: '' }) }) +
+        UI.statRow([
+          { value: U.fmtH(cap.capacity), label: 'kapacitet' },
+          { value: U.fmtH(cap.loaded), label: 'belastat' },
+          { value: U.fmtH(Math.max(0, cap.free)), label: 'ledigt' }
+        ]) + '</div>';
     }
-    h += C.factPanel(facts);
     if (d.description) h += '<div><span class="ocard-lead">Beskrivning</span><p class="drawer-text">' + esc(d.description) + '</p></div>';
+    h += '</div><div class="dsplit-rail">' + C.factPanel(facts) + '</div>';
     return h + '</div>';
   }
 

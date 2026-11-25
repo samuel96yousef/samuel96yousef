@@ -2396,24 +2396,83 @@ mark {
   text-align: left;
 }
 
-/* Lådans innehåll som en spalt med luft, inte ett tvåspaltsrutnät. */
-.dstack {
+/*
+ * Lådans översikt i två spalter: till vänster det som beskriver domänen
+ * med egna ord, till höger det som räknas upp om den. I en enda spalt
+ * blev raderna över 900 px långa på en bred skärm — etiketten stod kvar
+ * längst till vänster och värdet en halv skärm bort, med tomrum emellan.
+ */
+.dsplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@container drawer (min-width: 840px) {
+  .dsplit {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 18px clamp(20px, 2.5vw, 34px);
+  }
+
+  /*
+   * Först när spalten faktiskt är smal ställs faktapanelen på en spalt.
+   * Under den bredden står den under innehållet i hela lådans bredd, och
+   * då är två spalter rätt — samma regel som panelen har i övrigt.
+   */
+  .dsplit-rail .fpanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dsplit-rail .fpanel-row:nth-last-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .dsplit-rail .fpanel-row:last-child {
+    border-bottom: 0;
+  }
+}
+
+.dsplit-main,
+.dsplit-rail {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
 }
 
-.dstack .drawer-text {
+.dsplit .drawer-text {
   margin: 3px 0 0;
 }
 
 /*
- * Talen hör ihop och ska läsas i ett svep. Utan tak sprids de över hela
- * lådans bredd och "ledigt" hamnar en halv skärm från "kapacitet".
+ * Periodens tal i en egen inramad ruta, med samma kant som faktapanelen.
+ * Lösa på den vita ytan hängde stapeln och lägesordet i luften, långt
+ * från varandra; i rutan har de en gemensam kant att hålla sig till.
  */
-.dstack .statrow,
-.dstack .meter {
-  max-width: 460px;
+.dblock {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 13px 16px 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.dblock .meter,
+.dblock .statrow {
+  max-width: none;
+}
+
+/* Taket på 360 px gäller staplar i tabellceller. I rutan får den fylla. */
+.dblock .bar .lbar {
+  max-width: none;
+}
+
+/* Talen får en egen rad med en hårfin linje över, som rutans eget fack. */
+.dblock .statrow {
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
 }
 
 /* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
