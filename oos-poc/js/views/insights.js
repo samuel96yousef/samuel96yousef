@@ -167,7 +167,7 @@
     var comp = e.composition(ctx.period);
     h += '<div class="grid-2">';
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Kapacitetens sammansättning</div><div class="card-sub">Andel av timmarna i ' + esc(ctx.period.inText) + '</div></div></div>' +
-      stack100('Var kapaciteten ligger', comp.source) + stack100('Vem som bidrar', comp.employment) + '</section>';
+      pieBlock('Var kapaciteten ligger', comp.source) + pieBlock('Vem som bidrar', comp.employment) + '</section>';
     var depth = e.competenceDepth();
     var dmax = Math.max.apply(null, depth.map(function (d) { return d.total; }).concat([1]));
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Kompetensdjup</div><div class="card-sub">Antal personer per område och högsta nivå</div></div></div>';
@@ -183,6 +183,28 @@
     });
     h += '</div></section></div>';
     return h;
+  }
+
+  /*
+   * Andelen som ring med sin lista bredvid. Förut stod den som en 14 px
+   * hög hundraprocentstapel: "AI 2 %" blev tre pixlar bred, och legenden
+   * bar bara procenten — timmarna, som är appens gemensamma valuta, stod
+   * ingenstans. Mitten bär summan, så det syns vad hundra procent är.
+   *
+   * Listan står i samma ordning som ringen, störst först, och talen i
+   * egna kolumner så att två rader går att jämföra med ögat.
+   */
+  function pieBlock(title, parts) {
+    var shown = parts.slice().sort(function (a, b) { return b.value - a.value; });
+    var total = U.sum(shown, function (p) { return p.value; });
+    return '<div class="pieblock"><div class="label">' + esc(title) + '</div><div class="pieblock-body">' +
+      UI.pie(shown, { center: U.fmtH(total), centerSub: 'totalt', fmt: U.fmtH, label: title }) +
+      '<div class="pie-legend">' + shown.map(function (p, i) {
+        return '<div class="pie-legend-row"><span class="sw s' + (i + 1) + '"></span>' +
+          '<span class="pie-legend-name">' + esc(p.label) + '</span>' +
+          '<span class="num pie-legend-h">' + U.fmtH(p.value) + '</span>' +
+          '<span class="num pie-legend-pct">' + U.fmtPct(total > 0 ? (p.value / total) * 100 : 0) + '</span></div>';
+      }).join('') + '</div></div></div>';
   }
 
   function stack100(title, parts) {

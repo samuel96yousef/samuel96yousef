@@ -470,6 +470,46 @@
   /* ---------- Flaskhalsar ---------- */
 
   /*
+   * Hur illa ett beroende är, i ett par ord. Sent slår obeslutat, som slår
+   * fullt team, och bland de sena står det som blir mest sent först.
+   * Dagarna är det enda talet som säger något: "Blir klar efter att epiken
+   * ska vara klar" säger att det är sent, inte hur mycket.
+   */
+  var DEP_RANK = { late: 0, undecided: 1, capacity: 2 };
+
+  function riskRows(rows) {
+    return rows.map(function (x) {
+      var risks = x.dep.risks.slice().sort(function (a, b) {
+        return (DEP_RANK[a.kind] === undefined ? 3 : DEP_RANK[a.kind]) - (DEP_RANK[b.kind] === undefined ? 3 : DEP_RANK[b.kind]);
+      });
+      var worst = risks[0] || { kind: 'capacity' };
+      var days = Math.round((U.parseDate(x.dep.epic.to) - U.parseDate(x.epic.to)) / 86400000);
+      return {
+        epic: x.epic,
+        dep: x.dep,
+        tone: worst.kind === 'late' ? 'late' : 'risk',
+        rank: DEP_RANK[worst.kind] === undefined ? 3 : DEP_RANK[worst.kind],
+        days: worst.kind === 'late' ? days : 0,
+        verdict: worst.kind === 'late' ? U.plural(days, 'dag sent', 'dagar sent')
+          : worst.kind === 'undecided' ? 'Bara ett förslag' : 'Teamet är fullt',
+        /*
+         * Sent och obeslutat säger brickan redan, det ena med ett tal.
+         * Att teamet är fullt säger den bara halvt — i vilket område står
+         * i texten — så den raden står kvar under.
+         */
+        rest: risks.filter(function (r) { return r.kind !== 'late' && r.kind !== 'undecided'; }).map(function (r) { return r.text; })
+      };
+    }).sort(function (a, b) { return a.rank - b.rank || b.days - a.days || U.byName(a.epic, b.epic); });
+  }
+
+  function depNode(ep, e, tone) {
+    var t = e.get('teams', ep.teamId);
+    var sub = (t ? t.name + ' · ' : '') + 'klar ' + U.fmtDate(ep.to);
+    return '<div class="chain-node' + (tone ? ' ' + tone : '') + '" data-go="epics:' + esc(ep.id) + '" tabindex="0" role="link" aria-label="' + esc(ep.name + ', ' + sub) + '">' +
+      '<span class="chain-name">' + esc(ep.name) + '</span><span class="chain-sub">' + esc(sub) + '</span></div>';
+  }
+
+  /*
    * Helhetsbilden: var arbetet tar slut på kompetens, var det finns ledig tid och vilka beroenden som
    * riskerar att försena annat arbete. Räknas ur epikernas kompetensbehov och teamens kapacitet.
    */
@@ -668,12 +708,25 @@
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Beroenden med risk</div>' +
       '<div class="card-sub">Arbete som väntar på annat arbete som blir klart för sent, inte är beslutat eller ligger hos ett team med flaskhals.</div></div></div>';
     if (!risks.length) h += '<div class="empty">Inga beroenden med risk.</div>';
-    risks.forEach(function (x) {
-      var ta = e.get('teams', x.epic.teamId);
-      var tb = e.get('teams', x.dep.epic.teamId);
-      h += '<div class="dep-row has-risk"><div class="grow">' + C.epicRef(x.epic) + ' <span class="muted">väntar på</span> ' + C.epicRef(x.dep.epic) +
-        '<div class="muted small">' + (ta ? esc(ta.name) : '') + ' → ' + (tb ? esc(tb.name) : '') + ' · ' + esc(x.dep.epic.name) + ' klar ' + U.fmtDate(x.dep.epic.to) + '</div>' +
-        '<ul class="risk-list">' + x.dep.risks.map(function (r) { return '<li>' + esc(r.text) + '</li>'; }).join('') + '</ul></div>' + UI.badge('Risk', 'warn') + '</div>';
+    /*
+     * Ett beroende är två epiker och en riktning, så raden ritas som två
+     * rutor med "väntar på" emellan — samma form som beroendekedjan på
+     * epiksidan. Förut stod allt på en enda rad löptext, och epikens namn
+     * stod två gånger: en gång i meningen och en gång i raden under.
+     *
+     * Konsekvensen står som bricka i egen kolumn. Den gamla brickan sa
+     * "Risk" på varje rad, i ett kort som redan heter Beroenden med risk —
+     * en kolumn där alla celler säger samma sak säger ingenting. Nu säger
+     * den hur illa det är, och raderna sorteras efter den: det som blir
+     * sent står först, och det som blir mest sent överst bland dem.
+     */
+    riskRows(risks).forEach(function (x) {
+      h += '<div class="deprisk"><div class="deprisk-chain">' +
+        depNode(x.epic, e, '') +
+        '<span class="deprisk-wait">väntar på</span>' +
+        depNode(x.dep.epic, e, x.tone) + '</div>' +
+        '<div class="deprisk-why">' + UI.badge(x.verdict, x.tone === 'late' ? 'crit' : 'warn') + '</div>' +
+        (x.rest.length ? '<p class="deprisk-rest">' + x.rest.map(esc).join(' · ') + '</p>' : '') + '</div>';
     });
     h += '</section>';
     return h;

@@ -34,6 +34,11 @@
   --focus: rgba(47, 90, 232, 0.3);
   --track: #e6ebf3;
   --bar: #2f5ae8;
+  /* Ringens fyra toner, störst först. Se .pie-seg. */
+  --pie-1: var(--bar);
+  --pie-2: color-mix(in srgb, var(--bar) 70%, var(--bg));
+  --pie-3: color-mix(in srgb, var(--bar) 46%, var(--bg));
+  --pie-4: color-mix(in srgb, var(--bar) 28%, var(--bg));
   --avatar: #e7eefc;
   --warn: #9a5400;
   --warn-mark: #e8a023;
@@ -125,6 +130,11 @@
     --focus: rgba(134, 168, 255, 0.3);
     --track: #222b38;
     --bar: #86a8ff;
+  /* I mörkt läge tonas de bort från botten, mot textens ljusa ton. */
+  --pie-1: var(--bar);
+  --pie-2: color-mix(in srgb, var(--bar) 64%, var(--fg));
+  --pie-3: color-mix(in srgb, var(--bar) 40%, var(--fg));
+  --pie-4: color-mix(in srgb, var(--bar) 22%, var(--fg));
     --avatar: #1f2d48;
     --warn: #f0b04a;
     --warn-mark: #f0b04a;
@@ -167,6 +177,11 @@
   --focus: rgba(134, 168, 255, 0.3);
   --track: #222b38;
   --bar: #86a8ff;
+  /* I mörkt läge tonas de bort från botten, mot textens ljusa ton. */
+  --pie-1: var(--bar);
+  --pie-2: color-mix(in srgb, var(--bar) 64%, var(--fg));
+  --pie-3: color-mix(in srgb, var(--bar) 40%, var(--fg));
+  --pie-4: color-mix(in srgb, var(--bar) 22%, var(--fg));
   --avatar: #1f2d48;
   --warn: #f0b04a;
   --warn-mark: #f0b04a;
@@ -1062,6 +1077,14 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: clamp(16px, 2vw, 24px);
   align-items: start;
+}
+
+/*
+ * Omvänt: det smala först. En ring behöver ingen bredd, en lista med
+ * namn och staplar på samma rad gör det.
+ */
+.split.narrow-first {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
 }
 
 .stack {
@@ -4017,6 +4040,125 @@ mark {
   font-weight: 600;
 }
 
+/*
+ * Andelen som ring, med listan bredvid. Ringen bär proportionen, mitten
+ * summan och listan namnen med timmar och procent i egna kolumner.
+ */
+.pieblock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pieblock + .pieblock {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.pieblock-body {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 3cqi, 28px);
+  flex-wrap: wrap;
+}
+
+.pie {
+  width: 132px;
+  height: 132px;
+  flex: none;
+}
+
+/* Smalt kort: listan går under ringen, och ringen ställer sig i mitten. */
+@container card (max-width: 340px) {
+  .pieblock-body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .pie {
+    align-self: center;
+  }
+}
+
+/*
+ * Fyra toner av samma blå, störst först. Tonerna tonas alltid bort från
+ * kortets yta, inte mot den: i ljust läge mot vitt, i mörkt läge mot
+ * textens ljusa ton. Blandar man mot botten i båda lägena blir de minsta
+ * delarna nästan botten i mörkt läge, och ringen får ett hål där
+ * Nyckelroller skulle stå. Mellanrummet mellan delarna skiljer dem åt;
+ * tonen kopplar dem till sin rad i listan.
+ */
+.pie-seg.s1 { stroke: var(--pie-1); }
+.pie-seg.s2 { stroke: var(--pie-2); }
+.pie-seg.s3 { stroke: var(--pie-3); }
+.pie-seg.s4 { stroke: var(--pie-4); }
+
+.pie-mid {
+  fill: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.pie-cap {
+  fill: var(--fg-3);
+  font-size: 10.5px;
+  text-anchor: middle;
+}
+
+.pie-legend {
+  flex: 1 1 210px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pie-legend-row {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.84375rem;
+  color: var(--fg-2);
+}
+
+.pie-legend-row + .pie-legend-row {
+  border-top: 1px solid var(--line);
+}
+
+/*
+ * Rutan i listan bär exakt ringens ton, annars pekar den på fel del.
+ * Den ligger an mot första raden, inte mitt i ett namn som bryts i två —
+ * då glider den ned mellan raderna och ser ut att höra till ingen.
+ */
+.pie-legend-row .sw {
+  align-self: start;
+  margin-top: 0.4em;
+}
+
+.pie-legend-row .sw.s1 { background: var(--pie-1); }
+.pie-legend-row .sw.s2 { background: var(--pie-2); }
+.pie-legend-row .sw.s3 { background: var(--pie-3); }
+.pie-legend-row .sw.s4 { background: var(--pie-4); }
+
+.pie-legend-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pie-legend-h {
+  color: var(--fg-3);
+}
+
+.pie-legend-pct {
+  min-width: 42px;
+  color: var(--fg);
+  font-weight: 600;
+}
+
 .lv1 { background: color-mix(in srgb, var(--bar) 18%, var(--bg)); }
 .lv2 { background: color-mix(in srgb, var(--bar) 40%, var(--bg)); }
 .lv3 { background: color-mix(in srgb, var(--bar) 68%, var(--bg)); }
@@ -4898,7 +5040,8 @@ p,
 
 /* Innehållsytan under 940 px: sidopaneler hamnar under listan, fyra kolumner blir två. */
 @container main (max-width: 940px) {
-  .split {
+  .split,
+  .split.narrow-first {
     grid-template-columns: minmax(0, 1fr);
   }
   .side-panel {
@@ -5486,6 +5629,73 @@ p,
   padding-left: 18px;
   font-size: 0.8125rem;
   color: var(--warn);
+}
+
+/*
+ * Beroende med risk: två rutor och en riktning, som beroendekedjan på
+ * epiksidan, med konsekvensen som bricka i egen kolumn. Riktningen är
+ * hela poängen med ett beroende och den går inte att läsa ur en mening
+ * som rinner över en rad.
+ */
+.deprisk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.deprisk:last-child {
+  border-bottom: 0;
+}
+
+.deprisk-chain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.deprisk-wait {
+  flex: none;
+  color: var(--fg-3);
+  font-size: 0.78125rem;
+  white-space: nowrap;
+}
+
+.deprisk-why {
+  justify-self: end;
+}
+
+.deprisk-rest {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--fg-3);
+  font-size: 0.8125rem;
+}
+
+/* Smal yta: rutorna under varandra, med riktningen som en pil nedåt. */
+@container main (max-width: 720px) {
+  .deprisk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .deprisk-chain {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+    gap: 8px;
+  }
+  .deprisk-wait {
+    justify-self: start;
+    padding-left: 2px;
+  }
+  .deprisk-wait::before {
+    content: '↓ ';
+  }
+  .deprisk-why {
+    justify-self: start;
+  }
 }
 
 /* ---------- Flaskhalsar ---------- */

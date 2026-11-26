@@ -180,6 +180,48 @@ var OOSUI = (function () {
     return h + '</span>';
   }
 
+  /*
+   * Andelar som ring. Ringen och inte den fyllda cirkeln, av två skäl:
+   * mitten kan bära summan, som en tårtbit aldrig kan säga, och appen har
+   * redan ringen som form för "andel" på översikten — två former för samma
+   * sak gör att man läser om formen varje gång.
+   *
+   * Delarna står störst först i appens blå toner, så att ringens ordning
+   * och listans ordning är densamma. Ingen botten ritas: delarna är hela
+   * helheten, och en ljus del mot ett ljust spår går inte att skilja åt.
+   *
+   * Ringen svarar på en enda fråga: hur stor del av helheten. Ska delar
+   * jämföras med varandra är stapeln bättre, och den finns redan.
+   */
+  function pie(parts, opts) {
+    opts = opts || {};
+    var r = 52;
+    var c = 2 * Math.PI * r;
+    var total = U.sum(parts, function (p) { return p.value; });
+    var shown = parts.filter(function (p) { return p.value > 0; });
+    /* Mellanrum mellan delarna, så att två toner bredvid varandra läses som två delar. */
+    var gap = shown.length > 1 ? 2 : 0;
+    var acc = 0;
+    var segs = '';
+    var fmt = opts.fmt || U.fmtNum;
+    shown.forEach(function (p, i) {
+      var frac = total > 0 ? p.value / total : 0;
+      /* En del under en halv procent ska ändå synas som ett streck, inte försvinna. */
+      var len = Math.max(1.5, frac * c - gap);
+      segs += '<circle class="pie-seg s' + (i + 1) + '" cx="66" cy="66" r="' + r + '" fill="none" stroke-width="17"' +
+        ' stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-acc).toFixed(2) + '"' +
+        ' transform="rotate(-90 66 66)" data-tip="' + esc(p.label + '\n' + fmt(p.value) + ' (' + U.fmtPct(frac * 100) + ')') + '"></circle>';
+      acc += frac * c;
+    });
+    return '<svg class="pie" viewBox="0 0 132 132" role="img" aria-label="' +
+      esc((opts.label ? opts.label + ': ' : '') + shown.map(function (p) {
+        return p.label + ' ' + fmt(p.value) + ', ' + U.fmtPct(total > 0 ? (p.value / total) * 100 : 0);
+      }).join('. ')) + '">' + segs +
+      (opts.center ? '<text class="pie-mid" x="66" y="64">' + esc(opts.center) + '</text>' : '') +
+      (opts.centerSub ? '<text class="pie-cap" x="66" y="80">' + esc(opts.centerSub) + '</text>' : '') +
+      '</svg>';
+  }
+
   function donut(pct, opts) {
     opts = opts || {};
     var r = 54;
@@ -847,6 +889,7 @@ var OOSUI = (function () {
     level: level,
     LEVELS: LEVELS,
     donut: donut,
+    pie: pie,
     kpi: kpi,
     facts: facts,
     props: props,

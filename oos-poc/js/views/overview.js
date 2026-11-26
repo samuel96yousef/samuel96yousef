@@ -205,16 +205,23 @@
     h += '</div></section>';
 
     /*
-     * Bottenraden: tre kort av olika slag, inte tre av samma. En andel som
-     * ring, en rangordning som lista, och loggen som rader. Olika former
-     * för olika frågor — ögat hittar snabbare när korten inte ser lika ut.
+     * Bottenraden: kort av olika slag, inte flera av samma. En andel som
+     * ring och en rangordning som lista. Olika former för olika frågor —
+     * ögat hittar snabbare när korten inte ser lika ut.
+     *
+     * Ändringsloggen stod här som ett tredje kort. Den är spårbarhet, inte
+     * läge: den säger vem som ändrade vad, inte hur det står till i dag.
+     * Hela loggen finns i Inställningar, dit knappen pekade ändå.
+     *
+     * Ringen behöver inte bredd, listan gör det — teamnamn och staplar på
+     * samma rad. Därför smal spalt först, bred sedan.
      */
     var tops = S.db.teams.map(function (t) {
       return { t: t, cap: e.teamCapacity(t.id, ctx.period) };
     }).filter(function (x) { return x.cap.capacity > 0.5; })
       .sort(function (a2, b2) { return b2.cap.loadPct - a2.cap.loadPct; }).slice(0, 6);
 
-    h += '<div class="grid-3">';
+    h += '<div class="split narrow-first">';
 
     h += '<section class="card"><div class="card-head"><div><div class="card-title">Beläggning</div>' +
       '<p class="card-sub">Hela organisationen i ' + esc(month) + '.</p></div></div>' +
@@ -232,7 +239,6 @@
     });
     h += '</div></section>';
 
-    h += recentChanges();
     h += '</div>';
     return h;
   };
@@ -306,19 +312,6 @@
     h += '</div>';
     return h;
   };
-
-  function recentChanges() {
-    var log = (S.db.changeLog || []).slice(0, 6);
-    var h = '<section class="card"><div class="card-head"><div class="card-title">Senaste ändringar</div>' + UI.btn('Hela loggen', 'go', { cls: 'btn-sm', data: { to: 'settings' } }) + '</div><div class="card-body">';
-    if (!log.length) return h + '<p class="muted">Inga ändringar ännu. Allt du lägger till, ändrar eller tar bort loggas här, så att beslut går att följa upp.</p></div></section>';
-    h += '<div class="list">';
-    log.forEach(function (l) {
-      h += '<div class="list-item"><span class="muted small num" style="width:120px;flex:none;text-align:left">' + fmtTs(l.ts) + '</span>' +
-        '<span class="grow">' + esc(l.action) + ' ' + esc(l.what) + (l.name ? ' <span class="muted">·</span> ' + esc(l.name) : '') +
-        C.changeBits(l.changes) + '</span></div>';
-    });
-    return h + '</div></div></section>';
-  }
 
   function fmtTs(ts) {
     var d = new Date(ts);
