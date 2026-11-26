@@ -215,16 +215,28 @@
     var owner = dd.ownerId ? e.get('workers', dd.ownerId) : null;
 
     var h = '<p class="small muted" style="margin:0 0 12px">Hur ' + esc(dd.name) + ' är uppbyggd, från verksamhet till teknik.</p>';
-    h += '<dl class="kv small" style="grid-template-columns:max-content minmax(0,1fr);margin-bottom:18px">' +
-      '<dt>Ägare</dt><dd>' + (owner ? C.link('workers:' + owner.id, owner.name) : UI.badge('Ej utsedd', 'warn')) + '</dd>' +
-      '<dt>Nyckelroller</dt><dd>' + (keyRoles.length ? keyRoles.map(function (k) { return C.link('workers:' + k.worker.id, k.worker.name) + ' <span class="muted">' + esc(k.ext.role.toLowerCase()) + ', ' + k.ext.hoursPerMonth + ' h/mån</span>'; }).join(' · ') : '<span class="muted">Inga</span>') + '</dd>' +
-      (supportive.length ? '<dt>Stödjande domäner</dt><dd>' + supportive.map(function (s) { return C.link(C.domainPage(s.domain) + ':' + s.domain.id, s.domain.name); }).join(' · ') + '</dd>' : '') +
-      '</dl>';
-    if (!cols.length) return h + '<div class="empty">Leveransdomänen har inga verksamhetsdomäner eller team ännu.</div>';
+    /*
+     * Samma faktapanel som i lådans översikt, i stället för en egen
+     * definitionslista. Två mallar för samma sak — etikett och värde —
+     * gör att man läser om formen varje gång man byter flik.
+     */
+    h += C.factPanel([
+      { icon: 'users', label: 'Ägare', value: owner ? C.link('workers:' + owner.id, owner.name) : UI.badge('Ej utsedd', 'warn') },
+      supportive.length ? { icon: 'layers', label: 'Stödjande domäner', value: supportive.map(function (s) { return C.link(C.domainPage(s.domain) + ':' + s.domain.id, s.domain.name); }).join(' · ') } : null,
+      { icon: 'users', label: 'Nyckelroller', span: true, value: keyRoles.length ? keyRoles.map(function (k) { return C.link('workers:' + k.worker.id, k.worker.name) + ' <span class="muted">' + esc(k.ext.role.toLowerCase()) + ', ' + k.ext.hoursPerMonth + ' h/mån</span>'; }).join(' · ') : '<span class="muted">Inga</span>' }
+    ]);
+    if (!cols.length) return h + '<div class="empty" style="margin-top:18px">Leveransdomänen har inga verksamhetsdomäner eller team ännu.</div>';
 
-    h += '<div class="fmap"><div class="fmap-grid" style="--cols:' + cols.length + '">';
+    /*
+     * Kartan läser från vänster till höger, som meningen ovanför säger:
+     * verksamhet, team, teknik. Förut stod de tre stegen under varandra
+     * i en spalt per verksamhetsdomän, så kartan läste uppifrån och ned
+     * och lät två tredjedelar av bredden stå tom när domänerna var få.
+     * En rad per verksamhetsdomän, tre steg i bredd.
+     */
+    h += '<div class="fmap">';
     cols.forEach(function (c) {
-      h += '<div class="fcol"><div class="fcol-label">Verksamhetsdomän</div>';
+      h += '<div class="fmap-row"><div class="fstage"><div class="fstage-label">Verksamhetsdomän</div>';
       if (c.bd) {
         var ex = e.domainExperts(c.bd.id);
         h += '<button type="button" class="fdomain" data-go="businessDomains:' + esc(c.bd.id) + '">' + esc(c.bd.name) + '</button>' +
@@ -232,7 +244,7 @@
       } else {
         h += '<span class="fdomain" style="cursor:default">Övriga</span><span class="meta">Team som når leveransdomänen via IT-domän</span>';
       }
-      h += '<div class="fcol-label">Team</div>';
+      h += '</div><div class="fstage"><div class="fstage-label">Team</div>';
       c.teams.forEach(function (t) {
         var tc = e.teamCapacity(t.id, ctx.period);
         var sys = e.teamSystems(t.id).filter(function (x) { return x.link.objective === 'owner'; }).map(function (x) { return x.system.name; });
@@ -244,14 +256,14 @@
       if (!c.teams.length) h += '<span class="meta">Inget team har domänen som primär.</span>';
       var its = new Map();
       c.teams.forEach(function (t) { var it = e.teamPrimaryDomain(t.id, 'it'); if (it) its.set(it.id, it); });
-      h += '<div class="fcol-label">IT-domän</div>';
+      h += '</div><div class="fstage"><div class="fstage-label">IT-domän</div>';
       Array.from(its.values()).forEach(function (it) {
         h += '<button type="button" class="fdomain it" data-go="itDomains:' + esc(it.id) + '">' + esc(it.name) + '</button>';
       });
       if (!its.size) h += '<span class="meta">–</span>';
-      h += '</div>';
+      h += '</div></div>';
     });
-    h += '</div></div>';
+    h += '</div>';
     return h;
   };
 

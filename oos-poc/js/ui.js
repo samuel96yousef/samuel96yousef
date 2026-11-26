@@ -47,10 +47,11 @@ var OOSUI = (function () {
    * på en rad. Etiketten säger vad talet är — utan den är ett tal bara
    * ett tal.
    */
-  function statRow(items) {
-    return '<div class="statrow">' + items.filter(Boolean).map(function (x) {
+  function statRow(items, cls) {
+    return '<div class="statrow' + (cls ? ' ' + cls : '') + '">' + items.filter(Boolean).map(function (x) {
       return '<div class="stat"><b' + (x.tone ? ' class="' + esc(x.tone) + '-text"' : '') + '>' +
-        x.value + '</b><span>' + esc(x.label) + '</span></div>';
+        x.value + '</b><span>' + esc(x.label) + '</span>' +
+        (x.sub ? '<span class="stat-sub">' + x.sub + '</span>' : '') + '</div>';
     }).join('') + '</div>';
   }
 

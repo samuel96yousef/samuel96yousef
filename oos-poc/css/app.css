@@ -997,33 +997,22 @@ html[data-input='pointer'] .chain-node[data-go]:focus-visible {
 }
 
 /* Fabrikskartans kolumner: linjer mitt i mellanrummet, klippta vid kortets kanter. */
-.fmap-grid {
-  display: grid;
-  column-gap: 48px;
+/*
+ * Fabrikskartan: en rad per verksamhetsdomän, tre steg i bredd — den
+ * läses från vänster till höger, som meningen ovanför säger. Spalterna
+ * sätts i det andra blocket längre ned.
+ */
+.fmap {
+  margin-top: 18px;
   overflow-x: clip;
 }
 
-.fcol {
-  position: relative;
-  min-width: 0;
-}
-
-.fcol::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -24px;
-  border-left: 1px solid var(--line);
-}
-
-.fcol::after {
-  content: '';
-  position: absolute;
-  left: -24px;
-  right: -24px;
-  top: 0;
+.fmap-row {
   border-top: 1px solid var(--line);
+}
+
+.fstage {
+  min-width: 0;
 }
 
 .kpi-label {
@@ -2367,6 +2356,19 @@ mark {
   .fpanel-row:nth-last-child(2) {
     border-bottom: 0;
   }
+
+  /*
+   * En uppräkning tar hela bredden, så att den ryms på en rad i stället
+   * för att brytas i tre högerställda stumpar. Då är näst sista raden
+   * inte längre sist i sin spalt och behåller sin linje.
+   */
+  .fpanel-row.span {
+    grid-column: 1 / -1;
+  }
+
+  .fpanel:has(> .fpanel-row.span:last-child) .fpanel-row:nth-last-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
 }
 
 .fpanel-label {
@@ -2470,9 +2472,18 @@ mark {
 }
 
 /* Talen får en egen rad med en hårfin linje över, som rutans eget fack. */
-.dblock .statrow {
+.dblock .meter + .statrow {
   padding-top: 13px;
   border-top: 1px solid var(--line);
+}
+
+/* Förbehållet står under samma linje, i rutan det gäller. */
+.dblock-note {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-3);
+  font-size: 0.8125rem;
 }
 
 /* Följdtonerna på brickor. Grönt är klart, lila är härlett av systemet. */
@@ -2514,6 +2525,30 @@ mark {
 .stat span {
   color: var(--fg-3);
   font-size: 0.6875rem;
+}
+
+.stat-sub {
+  margin-top: 2px;
+}
+
+/*
+ * Periodens tal som sidans rubrik: stora, med etiketten liten under —
+ * samma ordning som överallt annars, bara i ett större format. Förut
+ * stod etiketten ovanför talet här och under det i korten, så samma sak
+ * hade två former beroende på vilken flik man stod i.
+ */
+.statrow.lg {
+  grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
+  gap: 12px 16px;
+}
+
+.statrow.lg .stat b {
+  font-size: clamp(1.25rem, 2.2cqi + 0.75rem, 1.75rem);
+  letter-spacing: -0.02em;
+}
+
+.statrow.lg .stat > span {
+  font-size: 0.75rem;
 }
 
 /* Mätarrad: etikett till vänster, läget i ord till höger, stapeln under. */
@@ -2824,25 +2859,35 @@ mark {
 /* ---------- Fabrikskarta ---------- */
 
 /* Kolumnerna bryts till nya rader när ytan är smal. */
-.fmap-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+.fmap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 0;
 }
 
-.fcol {
+@container drawer (min-width: 640px) {
+  .fmap-row {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.8fr) minmax(0, 0.9fr);
+    gap: 0 clamp(16px, 2vw, 32px);
+    align-items: start;
+  }
+
+  /* Stegens namn står en gång, över den första raden. */
+  .fmap-row:not(:first-child) .fstage-label {
+    display: none;
+  }
+}
+
+.fstage {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 18px 0 8px;
+  gap: 7px;
 }
 
-.fcol-label {
+.fstage-label {
   font-size: 0.75rem;
   color: var(--fg-3);
-  margin-top: 16px;
-}
-
-.fcol-label:first-child {
-  margin-top: 0;
 }
 
 .fdomain {
@@ -2868,13 +2913,20 @@ mark {
   font-weight: 500;
 }
 
+/* Teamet är en inramad ruta, som korten i övrigt, inte en rad med linje under. */
 .fteam {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 10px 12px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
   cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease);
+}
+
+.fteam:hover {
+  border-color: var(--line-strong);
 }
 
 .fteam:hover .fteam-name {

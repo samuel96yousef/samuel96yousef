@@ -352,12 +352,20 @@
   function capacity(kind, d, ctx) {
     var cur = capOf(kind, d.id, ctx.period);
     var nxt = capOf(kind, d.id, ctx.next);
-    var h = '<div class="grid-4" style="margin-bottom:16px">' +
-      '<div class="field-block"><span class="label">Kapacitet ' + esc(ctx.period.inText) + '</span><span class="big">' + U.fmtH(cur.capacity) + '</span></div>' +
-      '<div class="field-block"><span class="label">Belastat</span><span class="big">' + U.fmtH(cur.loaded) + '</span></div>' +
-      '<div class="field-block"><span class="label">Ledigt</span><span class="big">' + U.fmtH(cur.free) + '</span></div>' +
-      '<div class="field-block"><span class="label">' + esc(ctx.next.label) + '</span><span class="big">' + U.fmtH(nxt.capacity) + '</span><span class="muted small">' + U.fmtSigned(nxt.capacity - cur.capacity, ' h') + ' mot denna period</span></div></div>';
-    if (cur.reserved > 0.5) h += '<p class="muted small" style="margin:-4px 0 14px">' + U.fmtH(cur.reserved) + ' är reserverat i domänroller. Den tiden räknas inte i beläggning eller ledigt.</p>';
+    /*
+     * Talen i samma inramade ruta som i översikten, med etiketten under
+     * talet. Lösa på den vita ytan stod de fyra talen och förbehållet om
+     * reserverad tid som fyra orelaterade saker; i rutan hör de ihop och
+     * förbehållet står där det gäller, under en hårfin linje.
+     */
+    var h = '<div class="dblock" style="margin-bottom:18px">' + UI.statRow([
+      { value: U.fmtH(cur.capacity), label: 'kapacitet ' + ctx.period.inText },
+      { value: U.fmtH(cur.loaded), label: 'belastat' },
+      { value: U.fmtH(cur.free), label: 'ledigt' },
+      { value: U.fmtH(nxt.capacity), label: ctx.next.label, sub: esc(U.fmtSigned(nxt.capacity - cur.capacity, ' h') + ' mot denna period') }
+    ], 'lg');
+    if (cur.reserved > 0.5) h += '<p class="dblock-note">' + U.fmtH(cur.reserved) + ' är reserverat i domänroller. Den tiden räknas inte i beläggning eller ledigt.</p>';
+    h += '</div>';
     h += '<div class="grid-2"><div><h3 class="card-title" style="margin-bottom:8px">Per team och domänroll</h3>' + capTable(cur.byTeam, true) + '</div>' +
       '<div><h3 class="card-title" style="margin-bottom:8px">Per kompetens</h3>' + capTable(cur.byCompetence, false) + '</div></div>';
     return h;

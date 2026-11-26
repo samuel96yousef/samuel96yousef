@@ -483,7 +483,8 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    */
   C.factPanel = function (items) {
     return '<div class="fpanel">' + items.filter(Boolean).map(function (x) {
-      return '<div class="fpanel-row">' +
+      /* span: värdet är en uppräkning, inte ett enda faktum — raden tar hela bredden så att den ryms på en rad. */
+      return '<div class="fpanel-row' + (x.span ? ' span' : '') + '">' +
         '<span class="fpanel-label">' + (x.icon ? UI.icon(x.icon, 'fpanel-icon') : '') + U.esc(x.label) + '</span>' +
         '<span class="fpanel-value">' + x.value + '</span></div>';
     }).join('') + '</div>';
