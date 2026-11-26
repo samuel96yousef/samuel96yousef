@@ -2371,6 +2371,12 @@ mark {
   }
 }
 
+/* Utan egen ram: panelen ligger redan i ett kort och behöver ingen ruta till. */
+.fpanel.bare {
+  padding: 0;
+  border: 0;
+}
+
 .fpanel-label {
   display: flex;
   align-items: center;
@@ -5331,14 +5337,27 @@ p,
 
 /* ---------- Vem gör jobbet och beroenden på epiken ---------- */
 
+/*
+ * Ett kompetensområde är en inramad ruta med samma delar som rutorna i
+ * lådorna: namn och läge överst, mätaren under, talen på egen rad under
+ * en hårfin linje, personerna som brickor sist.
+ */
 .need-block {
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 13px 15px 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
-.need-block:first-of-type {
-  border-top: 0;
-  padding-top: 4px;
+.need-block + .need-block {
+  margin-top: 10px;
+}
+
+/* Ett område som är fullt eller saknas får en röd kant, inte bara en bricka. */
+.need-block.is-tight {
+  border-color: color-mix(in srgb, var(--crit) 35%, var(--line));
 }
 
 .need-block-head {
@@ -5356,30 +5375,52 @@ p,
   gap: 8px;
 }
 
-.need-block-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  margin: 10px 0 4px;
+.need-share {
+  flex: none;
+  color: var(--fg-3);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.need-block .statrow {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.need-block .bar .lbar {
+  max-width: none;
 }
 
 .need-block p {
-  margin: 6px 0 0;
+  margin: 0;
 }
 
+/* Personerna som brickor i ett rutnät, så att talen står i linje. */
 .need-people {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(238px, 100%), 1fr));
+  gap: 8px;
 }
 
-.need-person {
+.pchip {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.pchip .name-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+.pchip-load {
+  flex: none;
+  font-size: 0.78125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .dep-row {
@@ -6787,6 +6828,93 @@ p,
 .period-tbl .pbar-col {
   width: 44%;
   min-width: 140px;
+}
+
+/*
+ * "> PI 4 2026" på en rad. Bruten i två blev varje rad nästan dubbelt
+ * så hög, och pilen hamnade på egen rad ovanför namnet.
+ */
+.period-tbl > thead > tr > th:first-child,
+.period-tbl > tbody > tr:not(.row-open) > td:first-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Talet som är lika i varje rad står en gång, inte i en egen kolumn. */
+.period-constant {
+  margin: 0 0 10px;
+  color: var(--fg-2);
+  font-size: 0.8125rem;
+}
+
+/* Det som ligger bakom en periodrad. */
+.pbreak {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pbreak-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pbreak-title {
+  color: var(--fg-3);
+  font-size: 0.75rem;
+}
+
+.pbreak-row {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) minmax(0, 118px);
+  gap: 14px;
+  align-items: center;
+}
+
+.pbreak-name {
+  min-width: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.pbreak-free {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pbreak-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 8px;
+}
+
+.pbreak-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.pbreak-item-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+@container main (max-width: 620px) {
+  .pbreak-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .pbreak-free {
+    text-align: left;
+  }
 }
 
 .pbar {

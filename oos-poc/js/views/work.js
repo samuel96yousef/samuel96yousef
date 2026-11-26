@@ -191,26 +191,88 @@
       var r = byCat[n.category] || { supply: 0, demand: 0, free: 0, loadPct: 0, gap: true, people: [] };
       var tight = r.gap || r.loadPct > 100.5;
       var state = r.gap ? UI.badge('Saknas i teamet', 'crit') : r.loadPct > 100.5 ? UI.badge('Flaskhals', 'crit') : r.loadPct >= 90 ? UI.badge('Nästan fullt', 'warn') : '';
+      /*
+       * Varje kompetensområde är en inramad ruta med samma delar som
+       * lådornas rutor: namn och läge överst, mätaren under, talen på
+       * egen rad under en hårfin linje, och personerna som brickor i
+       * ett rutnät. Förut stod epikens andel, dess timmar, teamets
+       * lediga tid och teamets kapacitet som två högerställda textrader
+       * ovanpå varandra, och "ledigt av kapacitet" sa samma sak som
+       * stapeln redan visade.
+       */
       h += '<div class="need-block' + (tight ? ' is-tight' : '') + '"><div class="need-block-head"><span class="need-block-name"><strong>' + esc(n.category) + '</strong> ' + state + '</span>' +
-        '<span class="muted small">' + (n.derived ? '' : U.fmtPct(n.share * 100) + ' av epiken · ') + U.fmtH(base * n.share) + ' i ' + esc(p.inText) + '</span></div>';
+        (n.derived ? '' : '<span class="need-share">' + U.fmtPct(n.share * 100) + ' av epiken</span>') + '</div>';
       if (r.gap) {
-        h += '<p class="small">Ingen i teamet har ' + esc(n.category) + ' som primär kompetens. ' + freeIn(n.category, team.id, e, p) + '</p>';
+        h += '<p class="small">Epiken behöver ' + U.fmtH(base * n.share) + ' i ' + esc(p.inText) + ', men ingen i teamet har ' + esc(n.category) + ' som primär kompetens. ' + freeIn(n.category, team.id, e, p) + '</p>';
       } else {
-        h += '<div class="need-block-bar">' + C.capBar({ capacity: r.supply, loaded: r.demand }) +
-          '<span class="small' + (r.free < -0.5 ? ' crit-text' : ' muted') + '">' + (r.free < -0.5 ? U.fmtH(-r.free) + ' för mycket' : U.fmtH(r.free) + ' ledigt') + ' av ' + U.fmtH(r.supply) + '</span></div>';
+        h += UI.meter({ label: 'Teamets beläggning', bar: C.capBar({ capacity: r.supply, loaded: r.demand }) });
+        h += UI.statRow([
+          { value: U.fmtH(base * n.share), label: 'epiken behöver i ' + p.inText },
+          { value: U.fmtH(r.supply), label: 'teamets kapacitet' },
+          r.free < -0.5
+            ? { value: U.fmtH(-r.free), label: 'för mycket', tone: 'crit' }
+            : { value: U.fmtH(r.free), label: 'ledigt' }
+        ]);
         if (r.free < -0.5) h += '<p class="small muted">' + freeIn(n.category, team.id, e, p) + '</p>';
         h += '<div class="need-people">';
         r.people.forEach(function (x) {
           var m = tc.members.filter(function (mm) { return mm.worker.id === x.worker.id; })[0];
           var pct = m ? m.loadPct : 0;
-          h += '<div class="need-person">' + C.workerRef(x.worker, x.tw.role || x.worker.title) +
-            '<span class="small"><span class="' + (C.loadTone(pct) === 'crit' ? 'crit-text' : C.loadTone(pct) === 'warn' ? 'warn-text' : 'muted') + '">' + U.fmtPct(pct) + ' belagd</span></span></div>';
+          h += '<div class="pchip">' + C.workerRef(x.worker, x.tw.role || x.worker.title) +
+            '<span class="pchip-load ' + (C.loadTone(pct) === 'crit' ? 'crit-text' : C.loadTone(pct) === 'warn' ? 'warn-text' : 'muted') + '">' + U.fmtPct(pct) + ' belagd</span></div>';
         });
         h += '</div>';
       }
       h += '</div>';
     });
     return h + '</section>';
+  }
+
+  /*
+   * Vad en periodrad innehåller. Raden säger att beläggningen är 83 %;
+   * det här säger av vad — vilka kompetensområden tiden ligger i och
+   * vilka andra epiker som tar den. Allt fanns redan i motorn, det stod
+   * bara inte någonstans där man undrar över det.
+   */
+  function periodBreakdown(ep, team, r, counts, ctx) {
+    var e = ctx.e;
+    var free = r.t.capacity - r.t.loaded;
+    var h = '<div class="pbreak">' + UI.statRow([
+      { value: U.fmtH(r.mine), label: counts ? 'epiken' : 'epiken, ej beslutad' },
+      { value: U.fmtH(r.other), label: 'annat arbete' },
+      { value: U.fmtH(r.t.capacity), label: 'kapacitet' },
+      free < -0.5
+        ? { value: U.fmtH(-free), label: 'över kapaciteten', tone: 'crit' }
+        : { value: U.fmtH(free), label: 'ledigt' }
+    ]);
+    var rows = e.teamCategoryLoad(team.id, r.pp).rows.filter(function (x) { return x.supply > 0.5 || x.demand > 0.5; })
+      .sort(function (a, b) { return b.demand - a.demand; });
+    if (rows.length) {
+      h += '<div class="pbreak-sec"><div class="pbreak-title">Var tiden ligger</div>';
+      rows.forEach(function (x) {
+        h += '<div class="pbreak-row"><span class="pbreak-name">' + esc(x.category) + '</span>' +
+          (x.gap ? '<span class="small crit-text">saknas i teamet</span><span></span>'
+            : C.capBar({ capacity: x.supply, loaded: x.demand }) +
+              '<span class="pbreak-free small' + (x.free < -0.5 ? ' crit-text' : ' muted') + '">' +
+              (x.free < -0.5 ? U.fmtH(-x.free) + ' för mycket' : U.fmtH(x.free) + ' ledigt') + '</span>') + '</div>';
+      });
+      h += '</div>';
+    }
+    var others = e.teamDemand(team.id, r.pp).epics.filter(function (x) { return x.epic.id !== ep.id; })
+      .sort(function (a, b) { return b.hours - a.hours; });
+    h += '<div class="pbreak-sec"><div class="pbreak-title">Annat arbete i ' + esc(r.pp.label) + '</div>';
+    if (!others.length) {
+      h += '<p class="muted small" style="margin:0">Inget annat arbete i perioden.</p>';
+    } else {
+      h += '<div class="pbreak-list">';
+      others.forEach(function (x) {
+        h += '<div class="pbreak-item"><span class="pbreak-item-name">' + C.epicRef(x.epic) +
+          '<span class="muted small">' + esc(C.EPIC_TYPE[x.epic.type] || '') + (x.counts ? '' : ' · ' + esc(C.EPIC_STATUS[x.epic.status])) + '</span></span>' +
+          '<span class="num">' + U.fmtH(x.hours) + '</span></div>';
+      });
+      h += '</div>';
+    }
+    return h + '</div></div>';
   }
 
   /* Ledig tid i samma område i andra team, som text. */
@@ -335,33 +397,58 @@
         return { pp: pp, t: t, mine: mine, other: other, after: after[pp.start] };
       });
       main += OOS.epicViz.periodLegend(!counts);
+      /*
+       * Epikens egna timmar är samma tal i varje rad så länge ramen är
+       * per månad. Det talet står en gång under rubriken i stället för
+       * åtta gånger i en egen kolumn; varierar det står kolumnen kvar.
+       */
+      var sameHours = rowsP.every(function (r) { return Math.abs(r.mine - rowsP[0].mine) < 0.5; });
+      if (sameHours && counts) {
+        main += '<p class="period-constant">Epiken tar <strong>' + U.fmtH(rowsP[0].mine) + '</strong> i varje period. Raderna visar vad teamet i övrigt har att göra.</p>';
+      }
+      var openPp = OOS.opened('epic-periods');
       main += '<div class="table-wrap"><table class="tbl period-tbl"><thead><tr><th>Period</th><th class="pbar-col">Teamets arbete mot kapaciteten</th><th class="num">' + (counts ? 'Beläggning' : 'Om beslutad') + '</th>' +
-        '<th class="num" data-opt="1">Epiken</th><th class="num" data-opt="2">Annat arbete</th><th class="num" data-opt="2">Kapacitet</th></tr></thead><tbody>';
+        (sameHours && counts ? '' : '<th class="num" data-opt="1">Epiken</th>') + '<th class="num" data-opt="2">Annat arbete</th><th class="num" data-opt="2">Kapacitet</th></tr></thead><tbody>';
+      var pcols = sameHours && counts ? 5 : 6;
       rowsP.forEach(function (r) {
+        var key = 'pp-' + r.pp.start;
+        var open = openPp === key;
         var pctNow = r.t.capacity ? ((r.mine + r.other) / r.t.capacity) * 100 : 0;
         var shown = counts ? r.t.loadPct : (r.after !== undefined ? r.after : pctNow);
         var tone = C.loadTone(shown) === 'crit' ? ' class="crit-text"' : '';
         var say = r.pp.label + ': epiken ' + U.fmtH(r.mine) + ', annat arbete ' + U.fmtH(r.other) + ', kapacitet ' + U.fmtH(r.t.capacity) + ', ' + U.fmtPct(shown) + (counts ? ' belagt' : ' belagt om den beslutas');
-        main += '<tr' + (r.pp.start === p.start ? ' class="selected"' : '') + ' data-id="' + esc('pp-' + r.pp.start) + '"><td>' + esc(r.pp.label) + '</td>' +
-          '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, null, !counts, 'pp-' + r.pp.start, say) + '</td>' +
+        main += '<tr class="clickable expandable' + (r.pp.start === p.start ? ' selected' : '') + (open ? ' is-open' : '') + '" tabindex="0"' +
+          ' data-action="open" data-open="epic-periods" data-key="' + esc(key) + '" data-id="' + esc(key) + '">' +
+          '<td><span class="row-chev" aria-hidden="true">' + UI.icon('chevronRight') + '</span>' + (open ? '<span class="sr-only">Utfälld: </span>' : '') + esc(r.pp.label) + '</td>' +
+          '<td class="pbar-col">' + OOS.epicViz.periodBar(r.mine, r.other, r.t.capacity, null, !counts, key, say) + '</td>' +
           '<td class="num"><strong' + tone + '>' + U.fmtPct(shown) + '</strong></td>' +
-          '<td class="num">' + (counts ? U.fmtH(r.mine) : '<span class="muted">(' + U.fmtH(r.mine) + ')</span>') + '</td>' +
+          (sameHours && counts ? '' : '<td class="num">' + (counts ? U.fmtH(r.mine) : '<span class="muted">(' + U.fmtH(r.mine) + ')</span>') + '</td>') +
           '<td class="num">' + U.fmtH(r.other) + '</td><td class="num">' + U.fmtH(r.t.capacity) + '</td></tr>';
+        if (open) {
+          main += '<tr class="row-open"><td class="row-open-cell" colspan="' + pcols + '"><div class="row-open-body">' +
+            periodBreakdown(ep, team, r, counts, ctx) + '</div></td></tr>';
+        }
       });
       main += '</tbody></table></div>';
       if (!counts) main += '<p class="muted small">Epiken är inte beslutad. Dess timmar står inom parentes och är streckade i stapeln. Om beslutad visar teamets beläggning med epiken.</p>';
     }
     main += '</section>';
 
-    var aside = UI.asideBlock('Uppgifter', UI.props([
-      ['Team', C.teamRef(team)],
-      ['Initiativ', init ? C.initiativeRef(init) : (ep.type === 'development' ? UI.badge('Saknas', 'warn') : '')],
-      ['Leveransdomän', C.ddRef(dd)],
-      ['Arbetstyp', esc(C.EPIC_TYPE[ep.type] || '')],
-      ['Status', C.epicStatus(ep.status)],
-      [ep.status === 'proposed' ? 'Estimat' : 'Ram', C.epicFrameText(ep)],
-      ['Gäller', monthSpan(ep)]
-    ]));
+    /*
+     * Uppgifterna som faktapanel, etikett till vänster och värde till
+     * höger, i stället för etikett över värde. Sju par med rubrik
+     * ovanför blev 713 px hög spalt; som rader är den hälften, och den
+     * har samma form som uppgifterna i lådorna.
+     */
+    var aside = UI.asideBlock('Uppgifter', C.factPanel([
+      { icon: 'users', label: 'Team', value: C.teamRef(team) },
+      { icon: 'layers', label: 'Initiativ', value: init ? C.initiativeRef(init) : (ep.type === 'development' ? UI.badge('Saknas', 'warn') : '<span class="muted">–</span>') },
+      { icon: 'box', label: 'Leveransdomän', value: C.ddRef(dd) },
+      { icon: 'layers', label: 'Arbetstyp', value: esc(C.EPIC_TYPE[ep.type] || '') },
+      { icon: 'box', label: 'Status', value: C.epicStatus(ep.status) },
+      { icon: 'clock', label: ep.status === 'proposed' ? 'Estimat' : 'Ram', value: C.epicFrameText(ep) },
+      { icon: 'clock', label: 'Gäller', value: monthSpan(ep) }
+    ], 'bare'));
     if (team) {
       var others = e.teamDemand(team.id, p).epics.filter(function (x) { return x.epic.id !== ep.id; });
       var ol = '<div class="aside-list">';

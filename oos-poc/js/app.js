@@ -80,9 +80,11 @@
   st.id = null;
   st.tabs = {};
   st.segs = {};
+  st.opens = {};
   st.navOpen = false;
 
   OOS.tab = function (key, def) { return st.tabs[key] || def; };
+  OOS.opened = function (key) { return st.opens[key] || null; };
   OOS.segVal = function (key, def) { return st.segs[key] || def; };
 
   OOS.period = function () {
@@ -295,6 +297,15 @@
         if (st.tabs[ds.tabs] === ds.key) return;
         st.tabs[ds.tabs] = ds.key;
         OOS.motion('tab', ds.tabs);
+        render();
+        return;
+      /*
+       * Utfällbar rad utanför en tabell med egen sida: ett klick öppnar
+       * raden under sig själv, ett till stänger den. Läget ligger i
+       * st.opens och inte i adressen, eftersom raden inte är en sida.
+       */
+      case 'open':
+        st.opens[ds.open] = st.opens[ds.open] === ds.key ? null : ds.key;
         render();
         return;
       case 'seg':

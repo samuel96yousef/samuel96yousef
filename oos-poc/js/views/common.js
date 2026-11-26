@@ -481,8 +481,8 @@ var OOS = { views: {}, actions: {}, inputs: {}, state: {} };
    * sin ikon, värdet mörkt till höger. Den samlar det som annars blir en
    * lång spalt av rubrik-och-text.
    */
-  C.factPanel = function (items) {
-    return '<div class="fpanel">' + items.filter(Boolean).map(function (x) {
+  C.factPanel = function (items, cls) {
+    return '<div class="fpanel' + (cls ? ' ' + cls : '') + '">' + items.filter(Boolean).map(function (x) {
       /* span: värdet är en uppräkning, inte ett enda faktum — raden tar hela bredden så att den ryms på en rad. */
       return '<div class="fpanel-row' + (x.span ? ' span' : '') + '">' +
         '<span class="fpanel-label">' + (x.icon ? UI.icon(x.icon, 'fpanel-icon') : '') + U.esc(x.label) + '</span>' +
