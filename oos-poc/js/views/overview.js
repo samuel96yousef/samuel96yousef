@@ -7,6 +7,15 @@
   var C = OOS.common;
 
   var SEVERITY = { critical: 'Kritisk', warning: 'Varning', info: 'Info' };
+  /*
+   * Allvaret som rubrik över sin egen grupp. Förut bar varje rad en prick
+   * på 7 px och ingenting annat, så en varning och en upplysning såg
+   * likadana ut: färgen var hela skillnaden och den är den svagaste
+   * markören som finns. Nu står ordet och antalet över gruppen, och
+   * raderna under behöver ingen prick alls.
+   */
+  var SEV_GROUP = { critical: 'Kritiskt', warning: 'Varningar', info: 'Info' };
+  var SEV_ORDER = ['critical', 'warning', 'info'];
 
   function plural(n, one, many) {
     return n + ' ' + (n === 1 ? one : many);
@@ -53,6 +62,55 @@
     }).sort(function (a, b) { return RANK[a.severity] - RANK[b.severity] || (b.count || 1) - (a.count || 1); });
   }
 
+  function signalRow(s) {
+    var attrs = s.seg
+      ? 'data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '"'
+      : 'data-go="' + esc(s.go) + '"';
+    return '<button type="button" class="signal sev-' + s.severity + '" ' + attrs + '>' +
+      '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</span>' +
+      '<span class="signal-detail">' + esc(s.detail) + '</span></span>' +
+      UI.icon('chevronRight', 'signal-go') + '</button>';
+  }
+
+  /*
+   * Listan har tre band, ett per allvar, med ordet och antalet över varje.
+   * Kapningen följer allvaret i stället för ett tal: kritiskt göms aldrig,
+   * och foten säger hur många som står kvar. "8 av 10" var ett godtyckligt
+   * snitt mitt i varningarna.
+   */
+  function signalsCard(groups, any) {
+    var h = '<section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div>' +
+      '<div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
+    if (!any) return h + '<div class="empty">Inget avviker. Modellen hänger ihop.</div></section>';
+
+    /*
+     * Som standard står det som kräver en åtgärd: kritiskt och varningar.
+     * Info är sådant man vill veta, inte sådant man gör något åt i dag,
+     * och det ligger en knapp bort. Finns ingen åtgärd kvar visas info,
+     * annars står kortet tomt mitt i en lista som inte är tom.
+     */
+    var showAll = OOS.state.allSignals;
+    var crit = groups.filter(function (g) { return g.severity === 'critical'; }).length;
+    var act = groups.filter(function (g) { return g.severity !== 'info'; });
+    var shown = showAll ? groups : (act.length ? act : groups).slice(0, Math.max(10, crit));
+    var hidden = groups.length - shown.length;
+
+    h += '<div class="signals">';
+    SEV_ORDER.forEach(function (sev) {
+      var all = groups.filter(function (g) { return g.severity === sev; });
+      var rows = shown.filter(function (g) { return g.severity === sev; });
+      if (!rows.length) return;
+      h += '<div class="sig-head"><span class="dot ' + sev + '" aria-hidden="true"></span>' +
+        '<h3 class="sig-head-name">' + SEV_GROUP[sev] + '</h3>' +
+        '<span class="sig-head-count">' + (rows.length < all.length ? rows.length + ' av ' + all.length : all.length) + '</span></div>';
+      rows.forEach(function (s) { h += signalRow(s); });
+    });
+    h += '</div>';
+    if (hidden > 0 || showAll) {
+      h += '<div class="pager sig-pager">' + UI.btn(showAll ? 'Visa färre' : 'Visa ' + hidden + ' till', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
+    }
+    return h + '</section>';
+  }
 
   OOS.views.overview = function (ctx) {
     var e = ctx.e;
@@ -104,12 +162,14 @@
       UI.kpi('Kapacitet i ' + ctx.next.inText, U.fmtH(nxt.capacity), UI.delta(nxt.capacity - org.capacity, 'h') + ' mot ' + esc(month)) +
       '</div>';
 
-    var groups = groupSignals(sigs);
-    var showAll = OOS.state.allSignals;
-    var shown = showAll ? groups : groups.slice(0, 8);
-    var groups = groupSignals(sigs);
-    var showAll = OOS.state.allSignals;
-    var shown = showAll ? groups : groups.slice(0, 8);
+    /*
+     * Åtgärderna före läget. Sidan visar både vad som behöver lösas och
+     * hur det står till; läget är bakgrund, åtgärderna är det man är här
+     * för. Listan stod förut under ett 650 px högt kort med leveransdomäner,
+     * så det man kom för låg under skärmkanten.
+     */
+    h += signalsCard(groupSignals(sigs), sigs.length);
+
     /*
      * Leveransdomänerna som rutnät av kort i stället för en lista med
      * staplar. Varje domän är en sak man kan gå in i, och kortet säger
@@ -143,26 +203,6 @@
       });
     });
     h += '</div></section>';
-
-    var groups = groupSignals(sigs);
-    var showAll = OOS.state.allSignals;
-    var shown = showAll ? groups : groups.slice(0, 8);
-    h += '<section class="card"><div class="card-head"><div><div class="card-title">Att titta på</div><div class="card-sub">Det som behöver lösas först, samlat per slag.</div></div></div>';
-    h += '<div class="signals">';
-    shown.forEach(function (s2) {
-      var attrs = s2.seg
-        ? 'data-action="go-filtered" data-to="' + esc(s2.go) + '" data-seg="' + esc(s2.seg[0]) + '" data-key="' + esc(s2.seg[1]) + '"'
-        : 'data-go="' + esc(s2.go) + '"';
-      h += '<button type="button" class="signal sev-' + s2.severity + '" ' + attrs + '>' +
-        '<span class="dot ' + s2.severity + '" title="' + SEVERITY[s2.severity] + '"></span>' +
-        '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s2.severity] + ': </span>' + esc(s2.title) + '</span>' +
-        '<span class="signal-detail">' + esc(s2.detail) + '</span></span>' +
-        UI.icon('chevronRight', 'signal-go') + '</button>';
-    });
-    if (!sigs.length) h += '<div class="empty">Inget avviker. Modellen hänger ihop.</div>';
-    h += '</div>';
-    if (groups.length > 8) h += '<div class="pager"><span>' + shown.length + ' av ' + groups.length + '</span>' + UI.btn(showAll ? 'Visa färre' : 'Visa alla', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';
-    h += '</section>';
 
     /*
      * Bottenraden: tre kort av olika slag, inte tre av samma. En andel som

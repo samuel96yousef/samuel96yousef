@@ -544,9 +544,22 @@
       var supply = U.sum(people, function (x) { return x.hours; }) + U.sum(teamsFree, function (x) { return x.free; });
       var enough = supply >= a.short - 0.5;
 
+      /*
+       * Rubriken säger beskedet i ett ord och mätaren visar proportionen:
+       * hur mycket som saknas av det som faktiskt går att hämta. Förut stod
+       * "129 h saknas · 1 303 h finns att hämta" som löptext med beskedet
+       * som bricka längst ut till höger, nästan 1 000 px från talen den
+       * dömde. 129 av 1 303 är lite; 129 av 140 är nästan allt, och den
+       * skillnaden syns inte i två tal bredvid varandra.
+       */
+      var pct = supply > 0.5 ? (a.short / supply) * 100 : 120;
       h += '<div class="need-area"><div class="need-area-head"><h2 class="need-area-title">' + esc(a.category) + '</h2>' +
-        '<span class="need-area-sum"><span class="crit-text">' + U.fmtH(a.short) + ' saknas</span> · ' + U.fmtH(supply) + ' finns att hämta</span>' +
-        (enough ? UI.badge('Räcker') : UI.badge('Räcker inte, ' + U.fmtH(a.short - supply) + ' kvar', 'crit')) + '</div>';
+        UI.state(enough ? 'Räcker' : 'Räcker inte, ' + U.fmtH(a.short - supply) + ' kvar', enough ? '' : 'crit') + '</div>' +
+        UI.meter({
+          label: 'Saknas',
+          right: supply > 0.5 ? 'av ' + U.fmtH(supply) + ' att hämta' : 'inget att hämta',
+          bar: UI.bar(pct, { label: U.fmtH(a.short), title: U.fmtH(a.short) + ' saknas av ' + U.fmtH(supply) + ' som finns att hämta i ' + p.inText + '.' })
+        });
 
       h += '<div class="na-cols"><div class="na-col"><div class="na-col-label">Behöver</div><ul class="na-rows">';
       a.needs.forEach(function (x) {
@@ -557,21 +570,48 @@
         h += '<li><div class="na-row"><span class="na-name">' + C.link('teams:' + x.team.id, x.team.name) + ' ' +
           (x.row.gap ? UI.badge('Saknas i teamet', 'crit') : UI.badge(U.fmtPct(x.row.loadPct), 'crit')) + '</span>' +
           '<span class="na-h crit-text">' + U.fmtH(x.over) + '</span></div>' +
-          (drivers.length ? '<div class="na-sub"><span class="na-for">Epiker</span> ' + drivers.map(function (d) { return C.epicRef(d.epic); }).join(', ') + '</div>' : '') + '</li>';
+          /*
+           * Varje epik bär sitt eget kommatecken, så att tecknet aldrig
+           * hamnar först på nästa rad. Med ett kommatecken mellan två
+           * länkknappar bryter raden mellan knappen och tecknet, och
+           * raden började med ", Kolbot: robotar för …".
+           */
+          (drivers.length ? '<div class="na-sub"><span class="na-for">Epiker</span>' + drivers.map(function (d, i) {
+            return '<span class="na-epic">' + C.epicRef(d.epic) + (i < drivers.length - 1 ? ',' : '') + '</span>';
+          }).join('') + '</div>' : '') + '</li>';
       });
       h += '</ul></div><div class="na-col"><div class="na-col-label">Kan hämtas från</div><ul class="na-rows">';
-      people.slice(0, 3).forEach(function (x) {
-        h += '<li><div class="na-row"><span class="na-name">' + C.link('workers:' + x.worker.id, x.worker.name) + ' <span class="na-kind">inte fördelad</span></span>' +
+      /*
+       * Listan slutar när det som saknas är täckt, inte efter sex rader.
+       * Behövs 129 h och den första raden har 205 h är de fem därefter
+       * inte mer sanna, bara längre — och de drog ut spalten 300 px under
+       * grannen till vänster, som bara hade två rader. Summan av resten
+       * står kvar på sista raden, så inget tal försvinner.
+       */
+      var sources = people.map(function (x) {
+        return { link: C.link('workers:' + x.worker.id, x.worker.name), kind: 'inte fördelad', hours: x.hours };
+      }).concat(teamsFree.map(function (x) {
+        return { link: C.link('teams:' + x.team.id, x.team.name), kind: 'ledigt i teamet', hours: x.free };
+      }));
+      var acc = 0;
+      var cut = 0;
+      for (var si = 0; si < sources.length; si++) {
+        acc += sources[si].hours;
+        cut = si + 1;
+        if (acc >= a.short - 0.5) break;
+      }
+      cut = Math.min(Math.max(cut, 2), 4, sources.length);
+      sources.slice(0, cut).forEach(function (x) {
+        h += '<li><div class="na-row"><span class="na-name">' + x.link + ' <span class="na-kind">' + esc(x.kind) + '</span></span>' +
           '<span class="na-h">' + U.fmtH(x.hours) + '</span></div></li>';
       });
-      teamsFree.slice(0, 3).forEach(function (x) {
-        h += '<li><div class="na-row"><span class="na-name">' + C.link('teams:' + x.team.id, x.team.name) + ' <span class="na-kind">ledigt i teamet</span></span>' +
-          '<span class="na-h">' + U.fmtH(x.free) + '</span></div></li>';
-      });
-      var more = Math.max(0, people.length - 3) + Math.max(0, teamsFree.length - 3);
-      if (more) h += '<li class="na-more">' + U.plural(more, 'till', 'till') + ' med ' + esc(a.category) + ' och tid kvar</li>';
-      if (!enough && (people.length || teamsFree.length)) h += '<li class="na-more">Resten kräver att arbete flyttas eller minskas.</li>';
-      if (!people.length && !teamsFree.length) h += '<li class="na-more">Ingen har ' + esc(a.category) + ' och tid kvar i ' + esc(p.inText) + '. Flytta eller minska arbete.</li>';
+      var rest = sources.slice(cut);
+      if (rest.length) {
+        h += '<li class="na-more"><span>' + U.plural(rest.length, 'till', 'till') + ' med ' + esc(a.category) + ' och tid kvar</span>' +
+          '<span class="na-h">' + U.fmtH(U.sum(rest, function (x) { return x.hours; })) + '</span></li>';
+      }
+      if (!enough && sources.length) h += '<li class="na-more"><span>Resten kräver att arbete flyttas eller minskas.</span></li>';
+      if (!sources.length) h += '<li class="na-more"><span>Ingen har ' + esc(a.category) + ' och tid kvar i ' + esc(p.inText) + '. Flytta eller minska arbete.</span></li>';
       h += '</ul></div></div></div>';
     });
     h += '</section>';
