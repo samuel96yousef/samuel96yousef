@@ -6,16 +6,13 @@
   var S = OOSStore;
   var C = OOS.common;
 
-  var SEVERITY = { critical: 'Kritisk', warning: 'Varning', info: 'Info' };
   /*
-   * Allvaret som rubrik över sin egen grupp. Förut bar varje rad en prick
-   * på 7 px och ingenting annat, så en varning och en upplysning såg
-   * likadana ut: färgen var hela skillnaden och den är den svagaste
-   * markören som finns. Nu står ordet och antalet över gruppen, och
-   * raderna under behöver ingen prick alls.
+   * Allvaret står som ord i varje korts huvud. Förut bar raden en prick på
+   * 7 px och ingenting annat, så en varning och en upplysning såg likadana
+   * ut: färgen var hela skillnaden, och den är den svagaste markören som
+   * finns.
    */
-  var SEV_GROUP = { critical: 'Kritiskt', warning: 'Varningar', info: 'Info' };
-  var SEV_ORDER = ['critical', 'warning', 'info'];
+  var SEVERITY = { critical: 'Kritisk', warning: 'Varning', info: 'Info' };
 
   function plural(n, one, many) {
     return n + ' ' + (n === 1 ? one : many);
@@ -62,18 +59,26 @@
     }).sort(function (a, b) { return RANK[a.severity] - RANK[b.severity] || (b.count || 1) - (a.count || 1); });
   }
 
-  function signalRow(s) {
+  function signalCard(s) {
     var attrs = s.seg
       ? 'data-action="go-filtered" data-to="' + esc(s.go) + '" data-seg="' + esc(s.seg[0]) + '" data-key="' + esc(s.seg[1]) + '"'
       : 'data-go="' + esc(s.go) + '"';
-    return '<button type="button" class="signal sev-' + s.severity + '" ' + attrs + '>' +
-      '<span class="signal-body"><span class="signal-title"><span class="sr-only">' + SEVERITY[s.severity] + ': </span>' + esc(s.title) + '</span>' +
-      '<span class="signal-detail">' + esc(s.detail) + '</span></span>' +
-      UI.icon('chevronRight', 'signal-go') + '</button>';
+    return '<button type="button" class="sigcard sev-' + s.severity + '" ' + attrs + '>' +
+      '<span class="sigcard-head"><span class="dot ' + s.severity + '" aria-hidden="true"></span>' +
+      '<span class="sigcard-sev">' + SEVERITY[s.severity] + '</span>' +
+      UI.icon('chevronRight', 'sigcard-go') + '</span>' +
+      '<span class="sigcard-title">' + esc(s.title) + '</span>' +
+      '<span class="sigcard-detail">' + esc(s.detail) + '</span></button>';
   }
 
   /*
-   * Listan har tre band, ett per allvar, med ordet och antalet över varje.
+   * Signalerna som kort i rutnät. Som lista låg varje förklaring ensam på
+   * en rad som var 700 px bred i ett kort som var 1 070 — två tredjedelar
+   * av ytan var tom till höger — och de tre allvarsbanden tog en rad var
+   * ovanpå det. Som kort fyller de bredden, allvaret står i varje korts
+   * eget huvud, och formen är den samma som leveransdomänerna under: en
+   * sak man kan gå in i är ett kort, inte en rad text.
+   *
    * Kapningen följer allvaret i stället för ett tal: kritiskt göms aldrig,
    * och foten säger hur många som står kvar. "8 av 10" var ett godtyckligt
    * snitt mitt i varningarna.
@@ -95,16 +100,8 @@
     var shown = showAll ? groups : (act.length ? act : groups).slice(0, Math.max(10, crit));
     var hidden = groups.length - shown.length;
 
-    h += '<div class="signals">';
-    SEV_ORDER.forEach(function (sev) {
-      var all = groups.filter(function (g) { return g.severity === sev; });
-      var rows = shown.filter(function (g) { return g.severity === sev; });
-      if (!rows.length) return;
-      h += '<div class="sig-head"><span class="dot ' + sev + '" aria-hidden="true"></span>' +
-        '<h3 class="sig-head-name">' + SEV_GROUP[sev] + '</h3>' +
-        '<span class="sig-head-count">' + (rows.length < all.length ? rows.length + ' av ' + all.length : all.length) + '</span></div>';
-      rows.forEach(function (s) { h += signalRow(s); });
-    });
+    h += '<div class="sigcards">';
+    shown.forEach(function (s) { h += signalCard(s); });
     h += '</div>';
     if (hidden > 0 || showAll) {
       h += '<div class="pager sig-pager">' + UI.btn(showAll ? 'Visa färre' : 'Visa ' + hidden + ' till', 'signals-toggle', { cls: 'btn-sm' }) + '</div>';

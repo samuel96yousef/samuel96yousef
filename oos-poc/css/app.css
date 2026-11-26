@@ -2020,125 +2020,115 @@ mark {
 
 /* ---------- Att titta på ---------- */
 
-.signals {
+/*
+ * Signalerna som kort i rutnät. Som lista låg varje förklaring ensam på en
+ * rad som var 700 px bred i ett kort som var 1 070, och tre allvarsband tog
+ * en rad var ovanpå det. Kortet är samma form som leveransdomänerna under:
+ * en sak man kan gå in i är ett kort, inte en rad text.
+ */
+/*
+ * Två spalter, inte så många som ryms. Med auto-fill blev det två på 1440
+ * och en på 1024, så kortet blev 300 px högre på den smalare skärmen än på
+ * den bredare. Två hela vägen ned till 560 px, en därunder.
+ */
+.sigcards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+@container main (min-width: 560px) {
+  .sigcards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sigcard {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--line);
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 15px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+
+.sigcard:hover {
+  background: var(--hover);
+  border-color: var(--line-strong);
+}
+
+/* Det kritiska bär tonad yta, så rutnätet har en ordning även utan rubriker. */
+.sigcard.sev-critical {
+  border-color: transparent;
+  background: var(--crit-soft);
+}
+
+.sigcard.sev-critical:hover {
+  background: color-mix(in srgb, var(--crit-soft) 80%, var(--fg));
+}
+
+.sigcard-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Allvaret står som ord i varje kort, inte bara som en prick på 7 px. */
+.sigcard-sev {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.sigcard.sev-warning .sigcard-sev {
+  color: var(--warn);
+}
+
+.sigcard.sev-critical .sigcard-sev {
+  color: var(--crit);
+}
+
+.sigcard-go {
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  flex: none;
+  color: var(--fg-3);
+}
+
+.sigcard-title {
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 /*
- * Ett band per allvar, med ordet och antalet över raderna. Pricken står
- * en gång, i rubriken, i stället för en gång per rad: raden under en
- * rubrik som säger Varningar behöver inte säga det en gång till.
+ * Tre rader räcker. Alla kort på samma rad blir lika höga av rutnätet, och
+ * resten av förklaringen står på sidan kortet leder till.
  */
-.sig-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 0 5px;
-}
-
-.signals > .sig-head:first-child {
-  padding-top: 8px;
-}
-
-.sig-head-name {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: var(--fg-2);
-}
-
-.sig-head-count {
-  font-size: 0.78125rem;
+.sigcard-detail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
   color: var(--fg-3);
-  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .sig-pager {
   justify-content: flex-end;
 }
 
-.signal {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 16px;
-  gap: 12px;
-  align-items: start;
-  /* Raden går utanför kortets padding, så hovringen täcker hela bredden. */
-  padding: 11px 10px 11px 12px;
-  margin-inline: -12px;
-  width: calc(100% + 24px);
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 8px;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--dur-1) var(--ease);
-}
-
-.signal:hover {
-  background: var(--hover);
-}
-
-/*
- * Det kritiska bär tonad yta, så listan har en ordning. Tonade rader får
- * ingen skiljelinje — den syns ändå inte mot tonen — utan luft emellan,
- * så att två kritiska rader läses som två saker och inte som ett block.
- */
-.signal.sev-critical {
-  background: var(--crit-soft);
-  border-bottom-color: transparent;
-}
-
-.signal.sev-critical + .signal {
-  margin-top: 5px;
-}
-
-.signal.sev-critical:hover {
-  background: color-mix(in srgb, var(--crit-soft) 80%, var(--fg));
-}
-
-.signal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-/*
- * Texten har ett tak i bredd. På 1440 px låg förklaringen ut över 900 px,
- * och ögat tappar raden långt innan det kommer fram till slutet. Två rader
- * räcker; resten är redan sagt på sidan raden leder till.
- */
-.signal-title,
-.signal-detail {
-  max-width: 88ch;
-}
-
-.signal-title {
-  font-weight: 500;
-}
-
-.signal-detail {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  color: var(--fg-3);
-  font-size: 0.8125rem;
-}
-
-.signal-go {
-  width: 16px;
-  height: 16px;
-  margin-top: 4px;
-  color: var(--fg-3);
-}
 
 /*
  * Kortets fot: vad som händer härnäst. Den ligger utanför kortets padding
